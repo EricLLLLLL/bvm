@@ -2,13 +2,13 @@
 
 ![bvm-banner](https://raw.githubusercontent.com/bvm-cli/bvm/main/bvm-banner.png) <!-- Placeholder for a potential future banner image -->
 
-> **⚡️ The native version manager for Bun. Cross-platform, shell-agnostic, and zero-dependency. Supports version switching, aliases, and smart mirror selection.**
+> **⚡️ The native version manager for Bun, driven by Bun. Cross-platform, shell-agnostic, and zero-dependency.**
 
-`bvm` is a fast, efficient, and seamless version manager for the Bun JavaScript runtime. Built entirely with Bun, it provides a native-like experience for managing multiple Bun installations on your system without external dependencies.
+`bvm` is a fast, efficient, and seamless version manager **built entirely with Bun, for the Bun JavaScript runtime**. It leverages Bun's native performance and ecosystem to provide a superior experience for managing multiple Bun installations on your system without external dependencies.
 
 ## ✨ Features
 
-*   **⚡️ Native Speed**: Compiled to a single native binary using Bun, ensuring blazing-fast execution.
+*   **⚡️ Bun-Native Performance**: Built and compiled to a single native binary **using Bun**, ensuring blazing-fast execution and a minimal footprint.
 *   **📦 Zero-Dependency**: Distributed as a single executable file with no runtime dependencies.
 *   **🛠 Comprehensive Commands**: Manage your Bun versions with `install`, `use`, `ls`, `ls-remote`, `alias`, `run`, `exec`, `which`, `cache`, `deactivate`, and `setup`.
 *   **💻 Cross-Platform**: Full support for macOS (Apple Silicon & Intel), Linux (x64 & ARM64), and Windows (x64).
@@ -135,6 +135,25 @@ bvm deactivate
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to open issues or submit pull requests.
+
+## 🗑️ Uninstallation
+
+To completely remove `bvm` from your system:
+
+1.  **Remove `bvm` paths from your shell configuration**:
+    *   Edit your shell's configuration file (e.g., `~/.bashrc`, `~/.zshrc`, `~/.profile`, `~/.config/fish/config.fish` or PowerShell `$PROFILE`).
+    *   Remove all lines related to `BVM_DIR` and `PATH` modifications for `bvm` (typically added by `bvm setup`).
+
+2.  **Delete the `bvm` installation directory**:
+    ```bash
+    rm -rf "$BVM_DIR" # Or rm -rf ~/.bvm
+    ```
+    If you manually moved the `bvm` binary elsewhere (e.g., `/usr/local/bin/bvm`), remember to remove it as well:
+    ```bash
+    sudo rm -f /usr/local/bin/bvm # If installed globally
+    ```
+
+3.  **Restart your terminal** or run `source` on your shell configuration file to apply changes.
 
 ## 📄 License
 

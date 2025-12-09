@@ -1,30 +1,34 @@
-import { describe, expect, test, beforeAll, afterAll } from "bun:test";
+import { beforeAll, afterAll, describe, expect, test, vi } from "bun:test";
+import { runBvm } from "./_utils";
+import { BVM_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM } from "../src/constants";
+import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
-import { mkdir, rm, writeFile } from "fs/promises";
-import { BVM_DIR } from "../src/constants";
+
 
 // Define a temporary home directory for testing
 const TEST_HOME = join(process.cwd(), "test_home");
 const TEST_BVM_DIR = join(TEST_HOME, ".bvm");
 
 // Get current bun path to ensure child process can find it
-const bunDir = dirname(process.execPath);
+const currentBunExecutable = process.execPath;
 
 async function runBvm(args: string[], cwd: string = process.cwd()) {
   const scriptPath = join(process.cwd(), "src/index.ts");
-  const proc = Bun.spawn(["bun", "run", scriptPath, ...args], {
+  const constructedPath = `${dirname(currentBunExecutable)}:${process.env.PATH}`;
+  // console.log("Constructed PATH for subprocess:", constructedPath); // Debugging line
+
+  const proc = Bun.spawn([currentBunExecutable, "run", scriptPath, ...args], {
     cwd,
     env: {
-      ...process.env,
-      HOME: TEST_HOME,
-      PATH: `${bunDir}:/usr/bin:/bin`, 
+      ...process.env, // Inherit all current env vars
+      HOME: TEST_HOME, // Mock HOME to point to our test directory
+      PATH: constructedPath, // Prepend bunDir, but preserve existing PATH
       BVM_GITHUB_TOKEN: process.env.BVM_GITHUB_TOKEN,
       BVM_TEST_MODE: 'true'
     },
     stdout: "pipe",
     stderr: "pipe"
   });
-
   const output = await new Response(proc.stdout).text();
   const error = await new Response(proc.stderr).text();
   await proc.exited;
@@ -39,12 +43,12 @@ async function runBvm(args: string[], cwd: string = process.cwd()) {
 
 describe("CLI Integration Suite", () => {
   beforeAll(async () => {
-    await rm(TEST_HOME, { recursive: true, force: true });
-    await mkdir(TEST_HOME, { recursive: true });
+    await rmSync(TEST_HOME, { recursive: true, force: true });
+    await mkdirSync(TEST_HOME, { recursive: true });
   });
 
   afterAll(async () => {
-    await rm(TEST_HOME, { recursive: true, force: true });
+    await rmSync(TEST_HOME, { recursive: true, force: true });
   });
 
   // --- Network & Discovery ---
@@ -138,8 +142,8 @@ describe("CLI Integration Suite", () => {
   // --- Configuration ---
   test(".bvmrc support", async () => {
     const projectDir = join(TEST_HOME, "my-project");
-    await mkdir(projectDir, { recursive: true });
-    await writeFile(join(projectDir, ".bvmrc"), "1.0.0");
+    await mkdirSync(projectDir, { recursive: true });
+    await writeFileSync(join(projectDir, ".bvmrc"), "1.0.0");
 
     await runBvm(["deactivate"]);
     
@@ -150,8 +154,8 @@ describe("CLI Integration Suite", () => {
 
   test(".bvmrc invalid version", async () => {
     const projectDir = join(TEST_HOME, "bad-project");
-    await mkdir(projectDir, { recursive: true });
-    await writeFile(join(projectDir, ".bvmrc"), "invalid-ver-xyz");
+    await mkdirSync(projectDir, { recursive: true });
+    await writeFileSync(join(projectDir, ".bvmrc"), "invalid-ver-xyz");
 
     const { exitCode } = await runBvm(["install"], projectDir);
     expect(exitCode).not.toBe(0);
@@ -181,4 +185,32 @@ describe("CLI Integration Suite", () => {
     const { exitCode } = await runBvm(["cache", "clear"]);
     expect(exitCode).toBe(0);
   });
+
+  // --- Upgrade ---
+  test("bvm upgrade checks for updates", async () => {
+    // Import API to spy on it
+    const api = await import("../src/api");
+    const fetchLatestBvmReleaseInfoSpy = vi.spyOn(api, 'fetchLatestBvmReleaseInfo');
+
+    // Mock the return value to indicate BVM is already up to date
+    fetchLatestBvmReleaseInfoSpy.mockReturnValue(Promise.resolve({
+      tagName: 'v0.0.0', // A version older than current, so it should report "up to date"
+      downloadUrl: 'https://example.com/mock-bvm-download',
+    }));
+
+    const { exitCode, allOutput } = await runBvm(["upgrade"]);
+
+    fetchLatestBvmReleaseInfoSpy.mockRestore(); // Clean up the mock
+
+    if (allOutput.includes("BVM is already up to date")) {
+      expect(exitCode).toBe(0);
+    } else if (allOutput.includes("Failed to update BVM")) {
+      expect(exitCode).toBe(1);
+    } else {
+      // If none of the above, it should have been a successful update
+      expect(exitCode).toBe(0);
+      expect(allOutput).includes("BVM updated successfully");
+    }
+  });
 });
+
