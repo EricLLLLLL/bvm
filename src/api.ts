@@ -1,4 +1,4 @@
-import { USER_AGENT, getBunAssetName } from './constants';
+import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH } from './constants';
 import { normalizeVersion } from './utils';
 import semver from 'semver';
 import chalk from 'chalk';
@@ -26,7 +26,7 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
   const inChina = isChina();
   const registries = inChina 
     ? ['https://registry.npmmirror.com/bun', 'https://registry.npmjs.org/bun']
-    : ['https://registry.npmjs.org/bun', 'https://registry.npmmirror.com/bun'];
+    : ['https://registry.npmjs.org/bun', 'https://registry.npmjs.org/bun']; // npmmirror as fallback for global too, if desired
 
   let lastError: Error | null = null;
 
@@ -68,7 +68,6 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
   throw lastError || new Error('Failed to fetch versions from any registry.');
 }
 
-
 /**
  * Fetches available Bun versions using 'git ls-remote'.
  * Backup method: No API rate limits, no tokens required.
@@ -76,17 +75,11 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
 export async function fetchBunVersionsFromGit(): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const versions: string[] = [];
-    // Bun.spawn or child_process.spawn can be used. using Bun.spawn for native feel if possible, 
-    // but child_process is more standard for the 'api' module if we want to keep it generic.
-    // Let's use Bun.spawn since we are in a Bun environment.
-    
-    // Check if git exists first? 
-    // We'll just try running it and catch error.
     
     try {
       const proc = Bun.spawn(['git', 'ls-remote', '--tags', 'https://github.com/oven-sh/bun.git'], {
         stdout: 'pipe',
-        stderr: 'pipe', // capture stderr to avoid polluting console
+        stderr: 'pipe',
       });
 
       const timeout = setTimeout(() => {
@@ -97,14 +90,10 @@ export async function fetchBunVersionsFromGit(): Promise<string[]> {
       const stream = new Response(proc.stdout);
       stream.text().then(text => {
         clearTimeout(timeout);
-        // Output format: <hash>\trefs/tags/bun-v1.0.0
         const lines = text.split('\n');
         for (const line of lines) {
           const match = line.match(/refs\/tags\/bun-v?(\d+\.\d+\.\d+.*)$/);
           if (match) {
-             // match[1] is the version part after bun-v or bun-
-             // Sometimes tags are just 'bun-v1.0.0', sometimes 'v1.0.0' (rare for bun)
-             // Bun uses 'bun-vX.Y.Z' convention usually.
              versions.push(match[1]);
           }
         }
@@ -121,7 +110,7 @@ export async function fetchBunVersionsFromGit(): Promise<string[]> {
 }
 
 /**
- * Main function to get versions. Tries NPM, then falls back to Git.
+ * Main function to get Bun versions. Tries NPM, then falls back to Git.
  */
 export async function fetchBunVersions(): Promise<string[]> {
   // Strategy 1: NPM
@@ -167,7 +156,7 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
     validVersions.sort(semver.rcompare);
     foundVersion = validVersions[0];
   } else {
-    const normalizedTarget = normalizeVersion(targetVersion).replace(/^v/, ''); // clean for comparison
+    const normalizedTarget = normalizeVersion(targetVersion).replace(/^v/, ''); 
     
     // 1. Exact match search
     if (versions.includes(normalizedTarget)) {
@@ -198,18 +187,7 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
   const mirror = process.env.BVM_GITHUB_MIRROR;
   
   if (mirror) {
-      // If mirror allows full url appending (like ghproxy), we prepend.
-      // If mirror is a direct replacement for github.com, we replace.
-      // Common pattern: https://mirror.ghproxy.com/https://github.com/...
-      // Or: https://npmmirror.com/mirrors/bun/... (if exists, but bun binaries aren't usually there)
-      
-      // Let's assume the user provides a prefix that handles the full URL or simply prepends.
-      // Simple usage: BVM_GITHUB_MIRROR=https://mirror.ghproxy.com/
-      
-      // Remove trailing slash from mirror if exists
       const cleanMirror = mirror.endsWith('/') ? mirror.slice(0, -1) : mirror;
-      
-      // If the mirror acts as a proxy for the full URL
       baseUrl = `${cleanMirror}/https://github.com`;
   } else if (isChina()) {
       console.log(chalk.gray('Tip: Set BVM_GITHUB_MIRROR="https://mirror.ghproxy.com/" to accelerate downloads in China.'));
@@ -220,5 +198,32 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
   return { url, foundVersion: `v${foundVersion}` };
 }
 
+/**
+ * Fetches the latest BVM release info.
+ * @returns Object with tag_name and download_url for the current platform, or null.
+ */
+export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; downloadUrl: string } | null> {
+  const headers: HeadersInit = { 'User-Agent': USER_AGENT };
+  const url = `https://api.github.com/repos/${REPO_FOR_BVM_CLI}/releases/latest`;
+  
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      console.error(chalk.red(`Failed to fetch latest BVM release info: ${response.statusText} (${response.status})`));
+      return null;
+    }
+    const release = await response.json();
+    
+    const tagName = release.tag_name;
+    const assetName = ASSET_NAME_FOR_BVM; // Already includes platform and .exe if windows
 
-
+    const downloadUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tagName}/${assetName}`;
+    return {
+      tagName: tagName,
+      downloadUrl: downloadUrl,
+    };
+  } catch (error: any) {
+    console.error(chalk.red(`Error fetching BVM release info: ${error.message}`));
+    return null;
+  }
+}

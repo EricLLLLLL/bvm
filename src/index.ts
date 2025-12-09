@@ -14,6 +14,7 @@ import { deactivate } from './commands/deactivate';
 import { displayVersion } from './commands/version';
 import { cacheCommand } from './commands/cache';
 import { configureShell } from './commands/setup';
+import { upgradeBvm } from './commands/upgrade'; // Import upgradeBvm
 import chalk from 'chalk';
 import ora from 'ora';
 
@@ -30,6 +31,8 @@ Usage:
   bvm use [version]                         Modify PATH to use <version>. Uses .bvmrc if available
   bvm deactivate                            Undo effects of \`bvm\` on current shell
   bvm setup                                 Configure shell environment (PATH) automatically
+  bvm upgrade                               Upgrade bvm to the latest version
+  bvm self-update                           Upgrade bvm to the latest version (alias for upgrade)
   bvm exec <version> <command>              Run <command> on <version>
   bvm run <version> <args>                  Run \`bun\` on <version> with <args> as arguments
   bvm current                               Display currently activated version of Bun
@@ -49,6 +52,7 @@ Example:
   bvm run 1.0.0 index.ts                Run index.ts using bun 1.0.0
   bvm exec 1.0.0 bun index.ts           Run \`bun index.ts\` with the PATH pointing to bun 1.0.0
   bvm alias default 1.0.0               Set default bun version
+  bvm upgrade                           Upgrade bvm to the latest version
 
 Note:
   To remove, delete, or uninstall bvm - just remove the \`$BVM_DIR\` folder (usually \`~/.bvm\`)
@@ -149,16 +153,27 @@ cli.command('setup', 'Configure shell environment automatically')
     await configureShell();
   });
 
+cli.command('upgrade', 'Upgrade bvm to the latest version')
+  .alias('self-update')
+  .action(async () => {
+    await upgradeBvm();
+  });
+
 cli.command('help', 'Show help message')
   .action(() => {
     console.log(helpMessage);
   });
 
-// Manually handle --help if passed as a flag to the root command
-cli.option('--help', 'Show help message');
+// Manually handle --help or -h flags if passed as a root command or global option
+
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+
+  console.log(helpMessage);
+
+  process.exit(0);
+
+}
+
+
 
 const parsed = cli.parse();
-
-if (parsed.options.help) {
-    console.log(helpMessage);
-}
