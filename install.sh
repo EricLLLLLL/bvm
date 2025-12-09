@@ -62,10 +62,17 @@ else
 fi
 
 ASSET_NAME="bvm-${PLATFORM}-${ARCH}${EXTENSION}"
-DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${ASSET_NAME}"
 
-# Add debug output
-echo -e "Attempting to download from: ${Yellow}${DOWNLOAD_URL}${Color_Off}"
+# --- Dynamically get the latest release tag ---
+echo "Fetching latest release tag..."
+LATEST_TAG=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep "tag_name" | cut -d : -f 2,3 | tr -d \" | tr -d , | tr -d " ")
+if [ -z "$LATEST_TAG" ]; then
+    echo -e "${Red}Error: Could not fetch the latest release tag from GitHub API.${Color_Off}"
+    exit 1
+fi
+echo "Latest tag found: ${Green}${LATEST_TAG}${Color_Off}"
+
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/${ASSET_NAME}"
 
 # Installation Directory
 BVM_DIR="${HOME}/.bvm"
@@ -75,7 +82,7 @@ BIN_DIR="${BVM_DIR}/bin"
 mkdir -p "$BIN_DIR"
 
 echo -e "Detecting platform: ${Green}${PLATFORM} ${ARCH}${Color_Off}"
-echo -e "Downloading bvm from: ${Yellow}${DOWNLOAD_URL}${Color_Off}"
+echo -e "Attempting to download from: ${Yellow}${DOWNLOAD_URL}${Color_Off}"
 
 if command -v curl >/dev/null 2>&1; then
   curl -fsSL "$DOWNLOAD_URL" -o "${BIN_DIR}/bvm${EXTENSION}"
