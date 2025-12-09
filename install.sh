@@ -3,9 +3,9 @@
 # BVM Installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/bvm/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/bvm-cli/bvm/main/install.sh | bash
 #   or
-#   wget -qO- https://raw.githubusercontent.com/YOUR_USERNAME/bvm/main/install.sh | bash
+#   wget -qO- https://raw.githubusercontent.com/bvm-cli/bvm/main/install.sh | bash
 #
 
 set -e
@@ -25,36 +25,23 @@ Yellow='\033[0;33m'       # Yellow
 Blue='\033[0;34m'         # Blue
 Cyan='\033[0;36m'         # Cyan
 
-echo -e "${Cyan}
-  _                     
- | |                    
- | |__ __   ___ __ ___  
- | '_ \\ \ / / '_ \` _ \
- | |_) \ V /| | | | | |
- |_.__/ \_/ |_| |_| |_|
-${Color_Off}
-"
 echo -e "${Blue}Installing bvm (Bun Version Manager)...${Color_Off}"
 
 # Detect OS and Arch
-OS=\"$(uname -s)\"
-ARCH=\"$(uname -m)\"
+OS="$(uname -s)"
+ARCH="$(uname -m)"
 
-case "$OS" in
-  Linux*) # Match Linux and any variants like 'Linux-gnu'
+if [[ "$OS" == "Linux"* ]]; then
     PLATFORM="linux"
-    ;;
-  Darwin*) # Match Darwin and any variants
+elif [[ "$OS" == "Darwin"* ]]; then
     PLATFORM="darwin"
-    ;;
-  MINGW*|MSYS*|CYGWIN*)
+elif [[ "$OS" == "MINGW"* || "$OS" == "MSYS"* || "$OS" == "CYGWIN"* ]]; then
     PLATFORM="windows"
-    ;;
-  *)
+else
     echo -e "${Red}Error: Unsupported OS: $OS (Actual value: \"$(uname -s)\")${Color_Off}"
     exit 1
-    ;;
-esac
+fi
+
 case "$ARCH" in
   x86_64)
     ARCH="x64"
@@ -75,14 +62,10 @@ else
 fi
 
 ASSET_NAME="bvm-${PLATFORM}-${ARCH}${EXTENSION}"
-# Fallback logic for macOS Intel naming if needed (we used darwin-x64)
-# Current bvm build output naming:
-# bvm-linux-x64
-# bvm-darwin-x64
-# bvm-darwin-aarch64
-# bvm-windows-x64.exe
-
 DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${ASSET_NAME}"
+
+# Add debug output
+echo -e "Attempting to download from: ${Yellow}${DOWNLOAD_URL}${Color_Off}"
 
 # Installation Directory
 BVM_DIR="${HOME}/.bvm"
