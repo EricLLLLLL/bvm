@@ -132,11 +132,14 @@ registerCommand('ls-remote', 'List all available remote Bun versions')
   });
 
 registerCommand('use [version]', 'Switch to a specific Bun version')
-  .action(async (version?: string) => {
+  .option('--silent, -s', 'Suppress output')
+  .action(async (version?: string, options?: { silent?: boolean }) => {
     try {
-      await useBunVersion(version);
+      await useBunVersion(version, options);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      if (!options?.silent) {
+        ora().fail(chalk.red(`${error.message}`));
+      }
       process.exit(1);
     }
   });
