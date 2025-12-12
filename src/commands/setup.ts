@@ -10,12 +10,13 @@ import { BVM_INIT_SH_TEMPLATE, BVM_INIT_FISH_TEMPLATE } from '../templates/init-
 /**
  * Detects the user's shell and configures the PATH.
  */
-export async function configureShell(): Promise<void> {
+export async function configureShell(displayPrompt: boolean = true): Promise<void> {
   // Windows Support
   if (process.platform === 'win32') {
-      await configureWindows();
+      await configureWindows(displayPrompt);
       return;
   }
+
 
   if (!process.env.BVM_TEST_MODE) {
       await checkConflicts();
@@ -102,13 +103,15 @@ ${exportStr}
 `);
     }
     console.log(chalk.green(`✓ Successfully configured BVM path in ${configFile}`));
-    console.log(chalk.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
+    if (displayPrompt) {
+        console.log(chalk.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
+    }
   } catch (error: any) {
     console.error(chalk.red(`Failed to write to ${configFile}: ${error.message}`));
   }
 }
 
-async function configureWindows(): Promise<void> {
+async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     await checkConflicts();
 
     // PowerShell Profile logic
@@ -134,7 +137,11 @@ async function configureWindows(): Promise<void> {
     const psStr = `
 # BVM Configuration
 $env:BVM_DIR = "${BVM_DIR}"
-$env:PATH = "$env:BVM_DIR\bin;$env:PATH"
+$env:PATH = "$env:BVM_DIR\\bin;$env:PATH"
+# Auto-activate default version
+if (Test-Path "$env:BVM_DIR\\bin\\bvm.exe") {
+    & "$env:BVM_DIR\\bin\\bvm.exe" use default --silent *>$null
+}
 `;
 
     if (content.includes('$env:BVM_DIR')) {
@@ -146,7 +153,9 @@ $env:PATH = "$env:BVM_DIR\bin;$env:PATH"
     try {
         await appendFile(profilePath, psStr);
         console.log(chalk.green(`✓ Successfully configured BVM path in ${profilePath}`));
-        console.log(chalk.yellow(`Please restart your terminal or run ". $PROFILE" to apply changes.`));
+        if (displayPrompt) {
+            console.log(chalk.yellow(`Please restart your terminal or run ". $PROFILE" to apply changes.`));
+        }
     } catch (error: any) {
         console.error(chalk.red(`Failed to write to ${profilePath}: ${error.message}`));
     }

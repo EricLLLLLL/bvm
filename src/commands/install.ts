@@ -226,7 +226,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
   }
 
   if (shouldConfigureShell) {
-    await configureShell();
+    await configureShell(false); // Suppress the prompt here
   }
 
   if (installedVersion) {

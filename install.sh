@@ -111,20 +111,42 @@ fi
 
 ASSET_NAME="bvm-${PLATFORM}-${ARCH}${EXTENSION}"
 
-# --- Dynamically get the latest release tag ---
-echo "Fetching latest release tag from GitHub API..."
-
-LATEST_RELEASE_JSON=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest")
-
-if command -v jq >/dev/null 2>&1; then
-  LATEST_TAG=$(echo "$LATEST_RELEASE_JSON" | jq -r ".tag_name")
+# --- Get release tag ---
+if [ -n "$BVM_INSTALL_VERSION" ]; then
+  LATEST_TAG="$BVM_INSTALL_VERSION"
+  echo "Using specified version: $(_colorize "$Green" "$LATEST_TAG")"
 else
-  # Fallback to grep/cut for basic shell environments if jq is not present
-  LATEST_TAG=$(echo "$LATEST_RELEASE_JSON" | grep "tag_name" | head -n 1 | cut -d : -f 2- | tr -d \" | tr -d , | tr -d " ")
+  echo "Fetching latest release tag..."
+  
+  # Method 1: Get tag from GitHub Releases redirect (Avoids API Rate Limits)
+  if command -v curl >/dev/null 2>&1; then
+    LATEST_TAG=$(curl -sI "https://github.com/${REPO}/releases/latest" | grep -i "location:" | sed 's#.*/tag/##' | tr -d '\r')
+  fi
+
+  # Method 2: Fallback to GitHub API (if Method 1 fails or returns empty)
+  if [ -z "$LATEST_TAG" ]; then
+    echo "  (Fallback: Checking GitHub API...)"
+    LATEST_RELEASE_JSON=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest")
+    
+    if command -v jq >/dev/null 2>&1; then
+      LATEST_TAG=$(echo "$LATEST_RELEASE_JSON" | jq -r ".tag_name")
+    else
+      LATEST_TAG=$(echo "$LATEST_RELEASE_JSON" | grep "tag_name" | head -n 1 | cut -d : -f 2- | tr -d \" | tr -d , | tr -d " ")
+    fi
+  fi
 fi
 
-if [ -z "$LATEST_TAG" ]; then
-    echo "$(_colorize "$Red" "Error: Could not fetch the latest release tag from GitHub API. Please check your network or try again.")"
+# Trim whitespace (including newlines)
+LATEST_TAG="$(echo "${LATEST_TAG}" | tr -d '[:space:]')"
+
+if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+    echo "$(_colorize "$Red" "Error: Could not fetch the latest release tag from GitHub API.")"
+    
+    # Check for rate limit message
+    if echo "$LATEST_RELEASE_JSON" | grep -q "rate limit"; then
+      echo "$(_colorize "$Yellow" "Reason: GitHub API rate limit exceeded.")"
+    fi
+    
     echo "$(_colorize "$Yellow" "GitHub API response (partial):")"
     echo "$LATEST_RELEASE_JSON" | head -n 5 # Print first 5 lines of API response for debug
     exit 1
@@ -186,10 +208,69 @@ echo "Configuring shell via 'bvm setup'..."
 "${BIN_DIR}/bvm${EXTENSION}" setup
 echo "$(_colorize "$Green" "✓ Shell configured")"
 
+# --- Auto-install latest Bun version ---
+echo "Installing latest Bun version..."
+if "${BIN_DIR}/bvm${EXTENSION}" install latest; then
+    echo "$(_colorize "$Green" "✓ Bun (latest) installed successfully")"
+else
+    echo "$(_colorize "$Yellow" "⚠ Failed to auto-install Bun. You can try running 'bvm install latest' manually later.")"
+fi
+
+# --- Smart Activation Hint ---
+USER_SHELL=""
+
+# Attempt 1: From SHELL environment variable
+if [ -n "$SHELL" ]; then
+  USER_SHELL="$(basename "$SHELL")"
+fi
+
+# Attempt 2: If SHELL is empty, try to detect from process info (common in minimal containers)
+if [ -z "$USER_SHELL" ]; then
+  if [ -f "/proc/$$/exe" ]; then
+    USER_SHELL="$(basename "$(readlink /proc/$$/exe)")"
+  else
+    USER_SHELL="unknown"
+  fi
+fi
+
+CONFIG_FILE=""
+
+case "$USER_SHELL" in
+  zsh)
+    CONFIG_FILE="$HOME/.zshrc"
+    ;;
+  bash)
+    if [[ "$PLATFORM" == "darwin" ]]; then
+      # macOS often uses .bash_profile
+      if [ -f "$HOME/.bash_profile" ]; then
+        CONFIG_FILE="$HOME/.bash_profile"
+      else
+        CONFIG_FILE="$HOME/.bashrc"
+      fi
+    else
+      # Linux / Git Bash usually uses .bashrc
+      CONFIG_FILE="$HOME/.bashrc"
+    fi
+    ;;
+  fish)
+    CONFIG_FILE="$HOME/.config/fish/config.fish"
+    ;;
+esac
+
 echo ""
-echo "$(_colorize "$Green" "🎉 bvm installed successfully!")"
+echo "$(_colorize "$Green" "🎉 bvm installation complete!")"
 echo ""
-echo "Please restart your terminal or run the command suggested above to start using bvm."
+echo "To start using bvm and bun immediately, run the following command:"
 echo ""
-echo "Then run:"
-echo "$(_colorize "$Cyan" "  bvm install latest")"
+
+if [ -n "$CONFIG_FILE" ]; then
+    echo "    $(_colorize "$Cyan" "source $CONFIG_FILE")"
+else
+    # Fallback for unknown shells or systems
+    echo "    $(_colorize "$Cyan" "export BVM_DIR=\"$HOME/.bvm\" && export PATH=\"\$BVM_DIR/bin:\$PATH\"")"
+    echo ""
+    echo "Note: We couldn't detect your shell configuration file."
+    echo "Please manually add $(_colorize "$Yellow" "$HOME/.bvm/bin") to your PATH."
+fi
+
+echo ""

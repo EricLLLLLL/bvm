@@ -10,40 +10,43 @@ import { withSpinner } from '../command-runner';
 /**
  * Switches to a specific Bun version.
  * @param targetVersion The version to use (e.g., "1.0.0"). Optional if .bvmrc exists.
+ * @param options Configuration options
  */
-export async function useBunVersion(targetVersion?: string): Promise<void> {
+export async function useBunVersion(targetVersion?: string, options: { silent?: boolean } = {}): Promise<void> {
   let versionToUse = targetVersion;
 
   if (!versionToUse) {
     versionToUse = await getRcVersion() || undefined;
-    if (versionToUse) {
+    if (versionToUse && !options.silent) {
         console.log(chalk.blue(`Found '.bvmrc' with version <${versionToUse}>`));
     }
   }
 
   if (!versionToUse) {
-    console.error(chalk.red('No version specified and no .bvmrc found. Usage: bvm use <version>'));
+    if (!options.silent) {
+        console.error(chalk.red('No version specified and no .bvmrc found. Usage: bvm use <version>'));
+    }
     throw new Error('No version specified and no .bvmrc found.');
   }
 
-  await withSpinner(
-    `Attempting to use Bun ${versionToUse}...`,
-    async (spinner) => {
+  const runLogic = async (spinner?: any) => {
       let finalResolvedVersion: string | null = null;
 
     // First, try resolving using resolveLocalVersion (handles aliases, 'current', 'latest' from installed)
-    const resolvedFromLocal = await resolveLocalVersion(versionToUse);
+    const resolvedFromLocal = await resolveLocalVersion(versionToUse!);
     if (resolvedFromLocal) {
         finalResolvedVersion = resolvedFromLocal;
     } else {
         // If not resolved by resolveLocalVersion, then try fuzzy matching against installed versions
         const installedVersions = (await getInstalledVersions()).map(v => normalizeVersion(v));
-        finalResolvedVersion = resolveVersion(versionToUse, installedVersions);
+        finalResolvedVersion = resolveVersion(versionToUse!, installedVersions);
     }
 
     if (!finalResolvedVersion) {
       const installed = (await getInstalledVersions()).map(v => normalizeVersion(v));
-      console.log(chalk.blue(`Available installed versions: ${installed.length > 0 ? installed.join(', ') : 'None'}`));
+      if (!options.silent) {
+        console.log(chalk.blue(`Available installed versions: ${installed.length > 0 ? installed.join(', ') : 'None'}`));
+      }
       throw new Error(`Bun version '${versionToUse}' is not installed or cannot be resolved.`);
     }
 
@@ -56,7 +59,7 @@ export async function useBunVersion(targetVersion?: string): Promise<void> {
 
     // This check should ideally not fail if the version was resolved from installed versions
     if (!(await pathExists(bunExecutablePath))) {
-      spinner.fail(chalk.red(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`));
+      if (spinner) spinner.fail(chalk.red(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`));
       throw new Error(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`);
     }
 
@@ -64,9 +67,18 @@ export async function useBunVersion(targetVersion?: string): Promise<void> {
     await ensureDir(BVM_BIN_DIR); // Ensure the bin directory exists
     await createSymlink(bunExecutablePath, join(BVM_BIN_DIR, EXECUTABLE_NAME));
 
-    spinner.succeed(chalk.green(`Bun ${finalResolvedVersion} is now active.`));
-    console.log(chalk.yellow(`Remember to add ${BVM_BIN_DIR} to your PATH environment variable to use bvm.`));
-    },
-    { failMessage: () => `Failed to use Bun ${versionToUse}` },
-  );
+    if (spinner) {
+        spinner.succeed(chalk.green(`Bun ${finalResolvedVersion} is now active.`));
+    }
+  };
+
+  if (options.silent) {
+      await runLogic();
+  } else {
+      await withSpinner(
+        `Attempting to use Bun ${versionToUse}...`,
+        (spinner) => runLogic(spinner),
+        { failMessage: () => `Failed to use Bun ${versionToUse}` },
+      );
+  }
 }

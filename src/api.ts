@@ -175,6 +175,37 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
  * @returns Object with tag_name and download_url for the current platform, or null.
  */
 export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; downloadUrl: string } | null> {
+  const assetName = ASSET_NAME_FOR_BVM;
+  
+  // Method 1: GitHub Redirect (No API Rate Limit)
+  try {
+    const redirectUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/latest`;
+    const response = await fetch(redirectUrl, { 
+      method: 'HEAD',
+      redirect: 'manual', // Don't follow automatically, we want the Location header
+      headers: { 'User-Agent': USER_AGENT }
+    });
+    
+    // GitHub returns 302 Found for /releases/latest -> /releases/tag/vX.Y.Z
+    if (response.status === 302 || response.status === 301) {
+       const location = response.headers.get('location');
+       if (location) {
+          // location is like: https://github.com/bvm-cli/bvm/releases/tag/v1.0.10
+          const parts = location.split('/');
+          const tag = parts[parts.length - 1];
+          if (tag && semver.valid(tag)) {
+             return {
+               tagName: tag,
+               downloadUrl: `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tag}/${assetName}`
+             };
+          }
+       }
+    }
+  } catch (e) {
+      // Ignore error and fall back to API
+  }
+
+  // Method 2: GitHub API (Fallback)
   const headers: HeadersInit = { 'User-Agent': USER_AGENT };
   const url = `https://api.github.com/repos/${REPO_FOR_BVM_CLI}/releases/latest`;
   
@@ -187,8 +218,6 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
     const release = await response.json();
     
     const tagName = release.tag_name;
-    const assetName = ASSET_NAME_FOR_BVM; // Already includes platform and .exe if windows
-
     const downloadUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tagName}/${assetName}`;
     return {
       tagName: tagName,
