@@ -1,55 +1,11 @@
 import { beforeAll, afterAll, describe, expect, test, vi } from "bun:test";
-// import { runBvm } from "../src/utils";
-import { BVM_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM } from "../src/constants";
+import { runBvm, resetTestHome, cleanupTestHome, TEST_HOME, TEST_BVM_DIR } from "./test-utils";
 import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync, readlinkSync } from "fs";
-import { join, dirname } from "path";
-
-
-// Define a temporary home directory for testing
-const TEST_HOME = join(process.cwd(), "test_home");
-const TEST_BVM_DIR = join(TEST_HOME, ".bvm");
-
-// Get current bun path to ensure child process can find it
-const currentBunExecutable = process.execPath;
-
-async function runBvm(args: string[], cwd: string = process.cwd()) {
-  const scriptPath = join(process.cwd(), "src/index.ts");
-  const constructedPath = `${dirname(currentBunExecutable)}:${process.env.PATH}`;
-  // console.log("Constructed PATH for subprocess:", constructedPath); // Debugging line
-
-  const proc = Bun.spawn([currentBunExecutable, "run", scriptPath, ...args], {
-    cwd,
-    env: {
-      ...process.env, // Inherit all current env vars
-      HOME: TEST_HOME, // Mock HOME to point to our test directory
-      PATH: constructedPath, // Prepend bunDir, but preserve existing PATH
-      BVM_GITHUB_TOKEN: process.env.BVM_GITHUB_TOKEN,
-      BVM_TEST_MODE: 'true'
-    },
-    stdout: "pipe",
-    stderr: "pipe"
-  });
-  const output = await new Response(proc.stdout).text();
-  const error = await new Response(proc.stderr).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-      // console.error(`Command [${args.join(' ')}] failed with exit code ${proc.exitCode}:`);
-      // console.error(error);
-  }
-
-  return { exitCode: proc.exitCode, output, error, allOutput: output + error };
-}
+import { join } from "path";
 
 describe("CLI Integration Suite", () => {
   beforeAll(async () => {
-    await rmSync(TEST_HOME, { recursive: true, force: true });
-    await mkdirSync(TEST_HOME, { recursive: true });
-    // Also ensure .bvm dir is created for initial operations
-    await mkdirSync(TEST_BVM_DIR, { recursive: true }); 
-    // Clear any previous aliases that might exist from prior runs
-    await rmSync(join(TEST_BVM_DIR, "alias"), { recursive: true, force: true });
-    await mkdirSync(join(TEST_BVM_DIR, "alias"), { recursive: true });
+    await resetTestHome();
 
     // Pre-install some versions for fuzzy matching tests
     await runBvm(["install", "1.3.4"]);
@@ -57,7 +13,7 @@ describe("CLI Integration Suite", () => {
   });
 
   afterAll(async () => {
-    await rmSync(TEST_HOME, { recursive: true, force: true });
+    await cleanupTestHome();
   });
 
   // --- Network & Discovery ---
