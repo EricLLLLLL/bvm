@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import semver from 'semver';
 import { normalizeVersion } from '../utils';
 import { fetchBunVersions } from '../api';
@@ -24,7 +24,7 @@ export async function listRemoteVersions(): Promise<void> {
         throw new Error('No remote Bun versions found.');
       }
 
-      spinner.succeed(chalk.green('Available remote Bun versions:'));
+      spinner.succeed(colors.green('Available remote Bun versions:'));
       sortedVersions.forEach(version => {
         console.log(`  ${normalizeVersion(version)}`);
       });

@@ -2,9 +2,8 @@ import { join, dirname, delimiter } from 'path';
 import { homedir } from 'os';
 import { pathExists, ensureDir, removeDir } from '../utils';
 import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME } from '../constants';
-import chalk from 'chalk';
+import { colors, confirm } from '../utils/ui';
 import { readFile, appendFile, chmod, writeFile } from 'fs/promises';
-import inquirer from 'inquirer';
 import { BVM_INIT_SH_TEMPLATE, BVM_INIT_FISH_TEMPLATE } from '../templates/init-scripts';
 
 /**
@@ -45,7 +44,7 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
     configFile = join(homedir(), '.config', 'fish', 'config.fish');
   } else {
     // If we can't detect shell, we can't auto-configure, but we processed the uninstall check above.
-    console.log(chalk.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
+    console.log(colors.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
     return;
   }
 
@@ -88,7 +87,7 @@ end`;
     return;
   }
 
-  console.log(chalk.cyan(`Configuring ${shellName} environment in ${configFile}...`));
+  console.log(colors.cyan(`Configuring ${shellName} environment in ${configFile}...`));
 
   try {
     if (shellName === 'fish') {
@@ -102,12 +101,12 @@ ${fishStr}
 ${exportStr}
 `);
     }
-    console.log(chalk.green(`✓ Successfully configured BVM path in ${configFile}`));
+    console.log(colors.green(`✓ Successfully configured BVM path in ${configFile}`));
     if (displayPrompt) {
-        console.log(chalk.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
+        console.log(colors.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
     }
   } catch (error: any) {
-    console.error(chalk.red(`Failed to write to ${configFile}: ${error.message}`));
+    console.error(colors.red(`Failed to write to ${configFile}: ${error.message}`));
   }
 }
 
@@ -148,16 +147,16 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.exe") {
         return;
     }
 
-    console.log(chalk.cyan(`Configuring PowerShell environment in ${profilePath}...`));
+    console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
 
     try {
         await appendFile(profilePath, psStr);
-        console.log(chalk.green(`✓ Successfully configured BVM path in ${profilePath}`));
+        console.log(colors.green(`✓ Successfully configured BVM path in ${profilePath}`));
         if (displayPrompt) {
-            console.log(chalk.yellow(`Please restart your terminal or run ". $PROFILE" to apply changes.`));
+            console.log(colors.yellow(`Please restart your terminal or run ". $PROFILE" to apply changes.`));
         }
     } catch (error: any) {
-        console.error(chalk.red(`Failed to write to ${profilePath}: ${error.message}`));
+        console.error(colors.red(`Failed to write to ${profilePath}: ${error.message}`));
     }
 }
 
@@ -183,22 +182,19 @@ async function checkConflicts(): Promise<void> {
             // Case 1: Official Bun (~/.bun)
             if (p === officialBunBin || p === officialBunPath) { 
                  console.log();
-                 console.log(chalk.bgYellow.black(' CONFLICT DETECTED '));
-                 console.log(chalk.yellow(`Found existing official Bun installation at: ${bunPath}`));
-                 console.log(chalk.yellow(`This will conflict with bvm as it is also in your PATH.`));
+                 // Note: Chalk bgYellow.black is hard to replicate exactly with simple ANSI, using yellow+black
+                 // Or just yellow. Let's simplify to yellow bold.
+                 console.log(colors.yellow(' CONFLICT DETECTED ')); 
+                 console.log(colors.yellow(`Found existing official Bun installation at: ${bunPath}`));
+                 console.log(colors.yellow(`This will conflict with bvm as it is also in your PATH.`));
                  
                  try {
-                    const answer = await inquirer.prompt([{
-                        type: 'confirm',
-                        name: 'uninstall',
-                        message: 'Do you want bvm to uninstall the official Bun version (~/.bun) to resolve this?',
-                        default: true
-                    }]);
+                    const shouldUninstall = await confirm('Do you want bvm to uninstall the official Bun version (~/.bun) to resolve this?');
 
-                    if (answer.uninstall) {
+                    if (shouldUninstall) {
                         await uninstallOfficialBun(officialBunPath);
                     } else {
-                        console.log(chalk.dim('Skipping uninstallation. Please ensure bvm path takes precedence.'));
+                        console.log(colors.dim('Skipping uninstallation. Please ensure bvm path takes precedence.'));
                     }
                  } catch (e) {
                      // ignore
@@ -209,10 +205,10 @@ async function checkConflicts(): Promise<void> {
             // Case 2: Other installation (npm, brew, etc.)
             else {
                 console.log();
-                console.log(chalk.bgRed.white.bold(' CONFLICT DETECTED '));
-                console.log(chalk.red(`Found another Bun installation at: ${bunPath}`));
-                console.log(chalk.yellow(`This might be installed via npm, Homebrew, or another package manager.`));
-                console.log(chalk.yellow(`To avoid conflicts, please uninstall it manually (e.g., 'npm uninstall -g bun').`));
+                console.log(colors.red(' CONFLICT DETECTED '));
+                console.log(colors.red(`Found another Bun installation at: ${bunPath}`));
+                console.log(colors.yellow(`This might be installed via npm, Homebrew, or another package manager.`));
+                console.log(colors.yellow(`To avoid conflicts, please uninstall it manually (e.g., 'npm uninstall -g bun').`));
                 console.log();
                 // Stop search after one warning to avoid spam
                 return;
@@ -222,12 +218,12 @@ async function checkConflicts(): Promise<void> {
 }
 
 async function uninstallOfficialBun(path: string): Promise<void> {
-    console.log(chalk.cyan(`Removing official Bun installation at ${path}...`));
+    console.log(colors.cyan(`Removing official Bun installation at ${path}...`));
     try {
         await removeDir(path);
-        console.log(chalk.green('✓ Official Bun uninstalled.'));
-        console.log(chalk.yellow('Note: You may still need to remove `.bun/bin` from your PATH manually if it was added in your rc file.'));
+        console.log(colors.green('✓ Official Bun uninstalled.'));
+        console.log(colors.yellow('Note: You may still need to remove `.bun/bin` from your PATH manually if it was added in your rc file.'));
     } catch (error: any) {
-        console.error(chalk.red(`Failed to remove official Bun: ${error.message}`));
+        console.error(colors.red(`Failed to remove official Bun: ${error.message}`));
     }
 }

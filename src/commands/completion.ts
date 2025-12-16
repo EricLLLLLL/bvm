@@ -15,6 +15,7 @@ const commandList = [
   'upgrade',
   'doctor',
   'completion',
+  'deactivate',
   'help',
 ];
 

@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { join } from 'path';
 import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
 import { ensureDir, pathExists, normalizeVersion, writeTextFile } from '../utils';
@@ -18,7 +18,7 @@ export async function createAlias(aliasName: string, targetVersion: string): Pro
       const resolvedVersion = await resolveLocalVersion(targetVersion);
       
       if (!resolvedVersion) {
-        console.log(chalk.blue(`Please install Bun ${targetVersion} first using: bvm install ${targetVersion}`));
+        console.log(colors.blue(`Please install Bun ${targetVersion} first using: bvm install ${targetVersion}`));
         throw new Error(`Bun version '${targetVersion}' is not installed. Cannot create alias.`);
       }
 
@@ -37,7 +37,7 @@ export async function createAlias(aliasName: string, targetVersion: string): Pro
     const aliasFilePath = join(BVM_ALIAS_DIR, aliasName);
     await writeTextFile(aliasFilePath, `${resolvedVersion}\n`);
 
-      spinner.succeed(chalk.green(`Alias '${aliasName}' created for Bun ${resolvedVersion}.`));
+      spinner.succeed(colors.green(`Alias '${aliasName}' created for Bun ${resolvedVersion}.`));
     },
     { failMessage: `Failed to create alias '${aliasName}'` },
   );

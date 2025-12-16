@@ -1,7 +1,7 @@
 import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, IS_TEST_MODE, TEST_REMOTE_VERSIONS } from './constants';
 import { normalizeVersion } from './utils';
 import semver from 'semver';
-import chalk from 'chalk';
+import { colors } from './utils/ui';
 
 /**
  * Detects if the user is likely in China based on timezone.
@@ -149,7 +149,7 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
     let fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
   
   if (!semver.valid(fullVersion)) {
-        console.error(chalk.red(`Invalid version provided to findBunDownloadUrl: ${targetVersion}`));
+        console.error(colors.red(`Invalid version provided to findBunDownloadUrl: ${targetVersion}`));
         return null;
     }
     if (IS_TEST_MODE) {
@@ -212,7 +212,7 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
   try {
     const response = await fetch(url, { headers });
     if (!response.ok) {
-      console.error(chalk.red(`Failed to fetch latest BVM release info: ${response.statusText} (${response.status})`));
+      console.error(colors.red(`Failed to fetch latest BVM release info: ${response.statusText} (${response.status})`));
       return null;
     }
     const release = await response.json();
@@ -224,7 +224,7 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
       downloadUrl: downloadUrl,
     };
   } catch (error: any) {
-    console.error(chalk.red(`Error fetching BVM release info: ${error.message}`));
+    console.error(colors.red(`Error fetching BVM release info: ${error.message}`));
     return null;
   }
 }

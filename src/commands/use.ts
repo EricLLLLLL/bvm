@@ -1,7 +1,7 @@
 import { join } from 'path';
 import { BVM_BIN_DIR, BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
 import { createSymlink, ensureDir, pathExists, normalizeVersion, resolveVersion, getInstalledVersions } from '../utils';
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import semver from 'semver';
 import { getRcVersion } from '../rc';
 import { resolveLocalVersion } from './version';
@@ -18,13 +18,13 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
   if (!versionToUse) {
     versionToUse = await getRcVersion() || undefined;
     if (versionToUse && !options.silent) {
-        console.log(chalk.blue(`Found '.bvmrc' with version <${versionToUse}>`));
+        console.log(colors.blue(`Found '.bvmrc' with version <${versionToUse}>`));
     }
   }
 
   if (!versionToUse) {
     if (!options.silent) {
-        console.error(chalk.red('No version specified and no .bvmrc found. Usage: bvm use <version>'));
+        console.error(colors.red('No version specified and no .bvmrc found. Usage: bvm use <version>'));
     }
     throw new Error('No version specified and no .bvmrc found.');
   }
@@ -45,7 +45,7 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
     if (!finalResolvedVersion) {
       const installed = (await getInstalledVersions()).map(v => normalizeVersion(v));
       if (!options.silent) {
-        console.log(chalk.blue(`Available installed versions: ${installed.length > 0 ? installed.join(', ') : 'None'}`));
+        console.log(colors.blue(`Available installed versions: ${installed.length > 0 ? installed.join(', ') : 'None'}`));
       }
       throw new Error(`Bun version '${versionToUse}' is not installed or cannot be resolved.`);
     }
@@ -59,8 +59,9 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
 
     // This check should ideally not fail if the version was resolved from installed versions
     if (!(await pathExists(bunExecutablePath))) {
-      if (spinner) spinner.fail(chalk.red(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`));
-      throw new Error(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`);
+      const errorMsg = `Resolved version ${finalResolvedVersion} is not installed. This usually means an alias points to a missing version.`;
+      if (spinner) spinner.fail(colors.red(errorMsg));
+      throw new Error(errorMsg);
     }
 
     // 2. Create/update the symlink
@@ -68,7 +69,7 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
     await createSymlink(bunExecutablePath, join(BVM_BIN_DIR, EXECUTABLE_NAME));
 
     if (spinner) {
-        spinner.succeed(chalk.green(`Bun ${finalResolvedVersion} is now active.`));
+        spinner.succeed(colors.green(`Bun ${finalResolvedVersion} is now active.`));
     }
   };
 

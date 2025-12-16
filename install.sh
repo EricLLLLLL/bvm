@@ -1,276 +1,131 @@
 #!/bin/bash
+set -e
 
-# BVM Installer
-#
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/bvm-cli/bvm/main/install.sh | bash
-#   or
-#   wget -qO- https://raw.githubusercontent.com/bvm-cli/bvm/main/install.sh | bash
-#
+# BVM Configuration
+BVM_DIR="${HOME}/.bvm"
+BVM_SRC_DIR="${BVM_DIR}/src"
+BVM_RUNTIME_DIR="${BVM_DIR}/runtime"
+BVM_BIN_DIR="${BVM_DIR}/bin"
 
-set -e # Exit immediately if a command exits with a non-zero status
+# The Bun version that BVM itself runs on
+REQUIRED_BUN_VERSION="1.3.4"
 
-# --- Configuration ---
-# Repo: bvm-cli/bvm
-REPO="bvm-cli/bvm" 
-# ---------------------
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Reset
-Color_Off='\033[0m'       # Text Reset
+echo -e "${BLUE}Installing BVM (Bun Version Manager)...${NC}"
 
-# Regular Colors (only used if _colorize is active)
-Red='\033[0;31m'          # Red
-Green='\033[0;32m'        # Green
-Yellow='\033[0;33m'       # Yellow
-Blue='\033[0;34m'         # Blue
-Cyan='\033[0;36m'         # Cyan
-
-# Function to colorize text only if running in a TTY
-_colorize() {
-  local color="$1"
-  local text="$2"
-  if [[ -t 1 ]]; then # Check if stdout is a tty
-    echo -e "${color}${text}${Color_Off}"
-  else
-    echo "$text"
-  fi
-}
-
-# --- Simple Shell Spinner ---
-spinner() {
-  local pid=$!
-  local delay=0.1
-  local spinstr='|/-\'
-  echo -n " "
-  while ps -p $pid > /dev/null; do
-    local temp=${spinstr#?}
-    printf "\b%c" "$spinstr"
-    spinstr=$temp${spinstr%"$temp"}
-    sleep $delay
-  done
-  printf "\b "
-}
-
-print_logo() {
-  local version="$1"
-  local start_color=""
-  local reset_color=""
-  if [[ -t 1 ]]; then
-    start_color='\033[36m'
-    reset_color='\033[0m'
-  fi
-  printf "%b" "$start_color"
-  cat <<'EOF'
-______________   _________   \
-\______   \   \ /   /     \  
- |    |  _/\   Y   /  \ /  \ 
- |    |   \ \     /    Y    \
- |______  /  \___/\____|__  /
-        \/                \/ 
-EOF
-  printf "%b" "$reset_color"
-  printf "    Bun Version Manager · Built with Bun\n"
-  printf "    Version: %s\n\n" "$version"
-}
-
-echo "$(_colorize "$Blue" "Installing bvm (Bun Version Manager)...")"
-
-# Detect OS and Arch
+# 1. Detect Platform
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
-if [[ "$OS" == "Linux"* ]]; then
+case "$OS" in
+  Linux)
     PLATFORM="linux"
-elif [[ "$OS" == "Darwin"* ]]; then
+    ;;
+  Darwin)
     PLATFORM="darwin"
-elif [[ "$OS" == "MINGW"* || "$OS" == "MSYS"* || "$OS" == "CYGWIN"* ]]; then
-    PLATFORM="windows"
-else
-    echo "$(_colorize "$Red" "Error: Unsupported OS: $OS (Actual value: \"$(uname -s)\")")"
+    ;;
+  *)
+    echo -e "${RED}Unsupported OS: $OS${NC}"
     exit 1
-fi
+    ;;
+esac
 
 case "$ARCH" in
   x86_64)
-    ARCH="x64"
+    BUN_ARCH="x64"
     ;;
-  aarch64|arm64)
-    ARCH="aarch64"
+  arm64|aarch64)
+    BUN_ARCH="aarch64"
     ;;
   *)
-    echo "$(_colorize "$Red" "Error: Unsupported Architecture: $ARCH")"
+    echo -e "${RED}Unsupported Architecture: $ARCH${NC}"
     exit 1
     ;;
 esac
 
-if [ "$PLATFORM" == "windows" ]; then
-    EXTENSION=".exe"
-else
-    EXTENSION=""
+BUN_ASSET_NAME="bun-${PLATFORM}-${BUN_ARCH}"
+# Allow overriding download URL for mirrors (e.g. China)
+if [ -z "$BUN_DOWNLOAD_URL" ]; then
+  BUN_DOWNLOAD_URL="https://github.com/oven-sh/bun/releases/download/bun-v${REQUIRED_BUN_VERSION}/${BUN_ASSET_NAME}.zip"
 fi
 
-ASSET_NAME="bvm-${PLATFORM}-${ARCH}${EXTENSION}"
+# 2. Setup Directories
+mkdir -p "$BVM_DIR"
+mkdir -p "$BVM_SRC_DIR"
+mkdir -p "$BVM_RUNTIME_DIR"
+mkdir -p "$BVM_BIN_DIR"
 
-# --- Get release tag ---
-if [ -n "$BVM_INSTALL_VERSION" ]; then
-  LATEST_TAG="$BVM_INSTALL_VERSION"
-  echo "Using specified version: $(_colorize "$Green" "$LATEST_TAG")"
+# 3. Install Private Bun Runtime
+TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${REQUIRED_BUN_VERSION}"
+if [ -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
+  echo -e "${GREEN}BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
 else
-  echo "Fetching latest release tag..."
+  echo -e "${BLUE}Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
+  # Download to temp
+  TEMP_ZIP="${BVM_DIR}/bun-runtime.zip"
+  curl -fsSL "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP"
   
-  # Method 1: Get tag from GitHub Releases redirect (Avoids API Rate Limits)
-  if command -v curl >/dev/null 2>&1; then
-    LATEST_TAG=$(curl -sI "https://github.com/${REPO}/releases/latest" | grep -i "location:" | sed 's#.*/tag/##' | tr -d '\r')
-  fi
-
-  # Method 2: Fallback to GitHub API (if Method 1 fails or returns empty)
-  if [ -z "$LATEST_TAG" ]; then
-    echo "  (Fallback: Checking GitHub API...)"
-    LATEST_RELEASE_JSON=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest")
-    
-    if command -v jq >/dev/null 2>&1; then
-      LATEST_TAG=$(echo "$LATEST_RELEASE_JSON" | jq -r ".tag_name")
-    else
-      LATEST_TAG=$(echo "$LATEST_RELEASE_JSON" | grep "tag_name" | head -n 1 | cut -d : -f 2- | tr -d \" | tr -d , | tr -d " ")
-    fi
-  fi
+  # Extract
+  unzip -q -o "$TEMP_ZIP" -d "$BVM_DIR"
+  mv "${BVM_DIR}/${BUN_ASSET_NAME}" "$TARGET_RUNTIME_DIR"
+  rm "$TEMP_ZIP"
+  
+  echo -e "${GREEN}BVM Runtime installed.${NC}"
 fi
 
-# Trim whitespace (including newlines)
-LATEST_TAG="$(echo "${LATEST_TAG}" | tr -d '[:space:]')"
+# Link 'current' runtime
+rm -f "${BVM_RUNTIME_DIR}/current"
+ln -s "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
-if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
-    echo "$(_colorize "$Red" "Error: Could not fetch the latest release tag from GitHub API.")"
-    
-    # Check for rate limit message
-    if echo "$LATEST_RELEASE_JSON" | grep -q "rate limit"; then
-      echo "$(_colorize "$Yellow" "Reason: GitHub API rate limit exceeded.")"
-    fi
-    
-    echo "$(_colorize "$Yellow" "GitHub API response (partial):")"
-    echo "$LATEST_RELEASE_JSON" | head -n 5 # Print first 5 lines of API response for debug
-    exit 1
-fi
-echo "Latest tag found: $(_colorize "$Green" "$LATEST_TAG")"
-
-print_logo "$LATEST_TAG"
-
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/${ASSET_NAME}"
-
-# Installation Directory
-BVM_DIR="${HOME}/.bvm"
-BIN_DIR="${BVM_DIR}/bin"
-
-# Ensure directories exist
-mkdir -p "$BIN_DIR"
-
-TARGET_BIN="${BIN_DIR}/bvm${EXTENSION}"
-TEMP_BIN="${TARGET_BIN}.tmp"
-
-if [[ -n "$BVM_INSTALL_SOURCE" ]]; then
-  echo "Using local installer binary: $(_colorize "$Yellow" "$BVM_INSTALL_SOURCE")"
-  cp "$BVM_INSTALL_SOURCE" "$TEMP_BIN"
+# 4. Install BVM Source Code
+# We expect a bundled 'index.js' to be available.
+if [ -f "dist/index.js" ]; then
+    echo -e "${BLUE}Installing BVM source from local dist/index.js...${NC}"
+    cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
-  echo "Detecting platform: $(_colorize "$Green" "${PLATFORM} ${ARCH}")${Color_Off}"
-  echo "Downloading bvm from: $(_colorize "$Yellow" "$DOWNLOAD_URL")"
+    echo -e "${BLUE}Downloading BVM source...${NC}"
+    # Use unpkg or jsdelivr for reliable global CDN
+    # Fallback to GitHub Release if you prefer, but NPM/CDN is faster for source.
+    # Replace 'bvm' with your actual npm package name if different.
+    SOURCE_URL="https://unpkg.com/@bvm-cli/core@latest/dist/index.js"
+    
+    # Allow override
+    if [ -n "$BVM_SOURCE_URL" ]; then
+        SOURCE_URL="$BVM_SOURCE_URL"
+    fi
 
-  # --- Start download with Spinner ---
-  if [[ -t 1 ]]; then # If running in a TTY, use spinner
-      (
-          if command -v curl >/dev/null 2>&1; then
-            curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_BIN"
-          elif command -v wget >/dev/null 2>&1; then
-            wget -qO "$TEMP_BIN" "$DOWNLOAD_URL"
-          else
-            echo "$(_colorize "$Red" "Error: curl or wget is required to install bvm.")"
-            exit 1
-          fi
-      ) & spinner
-  else # If not TTY, just show silent download
-      if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$DOWNLOAD_URL" -o "$TEMP_BIN"
-      elif command -v wget >/dev/null 2>&1; then
-        wget -qO "$TEMP_BIN" "$DOWNLOAD_URL"
-      else
-        echo "$(_colorize "$Red" "Error: curl or wget is required to install bvm.")"
+    echo -e "${BLUE}Fetching from: $SOURCE_URL${NC}"
+    if curl -fsSL "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js"; then
+        echo -e "${GREEN}Source downloaded.${NC}"
+    else
+        echo -e "${RED}Failed to download source. Please check your network or NPM package availability.${NC}"
         exit 1
-      fi
-  fi
-fi
-
-chmod +x "$TEMP_BIN"
-mv -f "$TEMP_BIN" "$TARGET_BIN"
-
-echo "$(_colorize "$Green" "✓ bvm installed to ${BIN_DIR}/bvm${EXTENSION}")"
-
-# Configure Shell
-echo "Configuring shell via 'bvm setup'..."
-"${BIN_DIR}/bvm${EXTENSION}" setup
-echo "$(_colorize "$Green" "✓ Shell configured")"
-
-# --- Auto-install latest Bun version ---
-echo "Installing latest Bun version..."
-if "${BIN_DIR}/bvm${EXTENSION}" install latest; then
-    echo "$(_colorize "$Green" "✓ Bun (latest) installed successfully")"
-else
-    echo "$(_colorize "$Yellow" "⚠ Failed to auto-install Bun. You can try running 'bvm install latest' manually later.")"
-fi
-
-# --- Smart Activation Hint ---
-USER_SHELL=""
-
-# Attempt 1: From SHELL environment variable
-if [ -n "$SHELL" ]; then
-  USER_SHELL="$(basename "$SHELL")"
-fi
-
-# Attempt 2: If SHELL is empty, try to detect from process info (common in minimal containers)
-if [ -z "$USER_SHELL" ]; then
-  if [ -f "/proc/$$/exe" ]; then
-    USER_SHELL="$(basename "$(readlink /proc/$$/exe)")"
-  else
-    USER_SHELL="unknown"
-  fi
-fi
-
-CONFIG_FILE=""
-
-case "$USER_SHELL" in
-  zsh)
-    CONFIG_FILE="$HOME/.zshrc"
-    ;;
-  bash)
-    if [[ "$PLATFORM" == "darwin" ]]; then
-      # macOS often uses .bash_profile
-      if [ -f "$HOME/.bash_profile" ]; then
-        CONFIG_FILE="$HOME/.bash_profile"
-      else
-        CONFIG_FILE="$HOME/.bashrc"
-      fi
-    else
-      # Linux / Git Bash usually uses .bashrc
-      CONFIG_FILE="$HOME/.bashrc"
     fi
-    ;;
-  fish)
-    CONFIG_FILE="$HOME/.config/fish/config.fish"
-    ;;
-esac
-
-echo ""
-echo "$(_colorize "$Green" "🎉 bvm installation complete!")"
-echo ""
-echo "To start using bvm and bun immediately, run the following command:"
-echo ""
-
-if [ -n "$CONFIG_FILE" ]; then
-    echo "    $(_colorize "$Cyan" "source $CONFIG_FILE")"
-else
-    # Fallback for unknown shells or systems
-    echo "    $(_colorize "$Cyan" "export BVM_DIR=\"$HOME/.bvm\" && export PATH=\"\$BVM_DIR/bin:\$PATH\"")"
-    echo ""
-    echo "Note: We couldn't detect your shell configuration file."
-    echo "Please manually add $(_colorize "$Yellow" "$HOME/.bvm/bin") to your PATH."
 fi
 
-echo ""
+
+# 5. Create Wrapper Script
+WRAPPER_PATH="${BVM_BIN_DIR}/bvm"
+cat > "$WRAPPER_PATH" <<EOF
+#!/bin/bash
+export BVM_DIR="$BVM_DIR"
+# Use the private runtime
+exec "${BVM_RUNTIME_DIR}/current/bin/bun" "${BVM_SRC_DIR}/index.js" "\$@"
+EOF
+
+chmod +x "$WRAPPER_PATH"
+
+echo -e "${GREEN}BVM installed successfully!${NC}"
+
+# 6. Auto-configure Shell
+echo -e "${BLUE}Configuring shell environment...${NC}"
+# Use the newly installed bvm to run setup
+"$WRAPPER_PATH" setup --silent
+
+echo -e "You may need to restart your terminal or source your config file."
+echo -e "Try running: ${GREEN}source ~/.bashrc${NC} (or .zshrc/.config/fish)"

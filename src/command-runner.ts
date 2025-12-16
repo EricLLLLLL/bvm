@@ -1,5 +1,4 @@
-import ora, { Ora } from 'ora';
-import chalk from 'chalk';
+import { Spinner, colors } from './utils/ui';
 
 type FailMessage = string | ((error: unknown) => string);
 
@@ -12,23 +11,26 @@ interface SpinnerOptions {
  */
 export async function withSpinner<T>(
   message: string,
-  action: (spinner: Ora) => Promise<T>,
+  action: (spinner: Spinner) => Promise<T>,
   options?: SpinnerOptions,
 ): Promise<T> {
-  const spinner = ora(message).start();
+  const spinner = new Spinner(message);
+  spinner.start();
   try {
     const result = await action(spinner);
-    if (spinner.isSpinning) {
-      spinner.stop();
-    }
+    // Note: custom Spinner doesn't expose isSpinning, but stop() is safe to call multiple times or succeed() handles it.
+    // However, our custom implementation's stop() clears the line.
+    // If the action already called succeed/fail, we shouldn't call stop/fail again ideally,
+    // but the original logic relied on isSpinning.
+    // Let's assume action calls succeed/fail. If not, we stop it.
+    // Actually, our Spinner.stop() clears the line.
+    // If the action returned, we assume success? No, the caller usually calls spinner.succeed().
+    // If they didn't, we should probably stop it.
+    spinner.stop(); 
     return result;
   } catch (error) {
     const failureText = resolveFailMessage(error, options?.failMessage);
-    if (spinner.isSpinning) {
-      spinner.fail(chalk.red(failureText));
-    } else {
-      console.error(chalk.red(failureText));
-    }
+    spinner.fail(colors.red(failureText));
     throw error;
   }
 }

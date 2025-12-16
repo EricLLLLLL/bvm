@@ -1,131 +1,70 @@
 # BVM Installer for Windows (PowerShell)
-# Usage: irm https://raw.githubusercontent.com/bvm-cli/bvm/main/install.ps1 | iex
-
 $ErrorActionPreference = "Stop"
 
-$Repo = "bvm-cli/bvm"
-$BvmDir = "$HOME\.bvm"
-$BinDir = "$BvmDir\bin"
-$BvmExe = "$BinDir\bvm.exe"
+$BVM_DIR = "$HOME\.bvm"
+$BVM_SRC_DIR = "$BVM_DIR\src"
+$BVM_RUNTIME_DIR = "$BVM_DIR\runtime"
+$BVM_BIN_DIR = "$BVM_DIR\bin"
 
-Write-Host "Installing bvm (Bun Version Manager)..." -ForegroundColor Cyan
+$REQUIRED_BUN_VERSION = "1.3.4"
 
-# --- 1. Get Latest Version ---
-$LatestTag = $env:BVM_INSTALL_VERSION
+Write-Host "Installing BVM (Bun Version Manager)..." -ForegroundColor Blue
 
-if ([string]::IsNullOrEmpty($LatestTag)) {
-    Write-Host "Fetching latest release tag..." -NoNewline
-    
-    try {
-        # Method 1: GitHub Redirect (Avoids API Rate Limits)
-        # We use a HEAD request to get the Location header
-        $Request = [System.Net.WebRequest]::Create("https://github.com/$Repo/releases/latest")
-        $Request.Method = "HEAD"
-        $Request.AllowAutoRedirect = $false
-        
-        try {
-            $Response = $Request.GetResponse()
-        } catch [System.Net.WebException] {
-            # 3xx redirects often throw WebException in .NET depending on config, 
-            # but we can catch it and check the response property.
-            $Response = $_.Exception.Response
-        }
+# 1. Setup Directories
+New-Item -ItemType Directory -Force -Path $BVM_DIR | Out-Null
+New-Item -ItemType Directory -Force -Path $BVM_SRC_DIR | Out-Null
+New-Item -ItemType Directory -Force -Path $BVM_RUNTIME_DIR | Out-Null
+New-Item -ItemType Directory -Force -Path $BVM_BIN_DIR | Out-Null
 
-        if ($Response.StatusCode -eq [System.Net.HttpStatusCode]::Found -or 
-            $Response.StatusCode -eq [System.Net.HttpStatusCode]::MovedPermanently) {
-            
-            $Location = $Response.Headers["Location"]
-            if ($Location -match "/tag/(v[0-9.]+)") {
-                $LatestTag = $Matches[1]
-            }
-        }
-        
-        if ($Response) { $Response.Close() }
-    } catch {
-        # Ignore errors here, fallback to API
-    }
+# 2. Install Private Bun Runtime
+$TARGET_RUNTIME_DIR = "$BVM_RUNTIME_DIR\v$REQUIRED_BUN_VERSION"
+$BUN_EXE = "$TARGET_RUNTIME_DIR\bin\bun.exe"
 
-    if ([string]::IsNullOrEmpty($LatestTag)) {
-        Write-Host " (Fallback to API)..." -NoNewline
-        # Method 2: GitHub API
-        try {
-            $ApiUrl = "https://api.github.com/repos/$Repo/releases/latest"
-            $Json = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
-            $LatestTag = $Json.tag_name
-        } catch {
-            Write-Host "`nError: Could not fetch latest version." -ForegroundColor Red
-            exit 1
-        }
-    }
-    
-    if ([string]::IsNullOrEmpty($LatestTag)) {
-        Write-Host "`nError: Could not determine latest version." -ForegroundColor Red
-        exit 1
-    }
-    
-    Write-Host " Found: $LatestTag" -ForegroundColor Green
+if (Test-Path $BUN_EXE) {
+    Write-Host "BVM Runtime (Bun v$REQUIRED_BUN_VERSION) already installed." -ForegroundColor Green
 } else {
-    Write-Host " Using specified version: $LatestTag" -ForegroundColor Green
-}
-
-# --- 2. Download bvm ---
-$DownloadUrl = "https://github.com/$Repo/releases/download/$LatestTag/bvm-windows-x64.exe"
-
-if (-not (Test-Path -Path $BinDir)) {
-    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
-}
-
-Write-Host "Downloading bvm from: $DownloadUrl" -ForegroundColor Gray
-
-$TempFile = "$BinDir\bvm.tmp.exe"
-try {
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempFile
-    Move-Item -Path $TempFile -Destination $BvmExe -Force
-} catch {
-    Write-Host "Error downloading bvm: $_" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "✓ bvm installed to $BvmExe" -ForegroundColor Green
-
-# --- 3. Configure Shell ---
-Write-Host "Configuring shell via 'bvm setup'..."
-try {
-    & $BvmExe setup
-    Write-Host "✓ Shell configured" -ForegroundColor Green
-} catch {
-    Write-Host "Warning: 'bvm setup' failed. You may need to configure PATH manually." -ForegroundColor Yellow
-}
-
-# --- 4. Auto-install Latest Bun ---
-Write-Host "Installing latest Bun version..."
-try {
-    & $BvmExe install latest
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✓ Bun (latest) installed successfully" -ForegroundColor Green
-    } else {
-        throw "Exit code $LASTEXITCODE"
+    Write-Host "Downloading BVM Runtime (Bun v$REQUIRED_BUN_VERSION)..." -ForegroundColor Blue
+    $BUN_URL = "https://github.com/oven-sh/bun/releases/download/bun-v$REQUIRED_BUN_VERSION/bun-windows-x64.zip"
+    $TEMP_ZIP = "$BVM_DIR\bun-runtime.zip"
+    
+    Invoke-WebRequest -Uri $BUN_URL -OutFile $TEMP_ZIP
+    
+    # Extract
+    Expand-Archive -Path $TEMP_ZIP -DestinationPath $BVM_DIR -Force
+    
+    # Move
+    if (Test-Path "$BVM_DIR\bun-windows-x64") {
+        Move-Item -Path "$BVM_DIR\bun-windows-x64" -Destination $TARGET_RUNTIME_DIR -Force
     }
-} catch {
-    Write-Host "⚠ Failed to auto-install Bun. You can try running 'bvm install latest' manually later." -ForegroundColor Yellow
+    Remove-Item $TEMP_ZIP
 }
 
-# --- 5. Final Instructions ---
-Write-Host "`n🎉 bvm installation complete!`n" -ForegroundColor Green
-Write-Host "To start using bvm and bun immediately, run the following command:`n"
+# Link 'current' (Simulated via directory copy or junction on Windows, but let's just use path in wrapper)
+# We won't use Symlink on Windows to avoid admin privilege requirement. 
+# We will just point the wrapper to the specific version directory.
 
-# Check for PowerShell Profile
-$ProfilePath = $PROFILE
-if (-not (Test-Path $ProfilePath)) {
-    # If standard profile doesn't exist, try to guess where 'bvm setup' might have created one
-    # or just fallback to the general variable.
-    # Usually 'bvm setup' for Windows creates Microsoft.PowerShell_profile.ps1 in Documents\WindowsPowerShell
-}
-
-if (Test-Path $ProfilePath) {
-    Write-Host "    . `"$ProfilePath`"" -ForegroundColor Cyan
+# 3. Install BVM Source
+# Expecting dist/index.js locally for now, or download from release
+if (Test-Path "dist\index.js") {
+    Write-Host "Installing BVM source from local dist\index.js..." -ForegroundColor Blue
+    Copy-Item "dist\index.js" -Destination "$BVM_SRC_DIR\index.js" -Force
 } else {
-    Write-Host "    $env:BVM_DIR = `"$BvmDir`"; $env:PATH = `"`$env:BVM_DIR\bin;`$env:PATH`"" -ForegroundColor Cyan
+    Write-Host "Downloading BVM source..." -ForegroundColor Blue
+    # $SOURCE_URL = "https://github.com/bvm-cli/bvm/releases/latest/download/bvm-source.zip"
+    # Download and unzip...
+    Write-Warning "Remote download not implemented yet in this prototype."
 }
 
-Write-Host ""
+# 4. Create Wrapper Script (bvm.cmd)
+$WRAPPER_PATH = "$BVM_BIN_DIR\bvm.cmd"
+$BVM_JS_PATH = "$BVM_SRC_DIR\index.js"
+$BUN_RUNTIME_EXE = "$TARGET_RUNTIME_DIR\bun.exe"
+
+$BatchContent = "@echo off
+SET BVM_DIR=$BVM_DIR
+"$BUN_RUNTIME_EXE" "$BVM_JS_PATH" %*
+"
+Set-Content -Path $WRAPPER_PATH -Value $BatchContent
+
+Write-Host "BVM installed successfully!" -ForegroundColor Green
+Write-Host "Please add $BVM_BIN_DIR to your PATH."
