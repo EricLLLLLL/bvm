@@ -140,7 +140,6 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
         } finally {
           writer.end();
           writer.flush?.();
-          writer.close?.();
         }
 
         if (progressBar) {

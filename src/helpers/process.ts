@@ -24,7 +24,7 @@ export async function runCommand(
     stderr = 'inherit',
   } = options;
 
-  const env: Record<string, string> = { ...process.env, ...extraEnv };
+  const env: Record<string, string | undefined> = { ...process.env, ...extraEnv };
   if (prependPath) {
     const currentPath = env.PATH || '';
     env.PATH = `${prependPath}:${currentPath}`;

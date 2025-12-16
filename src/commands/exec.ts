@@ -4,6 +4,7 @@ import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
 import { pathExists, normalizeVersion } from '../utils';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
+import { runCommand } from '../helpers/process';
 
 /**
  * Executes an arbitrary command using a specific Bun version's environment.
