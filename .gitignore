@@ -6,6 +6,8 @@ out
 dist
 *.tgz
 bvm
+bvm-test-binary
+*.zip
 
 # local bvm storage (dev testing)
 .bvm
