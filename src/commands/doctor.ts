@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { readlink } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
@@ -73,26 +73,26 @@ async function readAliases(): Promise<Array<{ name: string; target: string }>> {
 }
 
 function printReport(report: DoctorReport): void {
-  console.log(chalk.bold('\nDirectories'));
-  console.log(`  BVM_DIR: ${chalk.cyan(report.env.BVM_DIR || '')}`);
-  console.log(`  BIN_DIR: ${chalk.cyan(BVM_BIN_DIR)}`);
-  console.log(`  VERSIONS_DIR: ${chalk.cyan(BVM_VERSIONS_DIR)}`);
+  console.log(colors.bold('\nDirectories'));
+  console.log(`  BVM_DIR: ${colors.cyan(report.env.BVM_DIR || '')}`);
+  console.log(`  BIN_DIR: ${colors.cyan(BVM_BIN_DIR)}`);
+  console.log(`  VERSIONS_DIR: ${colors.cyan(BVM_VERSIONS_DIR)}`);
 
-  console.log(chalk.bold('\nEnvironment'));
+  console.log(colors.bold('\nEnvironment'));
   console.log(`  HOME: ${report.env.HOME || 'n/a'}`);
   console.log(`  BVM_TEST_MODE: ${report.env.BVM_TEST_MODE || 'false'}`);
 
-  console.log(chalk.bold('\nInstalled Versions'));
+  console.log(colors.bold('\nInstalled Versions'));
   if (report.installedVersions.length === 0) {
     console.log('  (none installed)');
   } else {
     report.installedVersions.forEach((version) => {
-      const marker = version === report.currentVersion ? chalk.green(' (current)') : '';
+      const marker = version === report.currentVersion ? colors.green(' (current)') : '';
       console.log(`  ${version}${marker}`);
     });
   }
 
-  console.log(chalk.bold('\nAliases'));
+  console.log(colors.bold('\nAliases'));
   if (report.aliases.length === 0) {
     console.log('  (no aliases configured)');
   } else {
@@ -101,5 +101,5 @@ function printReport(report: DoctorReport): void {
     });
   }
 
-  console.log('\n' + chalk.green('Diagnostics complete.'));
+  console.log('\n' + colors.green('Diagnostics complete.'));
 }

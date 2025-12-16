@@ -17,8 +17,7 @@ import { configureShell } from './commands/setup';
 import { upgradeBvm } from './commands/upgrade';
 import { doctor } from './commands/doctor';
 import { printCompletion } from './commands/completion';
-import chalk from 'chalk';
-import ora from 'ora';
+import { colors } from './utils/ui';
 import packageJson from '../package.json';
 
 const cli = cac('bvm');
@@ -106,7 +105,7 @@ registerCommand('install [version]', 'Install a Bun version')
     try {
       await installBunVersion(version);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -116,7 +115,7 @@ registerCommand('ls', 'List installed Bun versions', { aliases: ['list'] })
     try {
       await listLocalVersions();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -126,7 +125,7 @@ registerCommand('ls-remote', 'List all available remote Bun versions')
     try {
       await listRemoteVersions();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -138,7 +137,7 @@ registerCommand('use [version]', 'Switch to a specific Bun version')
       await useBunVersion(version, options);
     } catch (error: any) {
       if (!options?.silent) {
-        ora().fail(chalk.red(`${error.message}`));
+        console.error(colors.red(`✖ ${error.message}`));
       }
       process.exit(1);
     }
@@ -149,7 +148,7 @@ registerCommand('current', 'Display the currently active Bun version')
     try {
       await displayCurrentVersion();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -159,7 +158,7 @@ registerCommand('uninstall <version>', 'Uninstall a Bun version')
     try {
       await uninstallBunVersion(version);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -169,7 +168,7 @@ registerCommand('alias <name> <version>', 'Create an alias for a Bun version')
     try {
       await createAlias(name, version);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -179,7 +178,7 @@ registerCommand('unalias <name>', 'Remove an existing alias')
     try {
       await removeAlias(name);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -197,7 +196,7 @@ registerCommand('run <version> [...args]', 'Run a command with a specific Bun ve
       
       await runWithBunVersion(version, rawArgs);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -215,7 +214,7 @@ registerCommand('exec <version> <cmd> [...args]', 'Execute a command with a spec
 
       await execWithBunVersion(version, cmd, rawArgs);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -225,7 +224,7 @@ registerCommand('which [version]', 'Display path to installed bun version')
     try {
       await whichBunVersion(version);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -235,7 +234,7 @@ registerCommand('deactivate', 'Undo effects of bvm on current shell')
     try {
       await deactivate();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -245,7 +244,7 @@ registerCommand('version <spec>', 'Resolve the given description to a single loc
     try {
       await displayVersion(spec);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -255,7 +254,7 @@ registerCommand('cache <action>', 'Manage bvm cache')
     try {
       await cacheCommand(action);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -267,7 +266,7 @@ registerCommand('setup', 'Configure shell environment automatically')
     try {
       await configureShell();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -277,7 +276,7 @@ registerCommand('upgrade', 'Upgrade bvm to the latest version', { aliases: ['sel
     try {
       await upgradeBvm();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -287,7 +286,7 @@ registerCommand('doctor', 'Show diagnostics for Bun/BVM setup')
     try {
       await doctor();
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -297,7 +296,7 @@ registerCommand('completion <shell>', 'Generate shell completion script (bash|zs
     try {
       printCompletion(shell);
     } catch (error: any) {
-      ora().fail(chalk.red(`${error.message}`));
+      console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
@@ -334,7 +333,7 @@ if (!commandName && !isGlobalFlag) {
   process.exit(1);
 } else if (commandName && !registeredCommandNames.has(commandName) && !isGlobalFlag) {
   // Unrecognized command: print friendly notice + help, but exit success to avoid extra noisy error
-  console.log(chalk.yellow(`\nUnknown command '${commandName}'`));
+  console.log(colors.yellow(`\nUnknown command '${commandName}'`));
   console.log(helpText);
   process.exit(0);
 }
@@ -344,7 +343,7 @@ try {
   cli.parse();
 } catch (error: any) {
   // This catch block might still be useful for other parsing errors (e.g., missing required args for a known command)
-  console.error(chalk.red(`\nError: ${error.message}`));
+  console.error(colors.red(`\nError: ${error.message}`));
   console.log(helpText);
   process.exit(1);
 }

@@ -16,6 +16,9 @@ export async function cleanupTestHome() {
   await rmSync(TEST_HOME, { recursive: true, force: true });
 }
 
+// Simple ANSI stripper
+const stripAnsi = (str: string) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+
 export async function runBvm(args: string[], cwd: string = process.cwd(), envOverrides: Record<string, string> = {}) {
   const scriptPath = join(process.cwd(), "src/index.ts");
   const constructedPath = `${dirname(CURRENT_BUN_EXECUTABLE)}:${process.env.PATH}`;
@@ -28,14 +31,18 @@ export async function runBvm(args: string[], cwd: string = process.cwd(), envOve
       PATH: constructedPath,
       BVM_GITHUB_TOKEN: process.env.BVM_GITHUB_TOKEN,
       BVM_TEST_MODE: 'true',
+      NO_COLOR: '1', // Disable color in tests via env!
       ...envOverrides
     },
     stdout: "pipe",
     stderr: "pipe"
   });
-  const output = await new Response(proc.stdout).text();
-  const error = await new Response(proc.stderr).text();
+  const outputRaw = await new Response(proc.stdout).text();
+  const errorRaw = await new Response(proc.stderr).text();
   await proc.exited;
+
+  const output = stripAnsi(outputRaw);
+  const error = stripAnsi(errorRaw);
 
   return { exitCode: proc.exitCode, output, error, allOutput: output + error };
 }

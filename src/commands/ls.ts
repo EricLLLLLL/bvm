@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile } from '../utils';
 import { BVM_CURRENT_BUN_PATH, BVM_ALIAS_DIR } from '../constants';
 import { readlink } from 'fs/promises';
@@ -26,7 +26,7 @@ export async function listLocalVersions(): Promise<void> {
       }
     }
 
-      spinner.succeed(chalk.green('Locally installed Bun versions:'));
+      spinner.succeed(colors.green('Locally installed Bun versions:'));
 
     // Display installed versions
     if (installedVersions.length === 0) {
@@ -35,7 +35,7 @@ export async function listLocalVersions(): Promise<void> {
       installedVersions.forEach(version => {
         const displayVersion = version; // Already normalized
         if (displayVersion === currentVersion) {
-          console.log(`* ${chalk.green(displayVersion)} (current)`);
+          console.log(`* ${colors.green(displayVersion)} (current)`);
         } else {
           console.log(`  ${displayVersion}`);
         }
@@ -47,7 +47,7 @@ export async function listLocalVersions(): Promise<void> {
     if (aliasDirExists) {
         const aliasFiles = await readDir(BVM_ALIAS_DIR);
         if (aliasFiles.length > 0) {
-            console.log(chalk.green('\nAliases:'));
+            console.log(colors.green('\nAliases:'));
             for (const aliasName of aliasFiles) {
                 const aliasTargetVersion = (await readTextFile(join(BVM_ALIAS_DIR, aliasName))).trim();
                 const normalizedAliasTarget = normalizeVersion(aliasTargetVersion);
@@ -60,7 +60,7 @@ export async function listLocalVersions(): Promise<void> {
                 if (normalizedAliasTarget === currentVersion) {
                     aliasStatus += ' (current)';
                 }
-                console.log(`  ${aliasName} ${chalk.cyan(aliasStatus)}`);
+                console.log(`  ${aliasName} ${colors.cyan(aliasStatus)}`);
             }
         }
     }

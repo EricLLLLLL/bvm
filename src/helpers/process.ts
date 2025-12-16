@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 
 type StdioOption = 'inherit' | 'pipe' | 'ignore';
 
@@ -41,7 +41,7 @@ export async function runCommand(
 
   const exitCode = await subprocess.exited;
   if ((exitCode ?? 0) !== 0) {
-    throw new Error(`${chalk.red('Command failed')}: ${cmd.join(' ')} (code ${exitCode})`);
+    throw new Error(`${colors.red('Command failed')}: ${cmd.join(' ')} (code ${exitCode})`);
   }
 
   return exitCode ?? 0;

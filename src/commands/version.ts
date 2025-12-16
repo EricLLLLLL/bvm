@@ -3,7 +3,6 @@ import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH } from '../consta
 import { getInstalledVersions, normalizeVersion, pathExists, readTextFile } from '../utils';
 import { readlink } from 'fs/promises';
 import semver from 'semver';
-import chalk from 'chalk';
 import { withSpinner } from '../command-runner';
 
 /**

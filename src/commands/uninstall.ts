@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { join } from 'path';
 import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME } from '../constants';
 import { pathExists, removeDir, normalizeVersion } from '../utils';
@@ -38,7 +38,7 @@ export async function uninstallBunVersion(targetVersion: string): Promise<void> 
 
     // 3. Remove the version directory
     await removeDir(installPath);
-      spinner.succeed(chalk.green(`Bun ${normalizedTargetVersion} uninstalled successfully.`));
+      spinner.succeed(colors.green(`Bun ${normalizedTargetVersion} uninstalled successfully.`));
     },
     { failMessage: `Failed to uninstall Bun ${targetVersion}` },
   );

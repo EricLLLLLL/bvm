@@ -2,9 +2,9 @@ import { join, basename, dirname } from 'path';
 import { BVM_VERSIONS_DIR, BVM_BIN_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, IS_TEST_MODE } from '../constants';
 import { ensureDir, pathExists, createSymlink, removeDir, resolveVersion, normalizeVersion, readDir } from '../utils';
 import { findBunDownloadUrl, fetchBunVersions } from '../api';
-import chalk from 'chalk';
+import { colors, ProgressBar } from '../utils/ui';
+import { extractArchive } from '../utils/archive';
 import { chmod } from 'fs/promises';
-import cliProgress from 'cli-progress';
 import { configureShell } from './setup';
 import { getRcVersion } from '../rc';
 import { getInstalledVersions } from '../utils';
@@ -25,12 +25,12 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
   if (!versionToInstall) {
     versionToInstall = await getRcVersion() || undefined;
     if (versionToInstall) {
-        console.log(chalk.blue(`Found '.bvmrc' with version <${versionToInstall}>`));
+        console.log(colors.blue(`Found '.bvmrc' with version <${versionToInstall}>`));
     }
   }
 
   if (!versionToInstall) {
-    console.error(chalk.red('No version specified and no .bvmrc found. Usage: bvm install <version>'));
+    console.error(colors.red('No version specified and no .bvmrc found. Usage: bvm install <version>'));
     return;
   }
 
@@ -49,8 +49,8 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     const resolvedVersion = resolveVersion(versionToInstall, filteredRemoteVersions);
 
     if (!resolvedVersion) {
-        spinner.fail(chalk.red(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`));
-        console.log(chalk.blue(`Available remote versions: ${filteredRemoteVersions.length > 0 ? filteredRemoteVersions.join(', ') : 'None'}`));
+        spinner.fail(colors.red(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`));
+        console.log(colors.blue(`Available remote versions: ${filteredRemoteVersions.length > 0 ? filteredRemoteVersions.join(', ') : 'None'}`));
         throw new Error(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`);
     }
 
@@ -58,7 +58,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     const result = await findBunDownloadUrl(resolvedVersion);
     if (!result) {
       // This case should ideally not be hit if resolvedVersion came from findBunDownloadUrl itself
-      spinner.fail(chalk.red(`Could not find a Bun release for ${resolvedVersion} compatible with your system.`));
+      spinner.fail(colors.red(`Could not find a Bun release for ${resolvedVersion} compatible with your system.`));
       throw new Error(`Could not find a Bun release for ${resolvedVersion} compatible with your system.`);
     }
     const { url, foundVersion } = result;
@@ -67,7 +67,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     const bunExecutablePath = join(installDir, EXECUTABLE_NAME);
 
     if (await pathExists(bunExecutablePath)) {
-      spinner.info(chalk.blue(`Bun ${foundVersion} is already installed.`));
+      spinner.info(colors.blue(`Bun ${foundVersion} is already installed.`));
       installedVersion = foundVersion;
       shouldConfigureShell = true;
       return;
@@ -77,16 +77,16 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
       await ensureDir(installDir);
       await writeTestBunBinary(bunExecutablePath, foundVersion);
     } else {
-      spinner.text = `Initiating download for Bun ${foundVersion}...`;
+      spinner.update(`Initiating download for Bun ${foundVersion}...`);
       await ensureDir(BVM_CACHE_DIR);
       const filename = `${foundVersion}-${basename(url)}`;
       const cachedArchivePath = join(BVM_CACHE_DIR, filename);
 
       if (await pathExists(cachedArchivePath)) {
-        spinner.succeed(chalk.green(`Using cached Bun ${foundVersion} archive.`));
+        spinner.succeed(colors.green(`Using cached Bun ${foundVersion} archive.`));
       } else {
         spinner.stop();
-        console.log(chalk.cyan(`Downloading Bun ${foundVersion} to cache...`));
+        console.log(colors.cyan(`Downloading Bun ${foundVersion} to cache...`));
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Failed to download Bun: ${response.statusText} (${response.status})`);
@@ -99,17 +99,12 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
         const contentLength = response.headers.get('content-length');
         const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
 
-        let progressBar: cliProgress.SingleBar | null = null;
+        let progressBar: ProgressBar | null = null;
         if (totalBytes > 0) {
-          progressBar = new cliProgress.SingleBar({
-            format: ` {bar} | ${chalk.green('{percentage}%')} | {value}/{total} Bytes | ETA: {eta}s | Speed: {speed} kbit`,
-            barCompleteChar: '\u2588',
-            barIncompleteChar: '\u2591',
-            hideCursor: true
-          }, cliProgress.Presets.shades_classic);
-          progressBar.start(totalBytes, 0, { speed: "N/A" });
+          progressBar = new ProgressBar(totalBytes);
+          progressBar.start();
         } else {
-          console.log(chalk.cyan(`Downloading Bun ${foundVersion} (size unknown)...`));
+          console.log(colors.cyan(`Downloading Bun ${foundVersion} (size unknown)...`));
         }
 
         const writer = Bun.file(cachedArchivePath).writer();
@@ -151,17 +146,10 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
       spinner.start(`Extracting Bun ${foundVersion}...`);
       await ensureDir(installDir);
 
-      if (cachedArchivePath.endsWith('.zip')) {
-        const extractZip = await import('extract-zip');
-        const extract = extractZip.default || extractZip;
-        await extract(cachedArchivePath, { dir: installDir });
-      } else if (cachedArchivePath.endsWith('.tar.gz')) {
-        await runCommand(['tar', '-xzf', cachedArchivePath, '-C', installDir], {
-          stdout: 'inherit',
-          stderr: 'inherit',
-        });
-      } else {
-        throw new Error('Unsupported archive format.');
+      try {
+        await extractArchive(cachedArchivePath, installDir);
+      } catch (e: any) {
+        throw new Error(`Extraction failed: ${e.message}`);
       }
 
       let finalBunPath = '';
@@ -205,13 +193,13 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
 
     // Note: We DO NOT delete cachedArchivePath here. That's the point of caching.
 
-    spinner.succeed(chalk.green(`Bun ${foundVersion} installed successfully.`));
+    spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
 
     // Auto-set as default if this is the first installed version
     const currentlyInstalledVersions = await getInstalledVersions();
     // After install, the newly installed version will be in the list, so if size is 1, it's the first.
     if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
-        console.log(chalk.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
+        console.log(colors.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
         // Use the alias creation logic
         await createAlias('default', foundVersion); 
     }

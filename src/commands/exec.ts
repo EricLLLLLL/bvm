@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { join } from 'path';
 import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
 import { pathExists, normalizeVersion } from '../utils';
@@ -28,12 +28,12 @@ export async function execWithBunVersion(targetVersion: string, command: string,
 
     // 1. Check if the specified Bun version is installed locally
       if (!(await pathExists(bunExecutablePath))) {
-        spinner.fail(chalk.red(`Bun ${targetVersion} (resolved: ${resolvedVersion}) is not installed.`));
-      console.log(chalk.blue(`You can install it using: bvm install ${targetVersion}`));
+        spinner.fail(colors.red(`Bun ${targetVersion} (resolved: ${resolvedVersion}) is not installed.`));
+      console.log(colors.blue(`You can install it using: bvm install ${targetVersion}`));
       return;
     }
 
-    spinner.text = chalk.blue(`Executing '${command} ${args.join(' ')}' with Bun ${resolvedVersion}'s environment...`);
+    spinner.update(colors.blue(`Executing '${command} ${args.join(' ')}' with Bun ${resolvedVersion}'s environment...`));
     spinner.stop();
 
     try {
