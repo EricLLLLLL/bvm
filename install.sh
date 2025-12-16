@@ -92,7 +92,7 @@ else
     # Use unpkg or jsdelivr for reliable global CDN
     # Fallback to GitHub Release if you prefer, but NPM/CDN is faster for source.
     # Replace 'bvm' with your actual npm package name if different.
-    SOURCE_URL="https://unpkg.com/bvm@latest/dist/index.js"
+    SOURCE_URL="https://unpkg.com/@bvm-cli/core@latest/dist/index.js"
     
     # Allow override
     if [ -n "$BVM_SOURCE_URL" ]; then
