@@ -59,8 +59,9 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
 
     // This check should ideally not fail if the version was resolved from installed versions
     if (!(await pathExists(bunExecutablePath))) {
-      if (spinner) spinner.fail(chalk.red(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`));
-      throw new Error(`Internal Error: Bun ${finalResolvedVersion} was resolved but not found.`);
+      const errorMsg = `Resolved version ${finalResolvedVersion} is not installed. This usually means an alias points to a missing version.`;
+      if (spinner) spinner.fail(chalk.red(errorMsg));
+      throw new Error(errorMsg);
     }
 
     // 2. Create/update the symlink
