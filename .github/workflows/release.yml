@@ -42,15 +42,28 @@ jobs:
       - name: Build Binary
         run: bun build src/index.ts --compile --outfile ${{ matrix.artifact_name }}
 
-      # Rename before upload to avoid conflict when downloading all artifacts later
+      # Rename binary to include OS/Arch details
       - name: Rename Binary
+        shell: bash
         run: mv ${{ matrix.artifact_name }} ${{ matrix.asset_name }}
 
-      - name: Upload Binary
+      # Compress Binary (Windows -> .zip, Unix -> .tar.gz)
+      - name: Compress Binary
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            powershell Compress-Archive -Path ${{ matrix.asset_name }} -DestinationPath ${{ matrix.asset_name }}.zip
+          else
+            tar -czvf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
+          fi
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.asset_name }}.zip
+            ${{ matrix.asset_name }}.tar.gz
 
   release:
     needs: build
@@ -71,10 +84,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            artifacts/bvm-linux-x64/bvm-linux-x64
-            artifacts/bvm-darwin-x64/bvm-darwin-x64
-            artifacts/bvm-darwin-aarch64/bvm-darwin-aarch64
-            artifacts/bvm-windows-x64.exe/bvm-windows-x64.exe
+            artifacts/bvm-linux-x64/*.tar.gz
+            artifacts/bvm-darwin-x64/*.tar.gz
+            artifacts/bvm-darwin-aarch64/*.tar.gz
+            artifacts/bvm-windows-x64.exe/*.zip
           generate_release_notes: true
           prerelease: false # Ensure it's not marked as pre-release
           latest: true      # Explicitly mark as the latest stable release
