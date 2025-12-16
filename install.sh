@@ -49,7 +49,10 @@ case "$ARCH" in
 esac
 
 BUN_ASSET_NAME="bun-${PLATFORM}-${BUN_ARCH}"
-BUN_DOWNLOAD_URL="https://github.com/oven-sh/bun/releases/download/bun-v${REQUIRED_BUN_VERSION}/${BUN_ASSET_NAME}.zip"
+# Allow overriding download URL for mirrors (e.g. China)
+if [ -z "$BUN_DOWNLOAD_URL" ]; then
+  BUN_DOWNLOAD_URL="https://github.com/oven-sh/bun/releases/download/bun-v${REQUIRED_BUN_VERSION}/${BUN_ASSET_NAME}.zip"
+fi
 
 # 2. Setup Directories
 mkdir -p "$BVM_DIR"
@@ -106,5 +109,11 @@ EOF
 chmod +x "$WRAPPER_PATH"
 
 echo -e "${GREEN}BVM installed successfully!${NC}"
-echo -e "Please add ${BVM_BIN_DIR} to your PATH."
-echo -e "  export PATH=\"${BVM_BIN_DIR}:\$PATH\""
+
+# 6. Auto-configure Shell
+echo -e "${BLUE}Configuring shell environment...${NC}"
+# Use the newly installed bvm to run setup
+"$WRAPPER_PATH" setup --silent
+
+echo -e "You may need to restart your terminal or source your config file."
+echo -e "Try running: ${GREEN}source ~/.bashrc${NC} (or .zshrc/.config/fish)"
