@@ -88,12 +88,24 @@ if [ -f "dist/index.js" ]; then
     echo -e "${BLUE}Installing BVM source from local dist/index.js...${NC}"
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
-    # In production, download from GitHub Releases
     echo -e "${BLUE}Downloading BVM source...${NC}"
-    # SOURCE_URL="https://github.com/bvm-cli/bvm/releases/latest/download/bvm-source.js"
-    # curl -fsSL "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js"
-    echo -e "${RED}Local dist/index.js not found and remote download not configured.${NC}"
-    exit 1
+    # Use unpkg or jsdelivr for reliable global CDN
+    # Fallback to GitHub Release if you prefer, but NPM/CDN is faster for source.
+    # Replace 'bvm' with your actual npm package name if different.
+    SOURCE_URL="https://unpkg.com/bvm@latest/dist/index.js"
+    
+    # Allow override
+    if [ -n "$BVM_SOURCE_URL" ]; then
+        SOURCE_URL="$BVM_SOURCE_URL"
+    fi
+
+    echo -e "${BLUE}Fetching from: $SOURCE_URL${NC}"
+    if curl -fsSL "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js"; then
+        echo -e "${GREEN}Source downloaded.${NC}"
+    else
+        echo -e "${RED}Failed to download source. Please check your network or NPM package availability.${NC}"
+        exit 1
+    fi
 fi
 
 

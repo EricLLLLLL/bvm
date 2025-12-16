@@ -20,6 +20,10 @@
     "cli",
     "bvm"
   ],
+  "files": [
+    "dist/index.js",
+    "README.md"
+  ],
   "author": "bvm-cli",
   "license": "MIT",
   "type": "commonjs",
