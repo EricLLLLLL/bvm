@@ -73,6 +73,56 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
       return;
     }
 
+    // Optimization: If the requested version matches the current runtime version, copy it!
+    // process.version is like 'v1.3.4'
+    if (process.version === foundVersion && !IS_TEST_MODE) {
+        // process.execPath is usually .../bin/bun
+        // We assume the runtime structure is standard (bin/bun or just bun)
+        // Let's try to find the root of the current runtime
+        const currentBunPath = process.execPath;
+        // Check if we are running from a BVM runtime structure
+        // Typical structure: ~/.bvm/runtime/v1.3.4/bin/bun
+        // We want to copy ~/.bvm/runtime/v1.3.4 content to ~/.bvm/versions/v1.3.4
+        
+        // Simple heuristic: copying the binary is enough for functionality, 
+        // but we want the whole package (LICENSE, etc) if possible.
+        // But for "runtime" optimization, just copying the binary and creating the structure is 99% fine.
+        
+        spinner.info(colors.cyan(`Requested version ${foundVersion} matches current BVM runtime. Copying local files...`));
+        await ensureDir(installDir);
+        
+        // We replicate the logic: binary should be at installDir/bun (bvm structure for versions)
+        // BVM versions dir structure: ~/.bvm/versions/v1.2.3/bun
+        // Wait, installBunVersion below does:
+        // mv .../bin/bun .../bunExecutablePath (which is installDir/bun)
+        
+        // So we just need to copy process.execPath to bunExecutablePath
+        const destFile = Bun.file(bunExecutablePath);
+        const srcFile = Bun.file(currentBunPath);
+        await Bun.write(destFile, srcFile);
+        await chmod(bunExecutablePath, 0o755);
+        
+        spinner.succeed(colors.green(`Bun ${foundVersion} installed from local runtime.`));
+        installedVersion = foundVersion;
+        shouldConfigureShell = true;
+        
+        // Skip the rest of download logic
+        if (installedVersion) {
+             // Auto-set default logic duplicate... (refactor ideally, but let's copy for safety)
+            const currentlyInstalledVersions = await getInstalledVersions();
+            if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
+                console.log(colors.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
+                await createAlias('default', foundVersion); 
+            }
+            // Trigger shell config and return
+            if (shouldConfigureShell) {
+                await configureShell(false);
+            }
+            await useBunVersion(installedVersion);
+            return;
+        }
+    }
+
     if (IS_TEST_MODE) {
       await ensureDir(installDir);
       await writeTestBunBinary(bunExecutablePath, foundVersion);
