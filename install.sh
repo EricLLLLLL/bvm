@@ -95,6 +95,20 @@ elif [ -f "${LOCAL_VERSION_DIR}/bun" ]; then
   chmod +x "$TARGET_RUNTIME_DIR/bin/bun"
   
   echo -e "${GREEN}✅ BVM Runtime installed from local copy.${NC}"
+elif command -v bun >/dev/null 2>&1 && [ "$(bun --version)" == "$REQUIRED_BUN_VERSION" ]; then
+  # Optimization: Copy from global bun if version matches
+  echo -e "${GREEN}♻️  Found matching global Bun v${REQUIRED_BUN_VERSION}. Copying to runtime...${NC}"
+  
+  # Clean up target
+  rm -rf "$TARGET_RUNTIME_DIR"
+  mkdir -p "$TARGET_RUNTIME_DIR/bin"
+  
+  # Copy binary
+  GLOBAL_BUN_PATH=$(command -v bun)
+  cp "$GLOBAL_BUN_PATH" "$TARGET_RUNTIME_DIR/bin/bun"
+  chmod +x "$TARGET_RUNTIME_DIR/bin/bun"
+  
+  echo -e "${GREEN}✅ BVM Runtime installed from global copy.${NC}"
 else
   echo -e "${CYAN}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
   

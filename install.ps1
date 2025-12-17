@@ -28,6 +28,12 @@ if (Test-Path $BUN_EXE) {
     New-Item -ItemType Directory -Force -Path "$TARGET_RUNTIME_DIR\bin" | Out-Null
     Copy-Item $LOCAL_VERSION_EXE -Destination $BUN_EXE -Force
     Write-Host "BVM Runtime installed from local copy." -ForegroundColor Green
+} elseif ((Get-Command bun -ErrorAction SilentlyContinue) -and ((bun --version) -eq $REQUIRED_BUN_VERSION)) {
+    Write-Host "Found matching global Bun v$REQUIRED_BUN_VERSION. Copying to runtime..." -ForegroundColor Green
+    New-Item -ItemType Directory -Force -Path "$TARGET_RUNTIME_DIR\bin" | Out-Null
+    $GlobalBunPath = (Get-Command bun).Source
+    Copy-Item $GlobalBunPath -Destination $BUN_EXE -Force
+    Write-Host "BVM Runtime installed from global copy." -ForegroundColor Green
 } else {
     Write-Host "Downloading BVM Runtime (Bun v$REQUIRED_BUN_VERSION)..." -ForegroundColor Blue
     $BUN_URL = "https://github.com/oven-sh/bun/releases/download/bun-v$REQUIRED_BUN_VERSION/bun-windows-x64.zip"
