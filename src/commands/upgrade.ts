@@ -1,5 +1,5 @@
-import chalk from 'chalk';
-import semver from 'semver';
+import { colors } from '../utils/ui';
+import { valid, gt } from '../utils/semver-lite';
 import { IS_TEST_MODE } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
 import packageJson from '../../package.json';
@@ -23,19 +23,19 @@ export async function upgradeBvm(): Promise<void> {
     }
 
     const latestVersion = latest.tagName.startsWith('v') ? latest.tagName.slice(1) : latest.tagName;
-    if (!semver.valid(latestVersion)) {
+    if (!valid(latestVersion)) {
       throw new Error(`Unrecognized version received: ${latest.tagName}`);
     }
 
-    if (!semver.gt(latestVersion, CURRENT_VERSION)) {
-      spinner.succeed(chalk.green('BVM is already up to date.'));
-      console.log(chalk.blue('BVM is already up to date.'));
+    if (!gt(latestVersion, CURRENT_VERSION)) {
+      spinner.succeed(colors.green('BVM is already up to date.'));
+      console.log(colors.blue('BVM is already up to date.'));
       return;
     }
 
     spinner.text = `Updating BVM to v${latestVersion}...`;
     if (IS_TEST_MODE) {
-      spinner.succeed(chalk.green('BVM updated successfully (test mode).'));
+      spinner.succeed(colors.green('BVM updated successfully (test mode).'));
       return;
     }
 
@@ -63,13 +63,13 @@ export async function upgradeBvm(): Promise<void> {
     const exitCode = await proc.exited;
 
     if ((exitCode ?? 0) !== 0) {
-      spinner.fail(chalk.red('BVM upgrade failed.'));
-      console.error(chalk.red(error || output));
+      spinner.fail(colors.red('BVM upgrade failed.'));
+      console.error(colors.red(error || output));
       throw new Error(`BVM upgrade failed with exit code ${exitCode}: ${error || output}`);
     }
 
-    spinner.succeed(chalk.green('BVM updated successfully.'));
-    console.log(chalk.yellow('Please restart your terminal to use the new version.'));
+    spinner.succeed(colors.green('BVM updated successfully.'));
+    console.log(colors.yellow('Please restart your terminal to use the new version.'));
       },
       { failMessage: 'Failed to upgrade BVM' },
     );

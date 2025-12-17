@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { BVM_CURRENT_BUN_PATH } from '../constants';
 import { readlink } from 'fs/promises';
 import { normalizeVersion } from '../utils';
@@ -32,10 +32,10 @@ export async function displayCurrentVersion(): Promise<void> {
     }
 
       if (currentVersion) {
-        spinner.succeed(chalk.green(`Current Bun version: ${currentVersion}`));
+        spinner.succeed(colors.green(`Current Bun version: ${currentVersion}`));
       } else {
-        spinner.info(chalk.blue('No Bun version is currently active.'));
-        console.log(chalk.yellow(`Use 'bvm install <version>' to install a version and 'bvm use <version>' to activate it.`));
+        spinner.info(colors.blue('No Bun version is currently active.'));
+        console.log(colors.yellow(`Use 'bvm install <version>' to install a version and 'bvm use <version>' to activate it.`));
       }
     },
     { failMessage: 'Failed to determine current Bun version' },

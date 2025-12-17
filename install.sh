@@ -89,10 +89,9 @@ if [ -f "dist/index.js" ]; then
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
     echo -e "${BLUE}Downloading BVM source...${NC}"
-    # Use unpkg or jsdelivr for reliable global CDN
-    # Fallback to GitHub Release if you prefer, but NPM/CDN is faster for source.
-    # Replace 'bvm' with your actual npm package name if different.
-    SOURCE_URL="https://unpkg.com/@bvm-cli/core@latest/dist/index.js"
+    # Download directly from GitHub Releases (latest)
+    # This avoids NPM dependency and ensures version alignment with install.sh
+    SOURCE_URL="https://github.com/bvm-cli/bvm/releases/latest/download/index.js"
     
     # Allow override
     if [ -n "$BVM_SOURCE_URL" ]; then

@@ -1,6 +1,6 @@
 import { readdir, mkdir, stat, symlink, unlink, rm, readlink } from 'node:fs/promises';
 import { join, dirname } from 'path';
-import semver from 'semver';
+import { valid, satisfies, rcompare } from './utils/semver-lite';
 import { BVM_VERSIONS_DIR } from './constants';
 
 export async function ensureDir(dirPath: string): Promise<void> {
@@ -82,7 +82,7 @@ export function normalizeVersion(version: string): string {
 export async function getInstalledVersions(): Promise<string[]> {
   await ensureDir(BVM_VERSIONS_DIR);
   const dirs = await readDir(BVM_VERSIONS_DIR);
-  return dirs.filter(dir => semver.valid(normalizeVersion(dir))).sort(semver.rcompare);
+  return dirs.filter(dir => valid(normalizeVersion(dir))).sort(rcompare);
 }
 
 export function resolveVersion(targetVersion: string, availableVersions: string[]): string | null {
@@ -101,11 +101,13 @@ export function resolveVersion(targetVersion: string, availableVersions: string[
   }
 
   const range = targetVersion.startsWith('v') ? `~${targetVersion.substring(1)}` : `~${targetVersion}`;
-  const matches = availableVersions.filter(v => semver.satisfies(v, range));
+
+  const matches = availableVersions.filter(v => satisfies(v, range));
 
   if (matches.length > 0) {
-    return matches.sort(semver.rcompare)[0];
+    const result = matches.sort(rcompare)[0];
+    return result;
   }
-
+  
   return null;
 }

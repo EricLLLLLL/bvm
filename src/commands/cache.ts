@@ -1,6 +1,6 @@
 import { BVM_CACHE_DIR } from '../constants';
 import { removeDir, ensureDir } from '../utils';
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { withSpinner } from '../command-runner';
 
 export async function cacheCommand(action: string): Promise<void> {
@@ -15,13 +15,13 @@ export async function cacheCommand(action: string): Promise<void> {
       async (spinner) => {
         await removeDir(BVM_CACHE_DIR);
         await ensureDir(BVM_CACHE_DIR);
-        spinner.succeed(chalk.green('Cache cleared.'));
+        spinner.succeed(colors.green('Cache cleared.'));
       },
       { failMessage: 'Failed to clear cache' },
     );
     return;
   }
 
-  console.error(chalk.red(`Unknown cache command: ${action}`));
+  console.error(colors.red(`Unknown cache command: ${action}`));
   console.log('Usage: bvm cache dir | bvm cache clear');
 }

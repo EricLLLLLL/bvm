@@ -1,6 +1,6 @@
 import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, IS_TEST_MODE, TEST_REMOTE_VERSIONS } from './constants';
 import { normalizeVersion } from './utils';
-import semver from 'semver';
+import { valid, rcompare } from './utils/semver-lite';
 import { colors } from './utils/ui';
 
 /**
@@ -124,15 +124,15 @@ export async function fetchBunVersions(): Promise<string[]> {
   // Strategy 1: NPM
   try {
     const versions = await fetchBunVersionsFromNpm();
-    const uniqueAndSortedVersions = Array.from(new Set(versions.filter(v => semver.valid(v))));
-    return uniqueAndSortedVersions.sort(semver.rcompare);
+    const uniqueAndSortedVersions = Array.from(new Set(versions.filter(v => valid(v))));
+    return uniqueAndSortedVersions.sort(rcompare);
   } catch (npmError: any) {
     // Strategy 2: Git
     try {
           const versions = await fetchBunVersionsFromGit();
           if (versions.length > 0) {
-              const uniqueAndSortedVersions = Array.from(new Set(versions.filter(v => semver.valid(v))));
-              return uniqueAndSortedVersions.sort(semver.rcompare);
+              const uniqueAndSortedVersions = Array.from(new Set(versions.filter(v => valid(v))));
+              return uniqueAndSortedVersions.sort(rcompare);
           }
           throw new Error('No versions found via Git');    } catch (gitError: any) {
       throw new Error(`Failed to fetch versions. NPM: ${npmError.message}. Git: ${gitError.message}`);
@@ -148,7 +148,7 @@ export async function fetchBunVersions(): Promise<string[]> {
 export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: string; foundVersion: string } | null> {
     let fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
   
-  if (!semver.valid(fullVersion)) {
+  if (!valid(fullVersion)) {
         console.error(colors.red(`Invalid version provided to findBunDownloadUrl: ${targetVersion}`));
         return null;
     }
@@ -193,7 +193,7 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
           // location is like: https://github.com/bvm-cli/bvm/releases/tag/v1.0.10
           const parts = location.split('/');
           const tag = parts[parts.length - 1];
-          if (tag && semver.valid(tag)) {
+          if (tag && valid(tag)) {
              return {
                tagName: tag,
                downloadUrl: `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tag}/${assetName}`

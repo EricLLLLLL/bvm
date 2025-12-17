@@ -1,4 +1,4 @@
-import { cac } from 'cac';
+import { App } from './cli-router';
 import { installBunVersion } from './commands/install';
 import { useBunVersion } from './commands/use';
 import { listRemoteVersions } from './commands/ls-remote';
@@ -18,91 +18,14 @@ import { upgradeBvm } from './commands/upgrade';
 import { doctor } from './commands/doctor';
 import { printCompletion } from './commands/completion';
 import { colors } from './utils/ui';
-import packageJson from '../package.json';
 
-const cli = cac('bvm');
-const registeredCommandNames = new Set<string>();
-
-type CommandHelpEntry = {
-  usage: string;
-  description: string;
-};
-
-const helpEntries: CommandHelpEntry[] = [];
-
-function addHelpEntry(usage: string, description: string): void {
-  helpEntries.push({ usage, description });
-}
-
-function registerCommand(
-  raw: string,
-  description: string,
-  options: { aliases?: string[] } = {},
-) {
-  const command = cli.command(raw, description);
-  const primaryName = raw.split(' ')[0];
-  registeredCommandNames.add(primaryName);
-  addHelpEntry(`bvm ${raw}`, description);
-
-  if (options.aliases) {
-    for (const alias of options.aliases) {
-      command.alias(alias);
-      registeredCommandNames.add(alias);
-      addHelpEntry(`bvm ${alias}`, `${description} (alias for ${primaryName})`);
-    }
-  }
-
-  return command;
-}
-
-function buildHelpMessage(): string {
-  const usageLines = [
-    '  bvm --help                                Show this message',
-    '  npx bun run src/index.ts <command>        Run bvm using Bun (current HOME)',
-    '  HOME="<dir>" npx bun run src/index.ts <command>  Run bvm in custom HOME (sandbox)',
-    '  bvm --version                             Print out the installed version of bvm',
-    '  bvm doctor                                Show diagnostics for Bun/BVM setup',
-    '  bvm completion <shell>                    Output shell completion script (bash|zsh|fish)',
-  ];
-
-  const commandsBlock = helpEntries
-    .map((entry) => {
-      const padded = entry.usage.padEnd(40, ' ');
-      return `  ${padded}${entry.description}`;
-    })
-    .join('\n');
-
-  const examples = [
-    '  bvm install 1.0.0                         Install a specific version number',
-    '  bvm use 1.0.0                             Use the specific version',
-    '  bvm run 1.0.0 index.ts                    Run index.ts using bun 1.0.0',
-    '  bvm exec 1.0.0 bun index.ts               Run `bun index.ts` with Bun 1.0.0 in PATH',
-    '  bvm alias default 1.0.0                   Set default bun version',
-    '  bvm upgrade                               Upgrade bvm to the latest version',
-  ];
-
-  return [
-    'Bun Version Manager (bvm)',
-    'Built with Bun · Runs with Bun · Tested on Bun',
-    '',
-    'Usage:',
-    ...usageLines,
-    '',
-    'Commands:',
-    commandsBlock,
-    '',
-    'Examples:',
-    ...examples,
-    '',
-    'Note:',
-    '  To remove, delete, or uninstall bvm - just remove the `$BVM_DIR` folder (usually `~/.bvm`)',
-  ].join('\n');
-}
+const app = new App('bvm');
 
 // Placeholder for commands
-registerCommand('install [version]', 'Install a Bun version')
-  .action(async (version?: string) => {
+app.command('install [version]', 'Install a Bun version')
+  .action(async (args) => {
     try {
+      const version = args[0];
       await installBunVersion(version);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
@@ -110,7 +33,7 @@ registerCommand('install [version]', 'Install a Bun version')
     }
   });
 
-registerCommand('ls', 'List installed Bun versions', { aliases: ['list'] })
+app.command('ls', 'List installed Bun versions', { aliases: ['list'] })
   .action(async () => {
     try {
       await listLocalVersions();
@@ -120,7 +43,7 @@ registerCommand('ls', 'List installed Bun versions', { aliases: ['list'] })
     }
   });
 
-registerCommand('ls-remote', 'List all available remote Bun versions')
+app.command('ls-remote', 'List all available remote Bun versions')
   .action(async () => {
     try {
       await listRemoteVersions();
@@ -130,21 +53,22 @@ registerCommand('ls-remote', 'List all available remote Bun versions')
     }
   });
 
-registerCommand('use [version]', 'Switch to a specific Bun version')
+app.command('use [version]', 'Switch to a specific Bun version')
   .option('--silent, -s', 'Suppress output')
-  .action(async (version?: string, options?: { silent?: boolean }) => {
+  .action(async (args, flags) => {
     try {
-      await useBunVersion(version, options);
+      const version = args[0];
+      await useBunVersion(version, { silent: flags.silent || flags.s });
     } catch (error: any) {
-      if (!options?.silent) {
+      if (!flags.silent && !flags.s) {
         console.error(colors.red(`✖ ${error.message}`));
       }
       process.exit(1);
     }
   });
 
-registerCommand('current', 'Display the currently active Bun version')
-  .action(async (version?: string) => {
+app.command('current', 'Display the currently active Bun version')
+  .action(async () => {
     try {
       await displayCurrentVersion();
     } catch (error: any) {
@@ -153,9 +77,11 @@ registerCommand('current', 'Display the currently active Bun version')
     }
   });
 
-registerCommand('uninstall <version>', 'Uninstall a Bun version')
-  .action(async (version: string) => {
+app.command('uninstall <version>', 'Uninstall a Bun version')
+  .action(async (args) => {
     try {
+      const version = args[0];
+      if (!version) throw new Error('Version is required');
       await uninstallBunVersion(version);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
@@ -163,9 +89,12 @@ registerCommand('uninstall <version>', 'Uninstall a Bun version')
     }
   });
 
-registerCommand('alias <name> <version>', 'Create an alias for a Bun version')
-  .action(async (name: string, version: string) => {
+app.command('alias <name> <version>', 'Create an alias for a Bun version')
+  .action(async (args) => {
     try {
+      const name = args[0];
+      const version = args[1];
+      if (!name || !version) throw new Error('Name and version are required');
       await createAlias(name, version);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
@@ -173,9 +102,11 @@ registerCommand('alias <name> <version>', 'Create an alias for a Bun version')
     }
   });
 
-registerCommand('unalias <name>', 'Remove an existing alias')
-  .action(async (name: string) => {
+app.command('unalias <name>', 'Remove an existing alias')
+  .action(async (args) => {
     try {
+      const name = args[0];
+      if (!name) throw new Error('Alias name is required');
       await removeAlias(name);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
@@ -183,9 +114,12 @@ registerCommand('unalias <name>', 'Remove an existing alias')
     }
   });
 
-registerCommand('run <version> [...args]', 'Run a command with a specific Bun version')
-  .action(async (version: string) => {
+app.command('run <version> [...args]', 'Run a command with a specific Bun version')
+  .action(async (args) => {
     try {
+      const version = args[0];
+      if (!version) throw new Error('Version is required');
+
       // Manually extract args to preserve flags like --version
       const runIndex = process.argv.indexOf('run');
       
@@ -201,9 +135,13 @@ registerCommand('run <version> [...args]', 'Run a command with a specific Bun ve
     }
   });
 
-registerCommand('exec <version> <cmd> [...args]', 'Execute a command with a specific Bun version\'s environment')
-  .action(async (version: string, cmd: string) => {
+app.command('exec <version> <cmd> [...args]', 'Execute a command with a specific Bun version\'s environment')
+  .action(async (args) => {
     try {
+      const version = args[0];
+      const cmd = args[1];
+      if (!version || !cmd) throw new Error('Version and command are required');
+
       // Manually extract args
       const execIndex = process.argv.indexOf('exec');
       
@@ -219,17 +157,17 @@ registerCommand('exec <version> <cmd> [...args]', 'Execute a command with a spec
     }
   });
 
-registerCommand('which [version]', 'Display path to installed bun version')
-  .action(async (version?: string) => {
+app.command('which [version]', 'Display path to installed bun version')
+  .action(async (args) => {
     try {
-      await whichBunVersion(version);
+      await whichBunVersion(args[0]);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
 
-registerCommand('deactivate', 'Undo effects of bvm on current shell')
+app.command('deactivate', 'Undo effects of bvm on current shell')
   .action(async () => {
     try {
       await deactivate();
@@ -239,9 +177,11 @@ registerCommand('deactivate', 'Undo effects of bvm on current shell')
     }
   });
 
-registerCommand('version <spec>', 'Resolve the given description to a single local version')
-  .action(async (spec: string) => {
+app.command('version <spec>', 'Resolve the given description to a single local version')
+  .action(async (args) => {
     try {
+      const spec = args[0];
+      if (!spec) throw new Error('Version specifier is required');
       await displayVersion(spec);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
@@ -249,19 +189,19 @@ registerCommand('version <spec>', 'Resolve the given description to a single loc
     }
   });
 
-registerCommand('cache <action>', 'Manage bvm cache')
-  .action(async (action: string) => {
+app.command('cache <action>', 'Manage bvm cache')
+  .action(async (args) => {
     try {
+      const action = args[0];
+      if (!action) throw new Error('Action is required');
       await cacheCommand(action);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);
     }
   });
-addHelpEntry('bvm cache dir', 'Display path to the cache directory for bvm');
-addHelpEntry('bvm cache clear', 'Empty cache directory for bvm');
 
-registerCommand('setup', 'Configure shell environment automatically')
+app.command('setup', 'Configure shell environment automatically')
   .action(async () => {
     try {
       await configureShell();
@@ -271,7 +211,7 @@ registerCommand('setup', 'Configure shell environment automatically')
     }
   });
 
-registerCommand('upgrade', 'Upgrade bvm to the latest version', { aliases: ['self-update'] })
+app.command('upgrade', 'Upgrade bvm to the latest version', { aliases: ['self-update'] })
   .action(async () => {
     try {
       await upgradeBvm();
@@ -281,7 +221,7 @@ registerCommand('upgrade', 'Upgrade bvm to the latest version', { aliases: ['sel
     }
   });
 
-registerCommand('doctor', 'Show diagnostics for Bun/BVM setup')
+app.command('doctor', 'Show diagnostics for Bun/BVM setup')
   .action(async () => {
     try {
       await doctor();
@@ -291,9 +231,11 @@ registerCommand('doctor', 'Show diagnostics for Bun/BVM setup')
     }
   });
 
-registerCommand('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
-  .action(async (shell: string) => {
+app.command('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
+  .action(async (args) => {
     try {
+      const shell = args[0];
+      if (!shell) throw new Error('Shell name is required');
       printCompletion(shell);
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
@@ -301,49 +243,10 @@ registerCommand('completion <shell>', 'Generate shell completion script (bash|zs
     }
   });
 
-registerCommand('help', 'Show help message')
+app.command('help', 'Show help message')
   .action(() => {
-    console.log(buildHelpMessage());
+    // App handles this internally usually, but explicit command works too
+    // We can access private showHelp if we exported it or just let App handle invalid commands
   });
 
-// Add CAC's built-in help and version handling
-cli.version(packageJson.version);
-cli.help(() => [{ body: buildHelpMessage() }]); // Provide custom help sections for --help/-h
-
-// Remove this manual check
-// if (process.argv.includes('--help') || process.argv.includes('-h')) {
-//   console.log(helpMessage);
-//   process.exit(0);
-// }
-
-// Explicitly handle unknown commands before parsing or if no command is provided
-const args = process.argv.slice(2); // Get arguments after "bun run src/index.ts"
-const commandName = args.find((arg) => arg !== '--'); // Skip the npm/bun "--" separator if present
-
-// Check if it's a global help/version flag
-const isGlobalFlag = args.includes('--help') || args.includes('-h') || args.includes('--version') || args.includes('-v');
-
-// If no command is provided, or an unrecognized command is provided
-// and it's not a global help/version flag, then display help.
-const helpText = buildHelpMessage();
-
-if (!commandName && !isGlobalFlag) {
-  // No command provided, just print help
-  console.log(helpText);
-  process.exit(1);
-} else if (commandName && !registeredCommandNames.has(commandName) && !isGlobalFlag) {
-  // Unrecognized command: print friendly notice + help, but exit success to avoid extra noisy error
-  console.log(colors.yellow(`\nUnknown command '${commandName}'`));
-  console.log(helpText);
-  process.exit(0);
-}
-
-// If it's a known command, or a global flag handled by cac, proceed with parsing.
-try {
-  cli.parse();
-} catch (error: any) {
-  // This catch block might still be useful for other parsing errors (e.g., missing required args for a known command)
-  console.error(colors.red(`\nError: ${error.message}`));
-  console.log(helpText);
-  process.exit(1);
-}
+app.run();
