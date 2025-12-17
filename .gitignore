@@ -45,3 +45,4 @@ tmp-*.bin
 
 # bvm sandbox
 .sandbox-home/
+.gemini/

@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { colors } from '../utils/ui';
 import { join } from 'path';
 import { BVM_ALIAS_DIR } from '../constants';
 import { pathExists } from '../utils';
@@ -23,7 +23,7 @@ export async function removeAlias(aliasName: string): Promise<void> {
       // 2. Remove the alias file
       await unlink(aliasFilePath);
 
-      spinner.succeed(chalk.green(`Alias '${aliasName}' removed successfully.`));
+      spinner.succeed(colors.green(`Alias '${aliasName}' removed successfully.`));
     },
     { failMessage: `Failed to remove alias '${aliasName}'` },
   );

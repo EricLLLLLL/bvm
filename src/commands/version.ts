@@ -2,7 +2,7 @@ import { join } from 'path';
 import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH } from '../constants';
 import { getInstalledVersions, normalizeVersion, pathExists, readTextFile } from '../utils';
 import { readlink } from 'fs/promises';
-import semver from 'semver';
+import { maxSatisfying } from '../utils/semver-lite';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -60,11 +60,11 @@ export async function resolveLocalVersion(spec: string): Promise<string | null> 
   const cleanInstalled = installed.map(v => v); 
   // Note: installed versions from getInstalledVersions are usually sorted, but let's trust maxSatisfying
   
-  const found = semver.maxSatisfying(cleanInstalled, spec);
+  const found = maxSatisfying(cleanInstalled, spec);
   if (found) return found;
   
   // Try matching against 'v' prefix explicitly if spec didn't have it
-  const foundV = semver.maxSatisfying(cleanInstalled, normalizedSpec);
+  const foundV = maxSatisfying(cleanInstalled, normalizedSpec);
   if (foundV) return foundV;
 
   return null;

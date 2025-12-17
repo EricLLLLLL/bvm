@@ -1,5 +1,5 @@
 import { colors } from '../utils/ui';
-import semver from 'semver';
+import { valid, rcompare } from '../utils/semver-lite';
 import { normalizeVersion } from '../utils';
 import { fetchBunVersions } from '../api';
 import { withSpinner } from '../command-runner';
@@ -16,9 +16,9 @@ export async function listRemoteVersions(): Promise<void> {
       // Sort versions in descending order
     // Filter for valid semver just in case
     const sortedVersions = versions
-      .filter(v => semver.valid(v))
+      .filter(v => valid(v))
       .filter(v => !v.includes('canary'))
-      .sort(semver.rcompare);
+      .sort(rcompare);
 
       if (sortedVersions.length === 0) {
         throw new Error('No remote Bun versions found.');

@@ -3,7 +3,6 @@ import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME } from '../cons
 import { pathExists, normalizeVersion } from '../utils';
 import { getRcVersion } from '../rc';
 import { readlink } from 'fs/promises';
-import chalk from 'chalk';
 import { withSpinner } from '../command-runner';
 
 /**
