@@ -10,13 +10,16 @@ BVM_BIN_DIR="${BVM_DIR}/bin"
 # The Bun version that BVM itself runs on
 REQUIRED_BUN_VERSION="1.3.4"
 
-# Colors
+# Colors & Styles
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}Installing BVM (Bun Version Manager) [Installer v1.2.1-patch3]...${NC}"
+echo -e "${CYAN}${BOLD}🚀 Installing BVM (Bun Version Manager) [v1.2.1]...${NC}"
 
 # 1. Detect Platform
 OS="$(uname -s)"
@@ -63,22 +66,24 @@ mkdir -p "$BVM_BIN_DIR"
 # 3. Install Private Bun Runtime
 TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${REQUIRED_BUN_VERSION}"
 if [ -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
-  echo -e "${GREEN}BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
+  echo -e "${GREEN}✅ BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
 else
-  echo -e "${BLUE}Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
+  echo -e "${BLUE}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
   
   # Ensure clean slate
   if [ -d "$TARGET_RUNTIME_DIR" ]; then
-      echo "Cleaning up existing runtime directory..."
       rm -rf "$TARGET_RUNTIME_DIR"
   fi
 
-  # Download to temp
+  # Download to temp with progress bar
   TEMP_ZIP="${BVM_DIR}/bun-runtime.zip"
-  curl -fsSL "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP"
+  curl -fL --progress-bar "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP"
   
   # Extract
+  echo -e "${BLUE}📂 Extracting...${NC}"
   unzip -q -o "$TEMP_ZIP" -d "$BVM_DIR"
+  
+  # Move
   mv "${BVM_DIR}/${BUN_ASSET_NAME}" "$TARGET_RUNTIME_DIR"
   rm "$TEMP_ZIP"
   
@@ -89,7 +94,7 @@ else
       mv "$TARGET_RUNTIME_DIR/bun" "$TARGET_RUNTIME_DIR/bin/bun"
   fi
   
-  echo -e "${GREEN}BVM Runtime installed.${NC}"
+  echo -e "${GREEN}✅ BVM Runtime installed.${NC}"
 fi
 
 # Link 'current' runtime
@@ -99,12 +104,11 @@ ln -s "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 # 4. Install BVM Source Code
 # We expect a bundled 'index.js' to be available.
 if [ -f "dist/index.js" ]; then
-    echo -e "${BLUE}Installing BVM source from local dist/index.js...${NC}"
+    echo -e "${BLUE}📄 Installing BVM source from local dist/index.js...${NC}"
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
-    echo -e "${BLUE}Downloading BVM source...${NC}"
+    echo -e "${BLUE}⬇️  Downloading BVM source...${NC}"
     # Download directly from GitHub Releases (latest)
-    # This avoids NPM dependency and ensures version alignment with install.sh
     SOURCE_URL="https://github.com/bvm-cli/bvm/releases/latest/download/index.js"
     
     # Allow override
@@ -112,11 +116,10 @@ else
         SOURCE_URL="$BVM_SOURCE_URL"
     fi
 
-    echo -e "${BLUE}Fetching from: $SOURCE_URL${NC}"
-    if curl -fsSL "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js"; then
-        echo -e "${GREEN}Source downloaded.${NC}"
+    if curl -fL --progress-bar "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js"; then
+        echo -e "${GREEN}✅ Source downloaded.${NC}"
     else
-        echo -e "${RED}Failed to download source. Please check your network or NPM package availability.${NC}"
+        echo -e "${RED}❌ Failed to download source. Please check your network.${NC}"
         exit 1
     fi
 fi
@@ -133,12 +136,13 @@ EOF
 
 chmod +x "$WRAPPER_PATH"
 
-echo -e "${GREEN}BVM installed successfully!${NC}"
+echo -e "${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
 
 # 6. Auto-configure Shell
-echo -e "${BLUE}Configuring shell environment...${NC}"
+echo -e "${BLUE}⚙️  Configuring shell environment...${NC}"
 # Use the newly installed bvm to run setup
 "$WRAPPER_PATH" setup --silent
 
-echo -e "You may need to restart your terminal or source your config file."
-echo -e "Try running: ${GREEN}source ~/.bashrc${NC} (or .zshrc/.config/fish)"
+echo -e "\n${BOLD}Next steps:${NC}"
+echo -e "  1. Restart your terminal or run: ${YELLOW}source ~/.bashrc${NC} (or similar)"
+echo -e "  2. Run ${CYAN}bvm --help${NC} to get started."
