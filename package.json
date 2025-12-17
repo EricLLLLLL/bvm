@@ -1,6 +1,6 @@
 {
   "name": "@bvm-cli/core",
-  "version": "1.2.1",
+  "version": "1.2.0",
   "description": "The native version manager for Bun. Cross-platform, shell-agnostic, and zero-dependency.",
   "main": "src/index.ts",
   "publishConfig": {
@@ -30,9 +30,9 @@
   ],
   "author": "bvm-cli",
   "license": "MIT",
+  "private": true,
   "type": "commonjs",
   "dependencies": {},
-  "private": true,
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^24.10.2",
