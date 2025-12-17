@@ -138,8 +138,8 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
 $env:BVM_DIR = "${BVM_DIR}"
 $env:PATH = "$env:BVM_DIR\\bin;$env:PATH"
 # Auto-activate default version
-if (Test-Path "$env:BVM_DIR\\bin\\bvm.exe") {
-    & "$env:BVM_DIR\\bin\\bvm.exe" use default --silent *>$null
+if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
+    & "$env:BVM_DIR\\bin\\bvm.cmd" use default --silent *>$null
 }
 `;
 

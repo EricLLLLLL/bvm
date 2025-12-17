@@ -50,9 +50,21 @@ if (Test-Path "dist\index.js") {
     Copy-Item "dist\index.js" -Destination "$BVM_SRC_DIR\index.js" -Force
 } else {
     Write-Host "Downloading BVM source..." -ForegroundColor Blue
-    # $SOURCE_URL = "https://github.com/bvm-cli/bvm/releases/latest/download/bvm-source.zip"
-    # Download and unzip...
-    Write-Warning "Remote download not implemented yet in this prototype."
+    $SOURCE_URL = "https://github.com/bvm-cli/bvm/releases/latest/download/index.js"
+    
+    # Allow override
+    if ($env:BVM_SOURCE_URL) {
+        $SOURCE_URL = $env:BVM_SOURCE_URL
+    }
+
+    Write-Host "Fetching from: $SOURCE_URL" -ForegroundColor Blue
+    try {
+        Invoke-WebRequest -Uri $SOURCE_URL -OutFile "$BVM_SRC_DIR\index.js"
+        Write-Host "Source downloaded." -ForegroundColor Green
+    } catch {
+        Write-Host "Failed to download source. Please check your network." -ForegroundColor Red
+        exit 1
+    }
 }
 
 # 4. Create Wrapper Script (bvm.cmd)
