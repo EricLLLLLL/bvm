@@ -110,6 +110,11 @@ else
   echo -e "${GREEN}✅ BVM Runtime installed.${NC}"
 fi
 
+# Cleanup old runtime versions (excluding the current one)
+echo -e "${BLUE}🗑️  Cleaning up old BVM Runtimes...${NC}"
+find "$BVM_RUNTIME_DIR" -mindepth 1 -maxdepth 1 -type d -not -name "v$REQUIRED_BUN_VERSION" -exec rm -rf {} +
+
+
 # Link 'current' runtime
 rm -f "${BVM_RUNTIME_DIR}/current"
 ln -s "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"

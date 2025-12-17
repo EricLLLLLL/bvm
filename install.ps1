@@ -72,6 +72,16 @@ $WRAPPER_PATH = "$BVM_BIN_DIR\bvm.cmd"
 $BVM_JS_PATH = "$BVM_SRC_DIR\index.js"
 $BUN_RUNTIME_EXE = "$TARGET_RUNTIME_DIR\bun.exe"
 
+# Cleanup old runtime versions (excluding the current one)
+Write-Host "Cleaning up old BVM Runtimes..." -ForegroundColor Blue
+Get-ChildItem -Path "$BVM_RUNTIME_DIR" -Directory | ForEach-Object {
+    if ($_.Name -ne "v$REQUIRED_BUN_VERSION") {
+        Write-Host "Removing old runtime: $($_.Name)" -ForegroundColor Blue
+        Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
+}
+
+
 $BatchContent = "@echo off
 SET BVM_DIR=$BVM_DIR
 "$BUN_RUNTIME_EXE" "$BVM_JS_PATH" %*
