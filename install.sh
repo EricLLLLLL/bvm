@@ -75,6 +75,13 @@ else
   mv "${BVM_DIR}/${BUN_ASSET_NAME}" "$TARGET_RUNTIME_DIR"
   rm "$TEMP_ZIP"
   
+  # Normalize runtime structure: ensure bin/bun exists
+  # Official Bun release zips extract to folder/bun (no bin dir)
+  if [ -f "$TARGET_RUNTIME_DIR/bun" ] && [ ! -d "$TARGET_RUNTIME_DIR/bin" ]; then
+      mkdir -p "$TARGET_RUNTIME_DIR/bin"
+      mv "$TARGET_RUNTIME_DIR/bun" "$TARGET_RUNTIME_DIR/bin/bun"
+  fi
+  
   echo -e "${GREEN}BVM Runtime installed.${NC}"
 fi
 
