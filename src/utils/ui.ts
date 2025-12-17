@@ -12,7 +12,7 @@ export const colors = {
   red: formatter('\x1b[31m', '\x1b[39m'),
   green: formatter('\x1b[32m', '\x1b[39m'),
   yellow: formatter('\x1b[33m', '\x1b[39m'),
-  blue: formatter('\x1b[34m', '\x1b[39m'),
+  blue: formatter('\x1b[94m', '\x1b[39m'), // Bright Blue for better visibility
   cyan: formatter('\x1b[36m', '\x1b[39m'),
   gray: formatter('\x1b[90m', '\x1b[39m'),
   bold: formatter('\x1b[1m', '\x1b[22m', '\x1b[22m\x1b[1m'),
