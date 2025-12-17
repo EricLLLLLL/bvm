@@ -74,8 +74,10 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     }
 
     // Optimization: If the requested version matches the current runtime version, copy it!
-    // process.version is like 'v1.3.4'
-    if (process.version === foundVersion && !IS_TEST_MODE) {
+    // process.version is like '1.3.4', foundVersion is 'v1.3.4'
+    const currentRuntimeVersion = normalizeVersion(process.version);
+    
+    if (currentRuntimeVersion === foundVersion && !IS_TEST_MODE) {
         // process.execPath is usually .../bin/bun
         // We assume the runtime structure is standard (bin/bun or just bun)
         // Let's try to find the root of the current runtime
