@@ -9,12 +9,13 @@ const formatter = (open: string, close: string, replace = open) =>
   (input: string) => isColorSupported ? open + input.replace(new RegExp(escapeRegex(close), 'g'), replace) + close : input;
 
 export const colors = {
-  red: formatter('\x1b[31m', '\x1b[39m'),
-  green: formatter('\x1b[32m', '\x1b[39m'),
-  yellow: formatter('\x1b[33m', '\x1b[39m'),
-  blue: formatter('\x1b[94m', '\x1b[39m'), // Bright Blue for better visibility
-  cyan: formatter('\x1b[36m', '\x1b[39m'),
-  gray: formatter('\x1b[90m', '\x1b[39m'),
+  red: formatter('\x1b[1;31m', '\x1b[39m'),    // Bold Red
+  green: formatter('\x1b[1;32m', '\x1b[39m'),  // Bold Green
+  yellow: formatter('\x1b[1;33m', '\x1b[39m'), // Bold Yellow
+  blue: formatter('\x1b[1;35m', '\x1b[39m'),   // Bold Magenta (High visibility info)
+  magenta: formatter('\x1b[1;35m', '\x1b[39m'),// Bold Magenta
+  cyan: formatter('\x1b[1;36m', '\x1b[39m'),   // Bold Cyan (Brand)
+  gray: formatter('\x1b[90m', '\x1b[39m'),     // Dim Gray
   bold: formatter('\x1b[1m', '\x1b[22m', '\x1b[22m\x1b[1m'),
   dim: formatter('\x1b[2m', '\x1b[22m', '\x1b[22m\x1b[2m'),
 };
