@@ -2,7 +2,6 @@ import { join } from 'path';
 import { BVM_BIN_DIR, BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
 import { createSymlink, ensureDir, pathExists, normalizeVersion, resolveVersion, getInstalledVersions } from '../utils';
 import { colors } from '../utils/ui';
-import semver from 'semver';
 import { getRcVersion } from '../rc';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
