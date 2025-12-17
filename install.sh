@@ -80,7 +80,7 @@ TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${REQUIRED_BUN_VERSION}"
 if [ -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
   echo -e "${GREEN}✅ BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
 else
-  echo -e "${BLUE}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
+  echo -e "${CYAN}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
   
   # Ensure clean slate
   if [ -d "$TARGET_RUNTIME_DIR" ]; then
@@ -92,7 +92,7 @@ else
   curl -fL --progress-bar "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP"
   
   # Extract
-  echo -e "${BLUE}📂 Extracting...${NC}"
+  echo -e "${CYAN}📂 Extracting...${NC}"
   unzip -q -o "$TEMP_ZIP" -d "$BVM_DIR"
   
   # Move
@@ -119,7 +119,7 @@ if [ -f "dist/index.js" ]; then
     echo -e "${BLUE}📄 Installing BVM source from local dist/index.js...${NC}"
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
-    echo -e "${BLUE}⬇️  Downloading BVM source...${NC}"
+    echo -e "${CYAN}⬇️  Downloading BVM source...${NC}"
     # Download directly from GitHub Releases (latest)
     SOURCE_URL="https://github.com/bvm-cli/bvm/releases/latest/download/index.js"
     
@@ -151,7 +151,7 @@ chmod +x "$WRAPPER_PATH"
 echo -e "${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
 
 # 6. Auto-configure Shell
-echo -e "${BLUE}⚙️  Configuring shell environment...${NC}"
+echo -e "${CYAN}⚙️  Configuring shell environment...${NC}"
 # Use the newly installed bvm to run setup
 "$WRAPPER_PATH" setup --silent
 
