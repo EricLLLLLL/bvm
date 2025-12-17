@@ -66,6 +66,10 @@ if [ -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
   echo -e "${GREEN}BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
 else
   echo -e "${BLUE}Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
+  
+  # Ensure clean slate
+  rm -rf "$TARGET_RUNTIME_DIR"
+
   # Download to temp
   TEMP_ZIP="${BVM_DIR}/bun-runtime.zip"
   curl -fsSL "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP"
