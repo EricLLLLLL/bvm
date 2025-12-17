@@ -108,21 +108,9 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
         installedVersion = foundVersion;
         shouldConfigureShell = true;
         
-        // Skip the rest of download logic
-        if (installedVersion) {
-             // Auto-set default logic duplicate... (refactor ideally, but let's copy for safety)
-            const currentlyInstalledVersions = await getInstalledVersions();
-            if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
-                console.log(colors.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
-                await createAlias('default', foundVersion); 
-            }
-            // Trigger shell config and return
-            if (shouldConfigureShell) {
-                await configureShell(false);
-            }
-            await useBunVersion(installedVersion);
-            return;
-        }
+        // Return early from this optimization block
+        // The common cleanup (configureShell and useBunVersion) happens after this block.
+        // The first install/alias logic should be handled by the main flow.
     }
 
     if (IS_TEST_MODE) {
