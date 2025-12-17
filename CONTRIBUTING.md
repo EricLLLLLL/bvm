@@ -9,13 +9,15 @@ Thank you for your interest in contributing to bvm! We follow a standard Pull Re
 ## Development Workflow
 
 ### 1. Fork & Clone
-Fork this repository to your own GitHub account, then clone it locally:
+To contribute, you first need to fork the repository to your own GitHub account.
+Then, clone your forked repository locally:
 
 ```bash
 git clone https://github.com/<your-username>/bvm.git
 cd bvm
 git remote add upstream https://github.com/bvm-cli/bvm.git
 ```
+This sets up your local repository to track both your fork (`origin`) and the original `bvm-cli/bvm` repository (`upstream`).
 
 ### 2. Setup
 Install development dependencies:
