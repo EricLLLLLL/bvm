@@ -113,138 +113,140 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
         // The first install/alias logic should be handled by the main flow.
     }
 
-    if (IS_TEST_MODE) {
-      await ensureDir(installDir);
-      await writeTestBunBinary(bunExecutablePath, foundVersion);
-    } else {
-      spinner.update(`Initiating download for Bun ${foundVersion}...`);
-      await ensureDir(BVM_CACHE_DIR);
-      const filename = `${foundVersion}-${basename(url)}`;
-      const cachedArchivePath = join(BVM_CACHE_DIR, filename);
-
-      if (await pathExists(cachedArchivePath)) {
-        spinner.succeed(colors.green(`Using cached Bun ${foundVersion} archive.`));
-      } else {
-        spinner.stop();
-        console.log(colors.cyan(`Downloading Bun ${foundVersion} to cache...`));
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to download Bun: ${response.statusText} (${response.status})`);
-        }
-
-        if (!response.body) {
-          throw new Error('Download stream is not available.');
-        }
-
-        const contentLength = response.headers.get('content-length');
-        const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
-
-        let progressBar: ProgressBar | null = null;
-        if (totalBytes > 0) {
-          progressBar = new ProgressBar(totalBytes);
-          progressBar.start();
+    if (!installedVersion) {
+        if (IS_TEST_MODE) {
+          await ensureDir(installDir);
+          await writeTestBunBinary(bunExecutablePath, foundVersion);
         } else {
-          console.log(colors.cyan(`Downloading Bun ${foundVersion} (size unknown)...`));
-        }
-
-        const writer = Bun.file(cachedArchivePath).writer();
-        const reader = response.body.getReader();
-        let loaded = 0;
-        let lastLoaded = 0;
-        let lastTime = Date.now();
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            writer.write(value);
-            loaded += value.length;
-            if (progressBar) {
-              const now = Date.now();
-              const diffTime = now - lastTime;
-              if (diffTime >= 500) {
-                const speed = (loaded - lastLoaded) / diffTime * 1000 / 1024 * 8;
-                progressBar.update(loaded, { speed: speed.toFixed(2) });
-                lastLoaded = loaded;
-                lastTime = now;
-              } else {
-                progressBar.update(loaded);
+          spinner.update(`Initiating download for Bun ${foundVersion}...`);
+          await ensureDir(BVM_CACHE_DIR);
+          const filename = `${foundVersion}-${basename(url)}`;
+          const cachedArchivePath = join(BVM_CACHE_DIR, filename);
+    
+          if (await pathExists(cachedArchivePath)) {
+            spinner.succeed(colors.green(`Using cached Bun ${foundVersion} archive.`));
+          } else {
+            spinner.stop();
+            console.log(colors.cyan(`Downloading Bun ${foundVersion} to cache...`));
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`Failed to download Bun: ${response.statusText} (${response.status})`);
+            }
+    
+            if (!response.body) {
+              throw new Error('Download stream is not available.');
+            }
+    
+            const contentLength = response.headers.get('content-length');
+            const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+    
+            let progressBar: ProgressBar | null = null;
+            if (totalBytes > 0) {
+              progressBar = new ProgressBar(totalBytes);
+              progressBar.start();
+            } else {
+              console.log(colors.cyan(`Downloading Bun ${foundVersion} (size unknown)...`));
+            }
+    
+            const writer = Bun.file(cachedArchivePath).writer();
+            const reader = response.body.getReader();
+            let loaded = 0;
+            let lastLoaded = 0;
+            let lastTime = Date.now();
+    
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                writer.write(value);
+                loaded += value.length;
+                if (progressBar) {
+                  const now = Date.now();
+                  const diffTime = now - lastTime;
+                  if (diffTime >= 500) {
+                    const speed = (loaded - lastLoaded) / diffTime * 1000 / 1024 * 8;
+                    progressBar.update(loaded, { speed: speed.toFixed(2) });
+                    lastLoaded = loaded;
+                    lastTime = now;
+                  } else {
+                    progressBar.update(loaded);
+                  }
+                }
               }
+            } finally {
+              writer.end();
+              writer.flush?.();
+            }
+    
+            if (progressBar) {
+              progressBar.stop();
+              console.log('');
             }
           }
-        } finally {
-          writer.end();
-          writer.flush?.();
+    
+          spinner.start(`Extracting Bun ${foundVersion}...`);
+          await ensureDir(installDir);
+    
+          try {
+            await extractArchive(cachedArchivePath, installDir);
+          } catch (e: any) {
+            throw new Error(`Extraction failed: ${e.message}`);
+          }
+    
+          let finalBunPath = '';
+          const possibleBunPaths = [
+            join(installDir, EXECUTABLE_NAME),
+            join(installDir, 'bun-darwin-x64', EXECUTABLE_NAME),
+            join(installDir, 'bun-darwin-aarch64', EXECUTABLE_NAME),
+            join(installDir, 'bun-linux-x64', EXECUTABLE_NAME),
+            join(installDir, 'bun-linux-aarch64', EXECUTABLE_NAME),
+            join(installDir, 'bun', EXECUTABLE_NAME),
+          ];
+    
+          const dirEntries = await readDir(installDir);
+          const subDirs = dirEntries.filter(s => s.trim().length > 0 && s.startsWith('bun-'));
+          for (const subDir of subDirs) {
+            possibleBunPaths.push(join(installDir, subDir, EXECUTABLE_NAME));
+            possibleBunPaths.push(join(installDir, subDir, 'bin', EXECUTABLE_NAME));
+          }
+    
+          for (const p of possibleBunPaths) {
+            if (await pathExists(p)) {
+              finalBunPath = p;
+              break;
+            }
+          }
+    
+          if (!finalBunPath) {
+            throw new Error(`Could not find bun executable in ${installDir}`);
+          }
+    
+          if (finalBunPath !== bunExecutablePath) {
+            await runCommand(['mv', finalBunPath, bunExecutablePath]);
+            const parentDir = dirname(finalBunPath);
+            if (parentDir !== installDir && parentDir.startsWith(installDir)) {
+              await removeDir(parentDir);
+            }
+          }
+    
+          await chmod(bunExecutablePath, 0o755);
         }
-
-        if (progressBar) {
-          progressBar.stop();
-          console.log('');
+    
+        // Note: We DO NOT delete cachedArchivePath here. That's the point of caching.
+    
+        spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
+    
+        // Auto-set as default if this is the first installed version
+        const currentlyInstalledVersions = await getInstalledVersions();
+        // After install, the newly installed version will be in the list, so if size is 1, it's the first.
+        if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
+            console.log(colors.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
+            // Use the alias creation logic
+            await createAlias('default', foundVersion); 
         }
-      }
-
-      spinner.start(`Extracting Bun ${foundVersion}...`);
-      await ensureDir(installDir);
-
-      try {
-        await extractArchive(cachedArchivePath, installDir);
-      } catch (e: any) {
-        throw new Error(`Extraction failed: ${e.message}`);
-      }
-
-      let finalBunPath = '';
-      const possibleBunPaths = [
-        join(installDir, EXECUTABLE_NAME),
-        join(installDir, 'bun-darwin-x64', EXECUTABLE_NAME),
-        join(installDir, 'bun-darwin-aarch64', EXECUTABLE_NAME),
-        join(installDir, 'bun-linux-x64', EXECUTABLE_NAME),
-        join(installDir, 'bun-linux-aarch64', EXECUTABLE_NAME),
-        join(installDir, 'bun', EXECUTABLE_NAME),
-      ];
-
-      const dirEntries = await readDir(installDir);
-      const subDirs = dirEntries.filter(s => s.trim().length > 0 && s.startsWith('bun-'));
-      for (const subDir of subDirs) {
-        possibleBunPaths.push(join(installDir, subDir, EXECUTABLE_NAME));
-        possibleBunPaths.push(join(installDir, subDir, 'bin', EXECUTABLE_NAME));
-      }
-
-      for (const p of possibleBunPaths) {
-        if (await pathExists(p)) {
-          finalBunPath = p;
-          break;
-        }
-      }
-
-      if (!finalBunPath) {
-        throw new Error(`Could not find bun executable in ${installDir}`);
-      }
-
-      if (finalBunPath !== bunExecutablePath) {
-        await runCommand(['mv', finalBunPath, bunExecutablePath]);
-        const parentDir = dirname(finalBunPath);
-        if (parentDir !== installDir && parentDir.startsWith(installDir)) {
-          await removeDir(parentDir);
-        }
-      }
-
-      await chmod(bunExecutablePath, 0o755);
+            installedVersion = foundVersion;
+            shouldConfigureShell = true;
     }
-
-    // Note: We DO NOT delete cachedArchivePath here. That's the point of caching.
-
-    spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
-
-    // Auto-set as default if this is the first installed version
-    const currentlyInstalledVersions = await getInstalledVersions();
-    // After install, the newly installed version will be in the list, so if size is 1, it's the first.
-    if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
-        console.log(colors.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
-        // Use the alias creation logic
-        await createAlias('default', foundVersion); 
-    }
-        installedVersion = foundVersion;
-        shouldConfigureShell = true;
       },
       { failMessage: `Failed to install Bun ${versionToInstall}` },
     );
