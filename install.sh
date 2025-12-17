@@ -19,6 +19,17 @@ YELLOW='\033[1;33m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Logo
+echo -e "${CYAN}${BOLD}"
+cat << "EOF"
+ _                    
+| |____   ___ __ ___  
+| '_ \ \ / / '_ ` _ \ 
+| |_) \ V /| | | | | |
+|_.__/ \_/ |_| |_| |_|
+EOF
+echo -e "${NC}"
+
 echo -e "${CYAN}${BOLD}🚀 Installing BVM (Bun Version Manager) [v1.2.1]...${NC}"
 
 # 1. Detect Platform
