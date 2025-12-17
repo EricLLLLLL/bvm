@@ -1,45 +1,66 @@
 # Contributing to bvm
 
-Thank you for your interest in contributing to bvm! We are building the best version manager for Bun, powered by Bun.
+Thank you for your interest in contributing to bvm! We follow a standard Pull Request workflow.
 
 ## Prerequisites
 
-*   [Bun](https://bun.sh/) (v1.0.0 or later) must be installed on your machine to develop bvm.
+*   [Bun](https://bun.sh/) (v1.0.0 or later) must be installed on your machine.
 
-## Development Setup
+## Development Workflow
 
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/bvm-cli/bvm.git
-    cd bvm
-    ```
+### 1. Fork & Clone
+Fork this repository to your own GitHub account, then clone it locally:
 
-2.  **Install dependencies**
-    ```bash
-    bun install
-    ```
-    *Note: Dependencies are only for development (types, testing). The release artifact has zero runtime dependencies.*
+```bash
+git clone https://github.com/<your-username>/bvm.git
+cd bvm
+git remote add upstream https://github.com/bvm-cli/bvm.git
+```
 
-3.  **Run bvm locally**
-    You can run the source code directly using `bun`:
-    ```bash
-    npx bun run src/index.ts [command]
-    ```
-    
-    Example:
-    ```bash
-    npx bun run src/index.ts install latest
-    ```
+### 2. Setup
+Install development dependencies:
 
-## Testing
+```bash
+bun install
+```
 
-We use Bun's built-in test runner.
+### 3. Create a Branch
+Create a new branch for your feature or fix. Please use a descriptive name:
 
+```bash
+git checkout -b feat/my-awesome-feature
+# or
+git checkout -b fix/issue-123
+```
+
+### 4. Develop & Test
+Run the source code directly:
+
+```bash
+npx bun run src/index.ts <command>
+```
+
+**Run tests before committing:**
 ```bash
 bun test
 ```
 
-Please ensure all tests pass before submitting a Pull Request.
+### 5. Commit & Push
+We follow [Conventional Commits](https://www.conventionalcommits.org/).
+
+```bash
+git add .
+git commit -m "feat: add support for xyz"
+git push origin feat/my-awesome-feature
+```
+
+### 6. Submit Pull Request
+Go to the GitHub repository and open a Pull Request against the `main` branch.
+*   Describe your changes clearly.
+*   Link to any related issues.
+*   Wait for code review and CI checks.
+
+---
 
 ## Project Architecture
 
@@ -48,30 +69,21 @@ Please ensure all tests pass before submitting a Pull Request.
 *   `src/utils/semver-lite.ts`: Minimal semver implementation (replaces `semver`).
 *   `install.sh` / `install.ps1`: Installation scripts.
 
-## Release Process (Maintainers)
+## Release Process (Maintainers Only)
 
 bvm uses a fully automated release pipeline powered by GitHub Actions.
 
-1.  **Update Version**:
+1.  **Version Bump**:
     Update the `version` field in `package.json`.
 
-2.  **Update Bun Runtime Dependency (Optional)**:
-    If you want to update the Bun version that bvm runs on, update `devDependencies.bun` in `package.json`. The CI pipeline will automatically sync this version to `install.sh` and `install.ps1`.
-
-3.  **Push Tag**:
-    Create and push a new tag matching the version (e.g., `v1.2.1`).
+2.  **Tag & Push**:
     ```bash
     git tag v1.2.1
     git push origin v1.2.1
     ```
 
-4.  **CI Automation**:
-    GitHub Actions will:
-    *   Run tests.
-    *   Sync runtime versions (`scripts/sync-runtime.ts`).
-    *   Build and minify the project (`bun run build`).
-    *   Create a GitHub Release.
-    *   Upload `dist/index.js`, `install.sh`, and `install.ps1` as assets.
+3.  **CI Automation**:
+    The workflow will automatically build, minify, sync runtime versions, and publish to GitHub Releases.
 
 ---
 
