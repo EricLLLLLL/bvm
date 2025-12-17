@@ -78,8 +78,23 @@ mkdir -p "$BVM_BIN_DIR"
 
 # 3. Install Private Bun Runtime
 TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${REQUIRED_BUN_VERSION}"
+LOCAL_VERSION_DIR="${BVM_DIR}/versions/v${REQUIRED_BUN_VERSION}"
+
 if [ -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
   echo -e "${GREEN}✅ BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
+elif [ -f "${LOCAL_VERSION_DIR}/bun" ]; then
+  # Optimization: Copy from ~/.bvm/versions if available
+  echo -e "${GREEN}♻️  Found Bun v${REQUIRED_BUN_VERSION} in versions. Copying to runtime...${NC}"
+  
+  # Clean up target
+  rm -rf "$TARGET_RUNTIME_DIR"
+  mkdir -p "$TARGET_RUNTIME_DIR/bin"
+  
+  # Copy binary (bvm only needs the binary to run itself)
+  cp "${LOCAL_VERSION_DIR}/bun" "$TARGET_RUNTIME_DIR/bin/bun"
+  chmod +x "$TARGET_RUNTIME_DIR/bin/bun"
+  
+  echo -e "${GREEN}✅ BVM Runtime installed from local copy.${NC}"
 else
   echo -e "${CYAN}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
   

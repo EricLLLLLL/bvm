@@ -19,9 +19,15 @@ New-Item -ItemType Directory -Force -Path $BVM_BIN_DIR | Out-Null
 # 2. Install Private Bun Runtime
 $TARGET_RUNTIME_DIR = "$BVM_RUNTIME_DIR\v$REQUIRED_BUN_VERSION"
 $BUN_EXE = "$TARGET_RUNTIME_DIR\bin\bun.exe"
+$LOCAL_VERSION_EXE = "$BVM_DIR\versions\v$REQUIRED_BUN_VERSION\bun.exe"
 
 if (Test-Path $BUN_EXE) {
     Write-Host "BVM Runtime (Bun v$REQUIRED_BUN_VERSION) already installed." -ForegroundColor Green
+} elseif (Test-Path $LOCAL_VERSION_EXE) {
+    Write-Host "Found Bun v$REQUIRED_BUN_VERSION in versions. Copying to runtime..." -ForegroundColor Green
+    New-Item -ItemType Directory -Force -Path "$TARGET_RUNTIME_DIR\bin" | Out-Null
+    Copy-Item $LOCAL_VERSION_EXE -Destination $BUN_EXE -Force
+    Write-Host "BVM Runtime installed from local copy." -ForegroundColor Green
 } else {
     Write-Host "Downloading BVM Runtime (Bun v$REQUIRED_BUN_VERSION)..." -ForegroundColor Blue
     $BUN_URL = "https://github.com/oven-sh/bun/releases/download/bun-v$REQUIRED_BUN_VERSION/bun-windows-x64.zip"
