@@ -1,45 +1,78 @@
-# Contributing to BVM
+# Contributing to bvm
 
-感谢你愿意为 BVM（Bun Version Manager）贡献力量！本文介绍本地开发、测试、提交流程与发布步骤，所有脚本都基于 Bun。
+Thank you for your interest in contributing to bvm! We are building the best version manager for Bun, powered by Bun.
 
-## 开发环境
+## Prerequisites
 
-- Bun >= 1.3
-- Git, curl/wget 等基础工具
-- macOS/Linux/Fish/Bash/Zsh 均已验证；Windows 建议使用 WSL
+*   [Bun](https://bun.sh/) (v1.0.0 or later) must be installed on your machine to develop bvm.
+
+## Development Setup
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/bvm-cli/bvm.git
+    cd bvm
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    bun install
+    ```
+    *Note: Dependencies are only for development (types, testing). The release artifact has zero runtime dependencies.*
+
+3.  **Run bvm locally**
+    You can run the source code directly using `bun`:
+    ```bash
+    npx bun run src/index.ts [command]
+    ```
+    
+    Example:
+    ```bash
+    npx bun run src/index.ts install latest
+    ```
+
+## Testing
+
+We use Bun's built-in test runner.
 
 ```bash
-bun install
+bun test
 ```
 
-## 常用脚本
+Please ensure all tests pass before submitting a Pull Request.
 
-| 命令 | 说明 |
-| --- | --- |
-| `npx bun run src/index.ts <cmd>` | 在真实 HOME 下运行 CLI（等同于最终用户） |
-| `HOME="$PWD/.sandbox-home" npx bun run src/index.ts <cmd>` | 将 HOME 指向沙箱目录，便于反复测试/清理 |
-| `BVM_TEST_MODE=true ...` | 让 CLI 使用内置版本列表、跳过网络操作，适用于集成测试 |
+## Project Architecture
 
-## 测试
+*   `src/index.ts`: Entry point.
+*   `src/cli-router.ts`: Lightweight CLI router (replaces `cac`).
+*   `src/utils/semver-lite.ts`: Minimal semver implementation (replaces `semver`).
+*   `install.sh` / `install.ps1`: Installation scripts.
 
-```bash
-npx bun test test/*.ts
-```
+## Release Process (Maintainers)
 
-集成测试会在沙箱 HOME 中运行多个 CLI 子进程，因此建议在 `BVM_TEST_MODE=true` 环境下执行，或使用 `HOME="$PWD/.sandbox-home" npx bun run src/index.ts ...` 预先拉取需要的版本。
+bvm uses a fully automated release pipeline powered by GitHub Actions.
 
-## 发布流程
+1.  **Update Version**:
+    Update the `version` field in `package.json`.
 
-1. 确保仓库干净、依赖同步：`bun install`
-2. 运行自动检查：`npm run release`
-   - 该脚本会检查 git 状态并执行 `bun test`
-3. 使用 `npm version <patch|minor|major>` 或手动编辑 `package.json`
-4. 推送代码并创建 GitHub Release（附二进制/脚本）
+2.  **Update Bun Runtime Dependency (Optional)**:
+    If you want to update the Bun version that bvm runs on, update `devDependencies.bun` in `package.json`. The CI pipeline will automatically sync this version to `install.sh` and `install.ps1`.
 
-## 提交规范
+3.  **Push Tag**:
+    Create and push a new tag matching the version (e.g., `v1.2.1`).
+    ```bash
+    git tag v1.2.1
+    git push origin v1.2.1
+    ```
 
-- Commit Message 采用 `type: subject`（如 `feat: add doctor command`）
-- 每个功能需包含必要的单元/集成测试
-- 如果命令输出或文档发生变更，请同步更新 `README.md`
+4.  **CI Automation**:
+    GitHub Actions will:
+    *   Run tests.
+    *   Sync runtime versions (`scripts/sync-runtime.ts`).
+    *   Build and minify the project (`bun run build`).
+    *   Create a GitHub Release.
+    *   Upload `dist/index.js`, `install.sh`, and `install.ps1` as assets.
 
-欢迎在 Discussion 或 Issue 中提出想法，我们期待你的贡献！
+---
+
+**Happy Coding!**
