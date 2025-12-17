@@ -16,7 +16,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}Installing BVM (Bun Version Manager)...${NC}"
+echo -e "${BLUE}Installing BVM (Bun Version Manager) [Installer v1.2.1-patch3]...${NC}"
 
 # 1. Detect Platform
 OS="$(uname -s)"
@@ -68,7 +68,10 @@ else
   echo -e "${BLUE}Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
   
   # Ensure clean slate
-  rm -rf "$TARGET_RUNTIME_DIR"
+  if [ -d "$TARGET_RUNTIME_DIR" ]; then
+      echo "Cleaning up existing runtime directory..."
+      rm -rf "$TARGET_RUNTIME_DIR"
+  fi
 
   # Download to temp
   TEMP_ZIP="${BVM_DIR}/bun-runtime.zip"
