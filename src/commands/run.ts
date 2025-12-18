@@ -26,7 +26,8 @@ export async function runWithBunVersion(targetVersion: string, args: string[]): 
     }
 
     const installPath = join(BVM_VERSIONS_DIR, resolvedVersion);
-    const bunExecutablePath = join(installPath, EXECUTABLE_NAME);
+    const installBinPath = join(installPath, 'bin');
+    const bunExecutablePath = join(installBinPath, EXECUTABLE_NAME);
 
     // 1. Check if the version is installed locally
       if (!(await pathExists(bunExecutablePath))) {
@@ -41,7 +42,7 @@ export async function runWithBunVersion(targetVersion: string, args: string[]): 
     try {
       await runCommand([bunExecutablePath, ...args], {
         cwd: process.cwd(),
-        prependPath: installPath,
+        prependPath: installBinPath,
       });
       process.exit(0);
     } catch (error: any) {

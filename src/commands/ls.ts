@@ -1,8 +1,8 @@
 import { colors } from '../utils/ui';
 import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile } from '../utils';
-import { BVM_CURRENT_BUN_PATH, BVM_ALIAS_DIR } from '../constants';
-import { readlink } from 'fs/promises';
-import { join } from 'path';
+import { BVM_CURRENT_BUN_PATH, BVM_ALIAS_DIR, BVM_CURRENT_DIR } from '../constants';
+import { readlink, realpath } from 'fs/promises';
+import { join, basename } from 'path';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -16,10 +16,12 @@ export async function listLocalVersions(): Promise<void> {
       let currentVersion: string | null = null; // Normalized 'vX.Y.Z'
 
     // Determine the currently active version by reading the 'current' directory symlink
-    const { BVM_CURRENT_DIR } = require('../constants');
     try {
-      const symlinkTarget = await readlink(BVM_CURRENT_DIR);
-      currentVersion = normalizeVersion(basename(symlinkTarget)); 
+      if (await pathExists(BVM_CURRENT_DIR)) {
+        // Resolve the symlink to its actual destination to get the version name
+        const realPath = await realpath(BVM_CURRENT_DIR);
+        currentVersion = normalizeVersion(basename(realPath));
+      }
     } catch (error: any) {
       if (error.code !== 'ENOENT' && error.code !== 'EINVAL') {
         throw error;

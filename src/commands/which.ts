@@ -1,8 +1,8 @@
 import { join } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME } from '../constants';
+import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME, BVM_CURRENT_DIR } from '../constants';
 import { pathExists, normalizeVersion } from '../utils';
 import { getRcVersion } from '../rc';
-import { readlink } from 'fs/promises';
+import { readlink, realpath } from 'fs/promises';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -21,12 +21,12 @@ export async function whichBunVersion(version?: string): Promise<void> {
     `Resolving Bun path for ${targetVersion || 'current'}...`,
     async () => {
       if (!targetVersion || targetVersion === 'current') {
-        if (await pathExists(BVM_CURRENT_BUN_PATH)) {
+        if (await pathExists(BVM_CURRENT_DIR)) {
           try {
-            const realPath = await readlink(BVM_CURRENT_BUN_PATH);
-            console.log(realPath);
+            const realPath = await realpath(BVM_CURRENT_DIR);
+            console.log(join(realPath, 'bin', EXECUTABLE_NAME));
           } catch {
-            throw new Error('Unable to read current Bun symlink.');
+            throw new Error('Unable to resolve current Bun path.');
           }
         } else {
           throw new Error('No active Bun version found (system version is not managed by bvm).');
@@ -35,7 +35,7 @@ export async function whichBunVersion(version?: string): Promise<void> {
       }
 
       const normalized = normalizeVersion(targetVersion);
-      const binPath = join(BVM_VERSIONS_DIR, normalized, EXECUTABLE_NAME);
+      const binPath = join(BVM_VERSIONS_DIR, normalized, 'bin', EXECUTABLE_NAME);
 
       if (await pathExists(binPath)) {
         console.log(binPath);

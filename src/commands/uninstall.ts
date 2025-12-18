@@ -1,8 +1,8 @@
 import { colors } from '../utils/ui';
-import { join } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME } from '../constants';
+import { join, basename } from 'path';
+import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME, BVM_CURRENT_DIR } from '../constants';
 import { pathExists, removeDir, normalizeVersion } from '../utils';
-import { readlink } from 'fs/promises';
+import { readlink, realpath } from 'fs/promises';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -15,7 +15,7 @@ export async function uninstallBunVersion(targetVersion: string): Promise<void> 
     async (spinner) => {
       const normalizedTargetVersion = normalizeVersion(targetVersion);
       const installPath = join(BVM_VERSIONS_DIR, normalizedTargetVersion);
-      const bunExecutablePath = join(installPath, EXECUTABLE_NAME);
+      const bunExecutablePath = join(installPath, 'bin', EXECUTABLE_NAME);
 
       // 1. Check if the version is installed locally
       if (!(await pathExists(bunExecutablePath))) {
@@ -23,16 +23,17 @@ export async function uninstallBunVersion(targetVersion: string): Promise<void> 
       }
 
     // 2. Check if the version is currently active
-    let currentVersionPath: string | null = null;
+    let currentVersionName: string | null = null;
     try {
-      currentVersionPath = await readlink(BVM_CURRENT_BUN_PATH);
-    } catch (error: any) {
-      if (error.code !== 'ENOENT' && error.code !== 'EINVAL') {
-        throw error;
+      if (await pathExists(BVM_CURRENT_DIR)) {
+        const realPath = await realpath(BVM_CURRENT_DIR);
+        currentVersionName = normalizeVersion(basename(realPath));
       }
+    } catch (error: any) {
+      // Ignore
     }
 
-    if (currentVersionPath && currentVersionPath.startsWith(installPath)) {
+    if (currentVersionName === normalizedTargetVersion) {
       throw new Error(`Bun ${targetVersion} is currently active. Please use 'bvm use <another-version>' or 'bvm deactivate' before uninstalling.`);
     }
 

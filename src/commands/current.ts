@@ -1,8 +1,9 @@
 import { colors } from '../utils/ui';
-import { BVM_CURRENT_BUN_PATH } from '../constants';
-import { readlink } from 'fs/promises';
-import { normalizeVersion } from '../utils';
+import { BVM_CURRENT_BUN_PATH, BVM_CURRENT_DIR } from '../constants';
+import { readlink, realpath } from 'fs/promises';
+import { normalizeVersion, pathExists } from '../utils';
 import { withSpinner } from '../command-runner';
+import { basename } from 'path';
 
 /**
  * Displays the currently active Bun version.
@@ -14,22 +15,17 @@ export async function displayCurrentVersion(): Promise<void> {
       let currentVersion: string | null = null;
 
       try {
-        const symlinkTarget = await readlink(BVM_CURRENT_BUN_PATH);
-      // The symlink target is typically ~/.bvm/versions/vX.Y.Z/bun
-      // We need to extract vX.Y.Z from it.
-      const parts = symlinkTarget.split('/');
-      currentVersion = parts[parts.length - 2]; // Get the version part
-      if (currentVersion) {
-        currentVersion = normalizeVersion(currentVersion); // Ensure it's in vX.Y.Z format
+        if (await pathExists(BVM_CURRENT_DIR)) {
+          const realPath = await realpath(BVM_CURRENT_DIR);
+          currentVersion = normalizeVersion(basename(realPath));
+        }
+      } catch (error: any) {
+        if (error.code === 'ENOENT' || error.code === 'EINVAL') {
+          currentVersion = null;
+        } else {
+          throw error;
+        }
       }
-    } catch (error: any) {
-      if (error.code === 'ENOENT' || error.code === 'EINVAL') {
-        // Symlink doesn't exist or is invalid, no current version
-        currentVersion = null;
-      } else {
-        throw error;
-      }
-    }
 
       if (currentVersion) {
         spinner.succeed(colors.green(`Current Bun version: ${currentVersion}`));

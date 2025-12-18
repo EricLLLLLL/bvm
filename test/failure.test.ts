@@ -30,7 +30,7 @@ describe("Failure & Edge Cases Suite", () => {
       await runBvm(["install", "1.2.23"]);
       
       // 2. Corrupt it by removing the binary
-      const binPath = join(TEST_HOME, ".bvm", "versions", "v1.2.23", "bun");
+      const binPath = join(TEST_HOME, ".bvm", "versions", "v1.2.23", "bin", "bun");
       rmSync(binPath);
 
       // 3. Try to use it

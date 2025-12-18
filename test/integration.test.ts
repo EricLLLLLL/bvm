@@ -80,7 +80,7 @@ describe("CLI Integration Suite", () => {
     expect(exitCode).toBe(0);
     expect(allOutput).toContain("Found '.bvmrc' with version <1.0.0>");
 
-    const installedBinPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bun");
+    const installedBinPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bin", "bun");
     expect(await Bun.file(installedBinPath).exists()).toBe(true);
 
     const { allOutput: currentOutput } = await runBvm(["current"]);
@@ -94,13 +94,19 @@ describe("CLI Integration Suite", () => {
   test("install 1.0.0 (fresh) auto-activates version", async () => {
     const { exitCode, allOutput } = await runBvm(["install", "1.0.0"]);
     expect(exitCode).toBe(0);
-    const installedBinPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bun");
+    const installedBinPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bin", "bun");
     expect(await Bun.file(installedBinPath).exists()).toBe(true);
 
     const symlinkPath = join(TEST_BVM_DIR, "bin", "bun");
     expect(existsSync(symlinkPath)).toBe(true);
     const symlinkTarget = readlinkSync(symlinkPath);
-    expect(symlinkTarget).toContain(join("versions", "v1.0.0"));
+    // Now bin/bun points to current/bin/bun
+    expect(symlinkTarget).toContain("current");
+
+    const currentLinkPath = join(TEST_BVM_DIR, "current");
+    expect(existsSync(currentLinkPath)).toBe(true);
+    const currentTarget = readlinkSync(currentLinkPath);
+    expect(currentTarget).toContain(join("versions", "v1.0.0"));
 
     const { allOutput: currentOutput } = await runBvm(["current"]);
     expect(currentOutput).toContain("v1.0.0");
@@ -142,7 +148,7 @@ describe("CLI Integration Suite", () => {
   test("which 1.0.0 returns path", async () => {
     const { exitCode, output } = await runBvm(["which", "1.0.0"]);
     expect(exitCode).toBe(0);
-    expect(output).toContain(".bvm/versions/v1.0.0/bun");
+    expect(output).toContain(".bvm/versions/v1.0.0/bin/bun");
   });
 
   // --- Aliases ---
@@ -220,7 +226,7 @@ describe("CLI Integration Suite", () => {
 
     const { exitCode } = await runBvm(["uninstall", "1.0.0"]);
     expect(exitCode).toBe(0);
-    const binPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bun");
+    const binPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bin", "bun");
     expect(await Bun.file(binPath).exists()).toBe(false);
   });
 
