@@ -18,19 +18,53 @@ GRAY='\033[0;90m'     # Info / Secondary
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# ... (omitted)
+# Helper: Simple Spinner
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps -p $pid -o state= 2>/dev/null)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
 
-# Logo
-echo -e "${MAGENTA}${BOLD}"
-cat << "EOF"
-______________   _________   
-\______   \   \ /   /     \  
- |    |  _/\   Y   /  \ /  \ 
- |    |   \ \     /    Y    \
- |______  /  \___/\____|__  /
-        \/                \/ 
-EOF
-echo -e "${NC}"
+# The Bun version that BVM itself runs on
+if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
+    REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
+else
+    FALLBACK_BUN_VERSION="1.3.5"
+    REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
+    
+    printf "${GRAY}🔍 Resolving latest Bun version...${NC}"
+    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^ ]+"' | cut -d'"' -f4)
+    
+    if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
+        if [ "$LATEST_MAJOR" == "$REQUIRED_MAJOR_VERSION" ]; then
+             REQUIRED_BUN_VERSION="$LATEST_VERSION"
+             echo -e " ${BLUE}v${REQUIRED_BUN_VERSION}${NC}"
+        else
+             REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
+             echo -e " ${GRAY}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
+        fi
+    else
+        REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
+        echo -e " ${GRAY}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
+    fi
+fi
+
+# Logo (Big B + small vm)
+echo -e "${MAGENTA}${BOLD}    ____${NC}"
+echo -e "${MAGENTA}${BOLD}   / __ )${NC}"
+echo -e "${MAGENTA}${BOLD}  / __  |${NC}"
+echo -e "${MAGENTA}${BOLD} / /_/ /   ${CYAN}v m${NC}"
+echo -e "${MAGENTA}${BOLD}/_____/${NC}"
+echo ""
 
 echo -e "${CYAN}${BOLD}🚀 Installing BVM (Bun Version Manager)...${NC}"
 
@@ -148,11 +182,12 @@ echo -e "\n${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
 # Detect shell for the final message
 SHELL_NAME=$(basename "$SHELL")
 case "$SHELL_NAME" in
-  zsh) CONF_FILE="${ZDOTDIR:-$HOME}/.zshrc" ;;
-  bash) CONF_FILE="$([ "$OS" == "Darwin" ] && echo "$HOME/.bash_profile" || echo "$HOME/.bashrc")" ;;
-  fish) CONF_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish" ;;
-  *) CONF_FILE="$HOME/.bashrc" ;;
+  zsh) CONF_FILE="${ZDOTDIR:-$HOME}/.zshrc" ;; 
+  bash) CONF_FILE="$([ "$OS" == "Darwin" ] && echo "$HOME/.bash_profile" || echo "$HOME/.bashrc")" ;; 
+  fish) CONF_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish" ;; 
+  *) CONF_FILE="$HOME/.bashrc" ;; 
 esac
+
 echo -e "\n${BOLD}Next steps:${NC}"
 echo -e "  1. To activate BVM, run:"
 echo -e "     ${YELLOW}${BOLD}source $CONF_FILE${NC}"
