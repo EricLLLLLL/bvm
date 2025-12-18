@@ -81,7 +81,7 @@ if test -f "$BVM_DIR/bin/bvm-init.fish"
   source "$BVM_DIR/bin/bvm-init.fish"
 end`;
 
-  const targetStr = shellName === 'fish' ? 'BVM_DIR' : 'export BVM_DIR';
+  const targetStr = shellName === 'fish' ? 'bvm-init.fish' : 'bvm-init.sh';
 
   if (content.includes(targetStr)) {
     return;
