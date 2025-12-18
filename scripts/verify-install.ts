@@ -41,16 +41,14 @@ async function verifyInstall() {
   const sandboxHome = join(sandboxDir, 'home');
   await mkdir(sandboxHome, { recursive: true });
 
-  // We set BVM_INSTALL_BUN_VERSION to ensure deterministic test
-  // But strictly we should let it resolve to test the resolver too. 
-  // Let's rely on the real resolver logic in install.sh.
-  
+  // TestCase: Simulate existing user with old config (missing init script)
+  const zshrcPath = join(sandboxHome, '.zshrc');
+  await Bun.write(zshrcPath, 'export BVM_DIR="$HOME/.bvm"\nexport PATH="$BVM_DIR/bin:$PATH"\n');
+
   try {
     await runCommand(`bash ${join(projectRoot, 'install.sh')}`, projectRoot, {
       HOME: sandboxHome,
-      // We must mock the download URL for BVM source to point to local dist/index.js
-      // But install.sh has logic: if [ -f "dist/index.js" ]; then copy...
-      // So running it from projectRoot is fine, it will find dist/index.js
+      SHELL: '/bin/zsh' // Force Zsh detection
     });
   } catch (e: any) {
     console.error('❌ install.sh failed:', e.message);
@@ -61,7 +59,18 @@ async function verifyInstall() {
   console.log('🔍 Verifying installation artifacts...');
   const bvmDir = join(sandboxHome, '.bvm');
   const binDir = join(bvmDir, 'bin');
-  const aliasesDir = join(bvmDir, 'aliases'); // This was the bug fix! 
+  const aliasesDir = join(bvmDir, 'aliases'); 
+  
+  // Verify .zshrc update
+  const zshrcContent = await Bun.file(zshrcPath).text();
+  if (!zshrcContent.includes('bvm-init.sh')) {
+      console.error('❌ FAILED: .zshrc was not updated with bvm-init.sh source command.');
+      console.error('Content:', zshrcContent);
+      process.exit(1);
+  }
+  console.log('✅ .zshrc updated with init script.');
+
+  // Check Default Alias 
   
   // Check Default Alias
   const defaultAliasPath = join(aliasesDir, 'default');
