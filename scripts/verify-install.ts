@@ -15,6 +15,9 @@ async function runCommand(cmd: string, cwd: string, env: Record<string, string>)
   const error = await new Response(proc.stderr).text();
   const exitCode = await proc.exited;
 
+  if (output.trim()) console.log(output.trim());
+  if (error.trim()) console.error(error.trim());
+
   if (exitCode !== 0) {
     throw new Error(`Command failed: ${cmd}\nExit Code: ${exitCode}\nError: ${error}\nOutput: ${output}`);
   }
@@ -116,11 +119,21 @@ async function verifyInstall() {
 
   // 2. Run the init script (This is what happens in every new terminal)
   console.log('   - Running bvm-init.sh (simulating new terminal)...');
-  await runCommand(`bash ${join(binDir, 'bvm-init.sh')}`, sandboxDir, { 
+  // Remove silent to see errors
+  const initScriptPath = join(binDir, 'bvm-init.sh');
+  let scriptContent = await Bun.file(initScriptPath).text();
+  scriptContent = scriptContent.replace('--silent >/dev/null 2>&1 || true', ''); 
+  await Bun.write(initScriptPath, scriptContent);
+
+  await runCommand(`bash ${initScriptPath}`, sandboxDir, { 
     HOME: sandboxHome, 
     BVM_DIR: bvmDir,
     PATH: `${binDir}:${process.env.PATH}` 
   });
+
+  // Debug: check where the symlink points
+  const currentLink = await Bun.file(join(binDir, 'bun')).readlink();
+  console.log(`   - Symlink now points to: ${currentLink}`);
 
   // 3. Verify it's back to default
   const revertedVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
