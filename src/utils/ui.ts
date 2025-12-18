@@ -74,7 +74,7 @@ export class Spinner {
 export class ProgressBar {
   private total: number;
   private current: number = 0;
-  private width: number = 40;
+  private width: number = 25; // Reduced width to prevent line wrapping
 
   constructor(total: number) {
     this.total = total;
@@ -91,7 +91,8 @@ export class ProgressBar {
   }
 
   stop() {
-    process.stdout.write('\n\x1b[?25h'); // Show cursor
+    // Move to next line and show cursor
+    process.stdout.write('\n\x1b[?25h'); 
   }
 
   private render(data?: { speed: string }) {
@@ -99,14 +100,14 @@ export class ProgressBar {
     const filled = Math.round(this.width * percentage);
     const empty = this.width - filled;
     const bar = colors.green('█'.repeat(filled)) + colors.gray('░'.repeat(empty));
-    const percentStr = (percentage * 100).toFixed(0);
-    const speedStr = data ? ` | ${data.speed} kb/s` : '';
+    const percentStr = (percentage * 100).toFixed(0).padStart(3, ' ');
+    const speedStr = data ? ` | ${data.speed.padStart(7, ' ')} KB/s` : '';
     
     const currentMB = (this.current / (1024 * 1024)).toFixed(2);
     const totalMB = (this.total / (1024 * 1024)).toFixed(2);
     
-    // Clear line (\x1b[K) and move to start (\r)
-    process.stdout.write(`\r\x1b[K ${bar} | ${percentStr}% | ${currentMB}/${totalMB} MB${speedStr}`);
+    // Use \r to return to start and \x1b[2K to clear the entire line
+    process.stdout.write(`\r\x1b[2K ${bar} | ${percentStr}% | ${currentMB}/${totalMB} MB${speedStr}`);
   }
 }
 
