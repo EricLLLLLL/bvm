@@ -28,7 +28,7 @@ export const BVM_CURRENT_BUN_PATH = join(BVM_BIN_DIR, EXECUTABLE_NAME);
 export const BUN_GITHUB_RELEASES_API = 'https://api.github.com/repos/oven-sh/bun/releases';
 
 // Repository for BVM CLI
-export const REPO_FOR_BVM_CLI = 'bvm-cli/bvm';
+export const REPO_FOR_BVM_CLI = 'EricLLLLLL/bvm';
 // Asset name for BVM CLI releases
 export const ASSET_NAME_FOR_BVM = OS_PLATFORM === 'win32' ? 'bvm.exe' : 'bvm';
 

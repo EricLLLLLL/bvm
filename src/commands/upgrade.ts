@@ -39,7 +39,7 @@ export async function upgradeBvm(): Promise<void> {
       return;
     }
 
-    const installScriptUrl = 'https://raw.githubusercontent.com/bvm-cli/bvm/main/install.sh';
+    const installScriptUrl = 'https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh';
     const response = await fetch(installScriptUrl);
     if (!response.ok) {
       throw new Error(`Failed to download install script: ${response.statusText} (${response.status})`);

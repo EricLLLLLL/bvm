@@ -62,7 +62,7 @@ if (Test-Path "dist\index.js") {
     Copy-Item "dist\index.js" -Destination "$BVM_SRC_DIR\index.js" -Force
 } else {
     Write-Host "Downloading BVM source..." -ForegroundColor Blue
-    $SOURCE_URL = "https://github.com/bvm-cli/bvm/releases/latest/download/index.js"
+    $SOURCE_URL = "https://github.com/EricLLLLLL/bvm/releases/latest/download/index.js"
     
     # Allow override
     if ($env:BVM_SOURCE_URL) {

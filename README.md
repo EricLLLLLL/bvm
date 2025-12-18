@@ -2,8 +2,8 @@
 
 > The native version manager for Bun. Cross-platform, zero-dependency, and works out of the box.
 
-![License](https://img.shields.io/github/license/bvm-cli/bvm)
-![Release](https://img.shields.io/github/v/release/bvm-cli/bvm)
+![License](https://img.shields.io/github/license/EricLLLLLL/bvm)
+![Release](https://img.shields.io/github/v/release/EricLLLLLL/bvm)
 ![Bun](https://img.shields.io/badge/Written%20in-Bun-f472b6)
 
 ## ✨ Core Features
@@ -24,13 +24,13 @@
 ### macOS / Linux / WSL
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bvm-cli/bvm/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/bvm-cli/bvm/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex
 ```
 
 After installation, restart your terminal or source your config file (e.g., `source ~/.zshrc`).
@@ -96,4 +96,4 @@ bun run build
 
 ## 📄 License
 
-MIT © [bvm-cli](https://github.com/bvm-cli)
+MIT © [EricLLLLLL](https://github.com/EricLLLLLL)

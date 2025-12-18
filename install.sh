@@ -184,7 +184,7 @@ if [ -f "dist/index.js" ]; then
 else
     echo -e "${CYAN}⬇️  Downloading BVM source...${NC}"
     # Download directly from GitHub Releases (latest)
-    SOURCE_URL="https://github.com/bvm-cli/bvm/releases/latest/download/index.js"
+    SOURCE_URL="https://github.com/EricLLLLLL/bvm/releases/latest/download/index.js"
     
     # Allow override
     if [ -n "$BVM_SOURCE_URL" ]; then

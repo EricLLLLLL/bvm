@@ -15,9 +15,9 @@ Then, clone your forked repository locally:
 ```bash
 git clone https://github.com/<your-username>/bvm.git
 cd bvm
-git remote add upstream https://github.com/bvm-cli/bvm.git
+git remote add upstream https://github.com/EricLLLLLL/bvm.git
 ```
-This sets up your local repository to track both your fork (`origin`) and the original `bvm-cli/bvm` repository (`upstream`).
+This sets up your local repository to track both your fork (`origin`) and the original `EricLLLLLL/bvm` repository (`upstream`).
 
 ### 2. Setup
 Install development dependencies:
