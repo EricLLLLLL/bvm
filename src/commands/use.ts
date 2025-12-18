@@ -54,7 +54,25 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
 
     // 1. Check if the version is installed locally
     const installPath = join(BVM_VERSIONS_DIR, normalizedFinalResolvedVersion);
-    const bunExecutablePath = join(installPath, 'bin', EXECUTABLE_NAME);
+    const installBinPath = join(installPath, 'bin');
+    const bunExecutablePath = join(installBinPath, EXECUTABLE_NAME);
+
+    // Auto-migration: If old structure exists (bun in root), move to new structure (bun in bin/)
+    const oldExecutablePath = join(installPath, EXECUTABLE_NAME);
+    if (!(await pathExists(bunExecutablePath)) && (await pathExists(oldExecutablePath))) {
+        if (!options.silent) {
+            console.log(colors.dim(`Migrating ${finalResolvedVersion} to new directory structure...`));
+        }
+        await ensureDir(installBinPath);
+        const { rename } = require('node:fs/promises');
+        await rename(oldExecutablePath, bunExecutablePath);
+    }
+
+    if (!(await pathExists(bunExecutablePath))) {
+      const errorMsg = `Resolved version ${finalResolvedVersion} is not installed correctly (missing binary in bin/).`;
+      if (spinner) spinner.fail(colors.red(errorMsg));
+      throw new Error(errorMsg);
+    }
 
     // 2. Create/update the symlinks
     await ensureDir(BVM_BIN_DIR); // Ensure the manager bin directory exists

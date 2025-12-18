@@ -15,11 +15,11 @@ export async function listLocalVersions(): Promise<void> {
       const installedVersions = await getInstalledVersions(); // Returns normalized 'vX.Y.Z'
       let currentVersion: string | null = null; // Normalized 'vX.Y.Z'
 
-    // Determine the currently active version by reading the symlink target
+    // Determine the currently active version by reading the 'current' directory symlink
+    const { BVM_CURRENT_DIR } = require('../constants');
     try {
-      const symlinkTarget = await readlink(BVM_CURRENT_BUN_PATH);
-      const parts = symlinkTarget.split('/');
-      currentVersion = normalizeVersion(parts[parts.length - 2]); 
+      const symlinkTarget = await readlink(BVM_CURRENT_DIR);
+      currentVersion = normalizeVersion(basename(symlinkTarget)); 
     } catch (error: any) {
       if (error.code !== 'ENOENT' && error.code !== 'EINVAL') {
         throw error;
