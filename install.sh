@@ -41,7 +41,7 @@ else
     REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
     
     printf "${GRAY}🔍 Resolving latest Bun version...${NC}"
-    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^ ]+"' | cut -d'"' -f4)
+    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^" ]+"' | cut -d'"' -f4)
     
     if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
@@ -58,13 +58,17 @@ else
     fi
 fi
 
-# Logo (Big B + small vm)
-echo -e "${MAGENTA}${BOLD}    ____${NC}"
-echo -e "${MAGENTA}${BOLD}   / __ )${NC}"
-echo -e "${MAGENTA}${BOLD}  / __  |${NC}"
-echo -e "${MAGENTA}${BOLD} / /_/ /   ${CYAN}v m${NC}"
-echo -e "${MAGENTA}${BOLD}/_____/${NC}"
-echo ""
+# Logo (Restored to Original BVM style)
+echo -e "${MAGENTA}${BOLD}"
+cat << "EOF"
+______________   _________   
+\______   \   \ /   /     \  
+ |    |  _/  Y   /  \ /  \ 
+ |    |   \ \     /    Y    \
+ |______  /  \___/\____|__  /
+        \/                \/ 
+EOF
+echo -e "${NC}"
 
 echo -e "${CYAN}${BOLD}🚀 Installing BVM (Bun Version Manager)...${NC}"
 
@@ -73,15 +77,15 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "$OS" in
-  Linux) PLATFORM="linux" ;; 
-  Darwin) PLATFORM="darwin" ;; 
-  *) echo -e "${RED}Unsupported OS: $OS${NC}"; exit 1 ;; 
+  Linux) PLATFORM="linux" ;;
+  Darwin) PLATFORM="darwin" ;;
+  *) echo -e "${RED}Unsupported OS: $OS${NC}"; exit 1 ;;
 esac
 
 case "$ARCH" in
-  x86_64) BUN_ARCH="x64" ;; 
-  arm64|aarch64) BUN_ARCH="aarch64" ;; 
-  *) echo -e "${RED}Unsupported Architecture: $ARCH${NC}"; exit 1 ;; 
+  x86_64) BUN_ARCH="x64" ;;
+  arm64|aarch64) BUN_ARCH="aarch64" ;;
+  *) echo -e "${RED}Unsupported Architecture: $ARCH${NC}"; exit 1 ;;
 esac
 
 BUN_ASSET_NAME="bun-${PLATFORM}-${BUN_ARCH}"
@@ -182,10 +186,10 @@ echo -e "\n${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
 # Detect shell for the final message
 SHELL_NAME=$(basename "$SHELL")
 case "$SHELL_NAME" in
-  zsh) CONF_FILE="${ZDOTDIR:-$HOME}/.zshrc" ;; 
-  bash) CONF_FILE="$([ "$OS" == "Darwin" ] && echo "$HOME/.bash_profile" || echo "$HOME/.bashrc")" ;; 
-  fish) CONF_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish" ;; 
-  *) CONF_FILE="$HOME/.bashrc" ;; 
+  zsh) CONF_FILE="${ZDOTDIR:-$HOME}/.zshrc" ;;
+  bash) CONF_FILE="$([ "$OS" == "Darwin" ] && echo "$HOME/.bash_profile" || echo "$HOME/.bashrc")" ;;
+  fish) CONF_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish" ;;
+  *) CONF_FILE="$HOME/.bashrc" ;;
 esac
 
 echo -e "\n${BOLD}Next steps:${NC}"
