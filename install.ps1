@@ -151,20 +151,26 @@ if ($env:BVM_MODE -ne "upgrade" -and (-not (Test-Path $DEFAULT_ALIAS_LINK))) {
     Write-Host "Setting Bun v$REQUIRED_BUN_VERSION (runtime) as the default global version." -ForegroundColor Cyan
     
     $DefaultVersionDir = "$VERSIONS_DIR\v$REQUIRED_BUN_VERSION"
-    New-Item -ItemType Directory -Force -Path $DefaultVersionDir | Out-Null
+    $DefaultBinDir = "$DefaultVersionDir\bin"
+    New-Item -ItemType Directory -Force -Path $DefaultBinDir | Out-Null
     
     # Copy bun exe
     $RuntimeBun = "$TARGET_RUNTIME_DIR\bin\bun.exe"
     if (-not (Test-Path $RuntimeBun)) {
-         # Fallback for some windows structure if bin is missing
          $RuntimeBun = "$TARGET_RUNTIME_DIR\bun.exe"
     }
     
-    Copy-Item $RuntimeBun -Destination "$DefaultVersionDir\bun.exe" -Force
+    Copy-Item $RuntimeBun -Destination "$DefaultBinDir\bun.exe" -Force
     
     New-Item -ItemType Directory -Force -Path $AliasesDir | Out-Null
     "v$REQUIRED_BUN_VERSION" | Set-Content -Path "$DEFAULT_ALIAS_LINK" -NoNewline
     
+    # Setup initial symlinks/junctions
+    # Note: On Windows we often use the full path in the wrapper, but let's set up the current pointer
+    $CurrentDir = "$BVM_DIR\current"
+    if (Test-Path $CurrentDir) { Remove-Item $CurrentDir -Force }
+    New-Item -ItemType Junction -Path $CurrentDir -Value $DefaultVersionDir | Out-Null
+
     & "$WRAPPER_PATH" use default --silent
     Write-Host "Bun v$REQUIRED_BUN_VERSION is now your default version." -ForegroundColor Green
 }

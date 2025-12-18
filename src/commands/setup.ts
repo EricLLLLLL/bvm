@@ -72,10 +72,13 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
     }
   }
   const exportStr = `export BVM_DIR="${BVM_DIR}"
-export PATH="$BVM_DIR/bin:$PATH"
+export BUN_INSTALL="$BVM_DIR/current"
+export PATH="$BUN_INSTALL/bin:$BVM_DIR/bin:$PATH"
 [ -s "$BVM_DIR/bin/bvm-init.sh" ] && . "$BVM_DIR/bin/bvm-init.sh" # Load BVM default init`;
 
   const fishStr = `set -Ux BVM_DIR "${BVM_DIR}"
+set -Ux BUN_INSTALL "$BVM_DIR/current"
+fish_add_path "$BUN_INSTALL/bin"
 fish_add_path "$BVM_DIR/bin"
 if test -f "$BVM_DIR/bin/bvm-init.fish"
   source "$BVM_DIR/bin/bvm-init.fish"

@@ -64,7 +64,8 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     const { url, foundVersion } = result;
 
     const installDir = join(BVM_VERSIONS_DIR, foundVersion);
-    const bunExecutablePath = join(installDir, EXECUTABLE_NAME);
+    const installBinDir = join(installDir, 'bin');
+    const bunExecutablePath = join(installBinDir, EXECUTABLE_NAME);
 
     if (await pathExists(bunExecutablePath)) {
       spinner.succeed(colors.green(`Bun ${foundVersion} is already installed.`));
@@ -74,31 +75,13 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     }
 
     // Optimization: If the requested version matches the current runtime version, copy it!
-    // Bun.version is like '1.3.4', foundVersion is 'v1.3.4'
     const currentRuntimeVersion = normalizeVersion(Bun.version);
     
     if (currentRuntimeVersion === foundVersion && !IS_TEST_MODE) {
-        // process.execPath is usually .../bin/bun
-        // We assume the runtime structure is standard (bin/bun or just bun)
-        // Let's try to find the root of the current runtime
         const currentBunPath = process.execPath;
-        // Check if we are running from a BVM runtime structure
-        // Typical structure: ~/.bvm/runtime/v1.3.4/bin/bun
-        // We want to copy ~/.bvm/runtime/v1.3.4 content to ~/.bvm/versions/v1.3.4
-        
-        // Simple heuristic: copying the binary is enough for functionality, 
-        // but we want the whole package (LICENSE, etc) if possible.
-        // But for "runtime" optimization, just copying the binary and creating the structure is 99% fine.
-        
         spinner.info(colors.cyan(`Requested version ${foundVersion} matches current BVM runtime. Copying local files...`));
-        await ensureDir(installDir);
+        await ensureDir(installBinDir);
         
-        // We replicate the logic: binary should be at installDir/bun (bvm structure for versions)
-        // BVM versions dir structure: ~/.bvm/versions/v1.2.3/bun
-        // Wait, installBunVersion below does:
-        // mv .../bin/bun .../bunExecutablePath (which is installDir/bun)
-        
-        // So we just need to copy process.execPath to bunExecutablePath
         const destFile = Bun.file(bunExecutablePath);
         const srcFile = Bun.file(currentBunPath);
         await Bun.write(destFile, srcFile);
@@ -107,15 +90,11 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
         spinner.succeed(colors.green(`Bun ${foundVersion} installed from local runtime.`));
         installedVersion = foundVersion;
         shouldConfigureShell = true;
-        
-        // Return early from this optimization block
-        // The common cleanup (configureShell and useBunVersion) happens after this block.
-        // The first install/alias logic should be handled by the main flow.
     }
 
     if (!installedVersion) {
         if (IS_TEST_MODE) {
-          await ensureDir(installDir);
+          await ensureDir(installBinDir);
           await writeTestBunBinary(bunExecutablePath, foundVersion);
         } else {
           spinner.update(`Initiating download for Bun ${foundVersion}...`);
@@ -163,7 +142,6 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
                 loaded += value.length;
                 if (progressBar) {
                   const now = Date.now();
-                  // Update speed info every 500ms
                   if (now - lastTime >= 500) {
                     const speed = (loaded - lastLoaded) / (now - lastTime) * 1000 / 1024;
                     progressBar.update(loaded, { speed: speed.toFixed(2) });
@@ -171,7 +149,6 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
                     lastTime = now;
                     lastRenderTime = now;
                   } 
-                  // Update progress visual at most every 100ms
                   else if (now - lastRenderTime >= 100) {
                     progressBar.update(loaded);
                     lastRenderTime = now;
@@ -180,7 +157,6 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
               }
             } finally {
               writer.end();
-              writer.flush?.();
             }
     
             if (progressBar) {
@@ -189,7 +165,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
           }
     
           spinner.start(`Extracting Bun ${foundVersion}...`);
-          await ensureDir(installDir);
+          await ensureDir(installDir); // We extract to the version root
     
           try {
             await extractArchive(cachedArchivePath, installDir);
@@ -197,39 +173,45 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
             throw new Error(`Extraction failed: ${e.message}`);
           }
     
-          let finalBunPath = '';
-          const possibleBunPaths = [
+          // Find the actual binary within extracted content
+          let foundSourceBunPath = '';
+          const possiblePaths = [
             join(installDir, EXECUTABLE_NAME),
-            join(installDir, 'bun-darwin-x64', EXECUTABLE_NAME),
-            join(installDir, 'bun-darwin-aarch64', EXECUTABLE_NAME),
-            join(installDir, 'bun-linux-x64', EXECUTABLE_NAME),
-            join(installDir, 'bun-linux-aarch64', EXECUTABLE_NAME),
-            join(installDir, 'bun', EXECUTABLE_NAME),
+            join(installDir, 'bin', EXECUTABLE_NAME),
+            join(installDir, `bun-${process.platform}-${process.arch}`, EXECUTABLE_NAME),
+            join(installDir, `bun-${process.platform}-${process.arch}`, 'bin', EXECUTABLE_NAME),
           ];
-    
+
+          // Add dynamic subdirectories to search
           const dirEntries = await readDir(installDir);
-          const subDirs = dirEntries.filter(s => s.trim().length > 0 && s.startsWith('bun-'));
-          for (const subDir of subDirs) {
-            possibleBunPaths.push(join(installDir, subDir, EXECUTABLE_NAME));
-            possibleBunPaths.push(join(installDir, subDir, 'bin', EXECUTABLE_NAME));
+          for (const entry of dirEntries) {
+              if (entry.startsWith('bun-')) {
+                  possiblePaths.push(join(installDir, entry, EXECUTABLE_NAME));
+                  possiblePaths.push(join(installDir, entry, 'bin', EXECUTABLE_NAME));
+              }
           }
     
-          for (const p of possibleBunPaths) {
+          for (const p of possiblePaths) {
             if (await pathExists(p)) {
-              finalBunPath = p;
+              foundSourceBunPath = p;
               break;
             }
           }
     
-          if (!finalBunPath) {
+          if (!foundSourceBunPath) {
             throw new Error(`Could not find bun executable in ${installDir}`);
           }
     
-          if (finalBunPath !== bunExecutablePath) {
-            await runCommand(['mv', finalBunPath, bunExecutablePath]);
-            const parentDir = dirname(finalBunPath);
-            if (parentDir !== installDir && parentDir.startsWith(installDir)) {
-              await removeDir(parentDir);
+          // Ensure target bin directory exists
+          await ensureDir(installBinDir);
+
+          // Move binary to ~/.bvm/versions/vX.Y.Z/bin/bun
+          if (foundSourceBunPath !== bunExecutablePath) {
+            await runCommand(['mv', foundSourceBunPath, bunExecutablePath]);
+            // Clean up extraction artifacts if they are in a subfolder
+            const parentDir = dirname(foundSourceBunPath);
+            if (parentDir !== installDir && parentDir !== installBinDir) {
+                await removeDir(parentDir);
             }
           }
     

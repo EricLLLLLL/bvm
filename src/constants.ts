@@ -15,6 +15,8 @@ export const BVM_DIR = join(HOME, '.bvm');
 export const BVM_VERSIONS_DIR = join(BVM_DIR, 'versions');
 // Directory for symlinks to active Bun version (~/.bvm/bin)
 export const BVM_BIN_DIR = join(BVM_DIR, 'bin');
+// Active version symlink (~/.bvm/current) - used for global package isolation
+export const BVM_CURRENT_DIR = join(BVM_DIR, 'current');
 // Directory for aliases (~/.bvm/aliases)
 export const BVM_ALIAS_DIR = join(BVM_DIR, 'aliases');
 // Directory for cache (~/.bvm/cache)

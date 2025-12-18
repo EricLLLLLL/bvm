@@ -54,18 +54,18 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
 
     // 1. Check if the version is installed locally
     const installPath = join(BVM_VERSIONS_DIR, normalizedFinalResolvedVersion);
-    const bunExecutablePath = join(installPath, EXECUTABLE_NAME);
+    const bunExecutablePath = join(installPath, 'bin', EXECUTABLE_NAME);
 
-    // This check should ideally not fail if the version was resolved from installed versions
-    if (!(await pathExists(bunExecutablePath))) {
-      const errorMsg = `Resolved version ${finalResolvedVersion} is not installed. This usually means an alias points to a missing version.`;
-      if (spinner) spinner.fail(colors.red(errorMsg));
-      throw new Error(errorMsg);
-    }
+    // 2. Create/update the symlinks
+    await ensureDir(BVM_BIN_DIR); // Ensure the manager bin directory exists
+    
+    // Update directory symlink (~/.bvm/current -> ~/.bvm/versions/vX.Y.Z)
+    const { BVM_CURRENT_DIR } = require('../constants');
+    await createSymlink(installPath, BVM_CURRENT_DIR);
 
-    // 2. Create/update the symlink
-    await ensureDir(BVM_BIN_DIR); // Ensure the bin directory exists
-    await createSymlink(bunExecutablePath, join(BVM_BIN_DIR, EXECUTABLE_NAME));
+    // Update single binary symlink for convenience (~/.bvm/bin/bun -> ~/.bvm/current/bin/bun)
+    // Note: We point to the symlink directory to make it doubly dynamic
+    await createSymlink(join(BVM_CURRENT_DIR, 'bin', EXECUTABLE_NAME), join(BVM_BIN_DIR, EXECUTABLE_NAME));
 
     if (spinner) {
         spinner.succeed(colors.green(`Bun ${finalResolvedVersion} is now active.`));

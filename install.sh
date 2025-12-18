@@ -196,11 +196,15 @@ DEFAULT_ALIAS_LINK="${BVM_DIR}/aliases/default"
 
 if [ "$BVM_MODE" != "upgrade" ] && [ ! -f "$DEFAULT_ALIAS_LINK" ]; then
     echo -e "\n${BLUE}ℹ️  Setting Bun v${REQUIRED_BUN_VERSION} as the default global version.${NC}"
-    mkdir -p "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}"
-    cp "${TARGET_RUNTIME_DIR}/bin/bun" "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}/bun"
+    mkdir -p "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}/bin"
+    cp "${TARGET_RUNTIME_DIR}/bin/bun" "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}/bin/bun"
     mkdir -p "${BVM_DIR}/aliases"
     echo "v${REQUIRED_BUN_VERSION}" > "${BVM_DIR}/aliases/default"
-    "$WRAPPER_PATH" use default --silent
+    
+    # Critical: Initialize the 'current' symlink and PATH-facing symlink
+    ln -sf "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}" "${BVM_DIR}/current"
+    ln -sf "${BVM_DIR}/current/bin/bun" "${BVM_DIR}/bin/bun"
+    
     echo -e "${GREEN}✓ Bun v${REQUIRED_BUN_VERSION} is now your default version.${NC}"
 fi
 
@@ -218,4 +222,5 @@ esac
 echo -e "\n${BOLD}Next steps:${NC}"
 echo -e "  1. To activate BVM, run:"
 echo -e "     ${YELLOW}${BOLD}source $CONF_FILE${NC}"
-echo -e "  2. Run ${CYAN}bvm --help${NC} to get started."
+echo -e "  2. Now 'bun install -g' will be isolated per version!${NC}"
+echo -e "  3. Run ${CYAN}bvm --help${NC} to get started."
