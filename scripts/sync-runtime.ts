@@ -2,13 +2,29 @@ import { join } from 'path';
 
 async function getLatestBun1xVersion() {
   // Use npm view to resolve the latest version satisfying ^1
-  // This ensures we get the latest 1.x but avoid 2.0+
   const proc = Bun.spawn(["npm", "view", "bun@^1", "version"], { stdout: "pipe" });
   const output = await new Response(proc.stdout).text();
-  const version = output.trim();
+  
+  // npm view can return a list of versions if multiple match, or a single version.
+  // Example list output: 
+  // bun@1.0.0 '1.0.0'
+  // ...
+  // bun@1.3.5 '1.3.5'
+  
+  // We want the last one.
+  const lines = output.trim().split('\n').filter(line => line.trim() !== '');
+  let lastLine = lines[lines.length - 1];
+  
+  // Clean up: sometimes it returns "bun@1.3.5 '1.3.5'", sometimes just "1.3.5"
+  // If it contains a quote, take the content inside the last pair of quotes
+  if (lastLine.includes("'")) {
+    lastLine = lastLine.split("'")[1];
+  }
+  
+  const version = lastLine.trim();
   
   if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-    throw new Error(`Failed to resolve latest Bun version. Output: ${version}`);
+    throw new Error(`Failed to resolve latest Bun version. Parsed: "${version}". Raw Output tail: ...${output.slice(-100)}`);
   }
   return version;
 }
