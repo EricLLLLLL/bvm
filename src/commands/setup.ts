@@ -87,7 +87,9 @@ end`;
     return;
   }
 
-  console.log(colors.cyan(`Configuring ${shellName} environment in ${configFile}...`));
+  if (displayPrompt) {
+    console.log(colors.cyan(`Configuring ${shellName} environment in ${configFile}...`));
+  }
 
   try {
     if (shellName === 'fish') {
@@ -101,8 +103,8 @@ ${fishStr}
 ${exportStr}
 `);
     }
-    console.log(colors.green(`✓ Successfully configured BVM path in ${configFile}`));
     if (displayPrompt) {
+        console.log(colors.green(`✓ Successfully configured BVM path in ${configFile}`));
         console.log(colors.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
     }
   } catch (error: any) {
@@ -147,12 +149,14 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
         return;
     }
 
-    console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
+    if (displayPrompt) {
+        console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
+    }
 
     try {
         await appendFile(profilePath, psStr);
-        console.log(colors.green(`✓ Successfully configured BVM path in ${profilePath}`));
         if (displayPrompt) {
+            console.log(colors.green(`✓ Successfully configured BVM path in ${profilePath}`));
             console.log(colors.yellow(`Please restart your terminal or run ". $PROFILE" to apply changes.`));
         }
     } catch (error: any) {

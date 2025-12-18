@@ -31,12 +31,12 @@ export async function runWithBunVersion(targetVersion: string, args: string[]): 
     // 1. Check if the version is installed locally
       if (!(await pathExists(bunExecutablePath))) {
         spinner.fail(colors.red(`Bun ${targetVersion} (resolved: ${resolvedVersion}) is not installed.`));
-      console.log(colors.blue(`You can install it using: bvm install ${targetVersion}`));
+      console.log(colors.yellow(`You can install it using: bvm install ${targetVersion}`));
       return;
     }
 
-    spinner.text = colors.blue(`Executing 'bun ${args.join(' ')}' with Bun ${resolvedVersion}...`);
     spinner.stop();
+    // console.log(colors.dim(`Executing 'bun ${args.join(' ')}' with Bun ${resolvedVersion}...`)); // Optional: verify if we want this noise
 
     try {
       await runCommand([bunExecutablePath, ...args], {

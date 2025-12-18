@@ -25,7 +25,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
   if (!versionToInstall) {
     versionToInstall = await getRcVersion() || undefined;
     if (versionToInstall) {
-        console.log(colors.blue(`Found '.bvmrc' with version <${versionToInstall}>`));
+        console.log(colors.dim(`Found '.bvmrc' with version <${versionToInstall}>`));
     }
   }
 
@@ -50,7 +50,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
 
     if (!resolvedVersion) {
         spinner.fail(colors.red(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`));
-        console.log(colors.blue(`Available remote versions: ${filteredRemoteVersions.length > 0 ? filteredRemoteVersions.join(', ') : 'None'}`));
+        console.log(colors.cyan(`Available remote versions: ${filteredRemoteVersions.length > 0 ? filteredRemoteVersions.join(', ') : 'None'}`));
         throw new Error(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`);
     }
 
@@ -67,7 +67,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     const bunExecutablePath = join(installDir, EXECUTABLE_NAME);
 
     if (await pathExists(bunExecutablePath)) {
-      spinner.info(colors.blue(`Bun ${foundVersion} is already installed.`));
+      spinner.succeed(colors.green(`Bun ${foundVersion} is already installed.`));
       installedVersion = foundVersion;
       shouldConfigureShell = true;
       return;
@@ -240,7 +240,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
         const currentlyInstalledVersions = await getInstalledVersions();
         // After install, the newly installed version will be in the list, so if size is 1, it's the first.
         if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
-            console.log(colors.blue(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
+            console.log(colors.cyan(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
             // Use the alias creation logic
             await createAlias('default', foundVersion); 
         }

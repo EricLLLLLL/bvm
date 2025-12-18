@@ -202,9 +202,10 @@ app.command('cache <action>', 'Manage bvm cache')
   });
 
 app.command('setup', 'Configure shell environment automatically')
-  .action(async () => {
+  .option('--silent, -s', 'Suppress output')
+  .action(async (_args, flags) => {
     try {
-      await configureShell();
+      await configureShell(!(flags.silent || flags.s));
     } catch (error: any) {
       console.error(colors.red(`✖ ${error.message}`));
       process.exit(1);

@@ -29,12 +29,12 @@ export async function execWithBunVersion(targetVersion: string, command: string,
     // 1. Check if the specified Bun version is installed locally
       if (!(await pathExists(bunExecutablePath))) {
         spinner.fail(colors.red(`Bun ${targetVersion} (resolved: ${resolvedVersion}) is not installed.`));
-      console.log(colors.blue(`You can install it using: bvm install ${targetVersion}`));
+      console.log(colors.yellow(`You can install it using: bvm install ${targetVersion}`));
       return;
     }
 
-    spinner.update(colors.blue(`Executing '${command} ${args.join(' ')}' with Bun ${resolvedVersion}'s environment...`));
     spinner.stop();
+    // spinner.update() here was useless because stop() clears the line immediately.
 
     try {
       await runCommand([command, ...args], {

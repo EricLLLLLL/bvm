@@ -17,7 +17,7 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
   if (!versionToUse) {
     versionToUse = await getRcVersion() || undefined;
     if (versionToUse && !options.silent) {
-        console.log(colors.blue(`Found '.bvmrc' with version <${versionToUse}>`));
+        console.log(colors.dim(`Found '.bvmrc' with version <${versionToUse}>`));
     }
   }
 
@@ -44,7 +44,7 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
     if (!finalResolvedVersion) {
       const installed = (await getInstalledVersions()).map(v => normalizeVersion(v));
       if (!options.silent) {
-        console.log(colors.blue(`Available installed versions: ${installed.length > 0 ? installed.join(', ') : 'None'}`));
+        console.log(colors.cyan(`Available installed versions: ${installed.length > 0 ? installed.join(', ') : 'None'}`));
       }
       throw new Error(`Bun version '${versionToUse}' is not installed or cannot be resolved.`);
     }

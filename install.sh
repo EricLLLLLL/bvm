@@ -14,7 +14,7 @@ REQUIRED_BUN_VERSION="1.3.4"
 RED='\033[1;31m'      # Error (Bold Red)
 GREEN='\033[1;32m'    # Success (Bold Green)
 YELLOW='\033[1;33m'   # Warning (Bold Yellow)
-BLUE='\033[1;35m'     # Info/Secondary (Bold Magenta) - Replaces dark blue
+BLUE='\033[1;34m'     # Info/Secondary (Bold Blue)
 CYAN='\033[1;36m'     # Primary/Brand (Bold Cyan)
 GRAY='\033[0;90m'     # Dim/Muted
 BOLD='\033[1m'
@@ -190,6 +190,27 @@ echo -e "${CYAN}⚙️  Configuring shell environment...${NC}"
 # Use the newly installed bvm to run setup
 "$WRAPPER_PATH" setup --silent
 
+# Detect shell for the final message
+SHELL_NAME=$(basename "$SHELL")
+case "$SHELL_NAME" in
+  zsh)
+    CONF_FILE="~/.zshrc"
+    ;;
+  bash)
+    if [ "$PLATFORM" == "darwin" ]; then
+      CONF_FILE="~/.bash_profile"
+    else
+      CONF_FILE="~/.bashrc"
+    fi
+    ;;
+  fish)
+    CONF_FILE="~/.config/fish/config.fish"
+    ;;
+  *)
+    CONF_FILE="~/.bashrc"
+    ;;
+esac
+
 echo -e "\n${BOLD}Next steps:${NC}"
-echo -e "  1. Restart your terminal or run: ${YELLOW}source ~/.bashrc${NC} (or similar)"
+echo -e "  1. Restart your terminal or run: ${YELLOW}source $CONF_FILE${NC}"
 echo -e "  2. Run ${CYAN}bvm --help${NC} to get started."

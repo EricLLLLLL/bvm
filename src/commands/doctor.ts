@@ -87,8 +87,11 @@ function printReport(report: DoctorReport): void {
     console.log('  (none installed)');
   } else {
     report.installedVersions.forEach((version) => {
-      const marker = version === report.currentVersion ? colors.green(' (current)') : '';
-      console.log(`  ${version}${marker}`);
+      const isCurrent = version === report.currentVersion;
+      const prefix = isCurrent ? colors.green('*') : ' ';
+      const display = isCurrent ? colors.green(version) : version;
+      const marker = isCurrent ? colors.green(' (current)') : '';
+      console.log(`  ${prefix} ${display}${marker}`);
     });
   }
 
@@ -97,7 +100,7 @@ function printReport(report: DoctorReport): void {
     console.log('  (no aliases configured)');
   } else {
     report.aliases.forEach((alias) => {
-      console.log(`  ${alias.name} -> ${alias.target}`);
+      console.log(`  ${alias.name} ${colors.gray('->')} ${colors.cyan(alias.target)}`);
     });
   }
 
