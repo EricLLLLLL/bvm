@@ -185,7 +185,6 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     
             if (progressBar) {
               progressBar.stop();
-              console.log('');
             }
           }
     

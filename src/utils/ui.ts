@@ -74,7 +74,7 @@ export class Spinner {
 export class ProgressBar {
   private total: number;
   private current: number = 0;
-  private width: number = 25; // Reduced width to prevent line wrapping
+  private width: number = 20; // Super compact
 
   constructor(total: number) {
     this.total = total;
@@ -91,8 +91,7 @@ export class ProgressBar {
   }
 
   stop() {
-    // Move to next line and show cursor
-    process.stdout.write('\n\x1b[?25h'); 
+    process.stdout.write('\x1b[?25h\n'); // Show cursor and final newline
   }
 
   private render(data?: { speed: string }) {
@@ -101,13 +100,14 @@ export class ProgressBar {
     const empty = this.width - filled;
     const bar = colors.green('█'.repeat(filled)) + colors.gray('░'.repeat(empty));
     const percentStr = (percentage * 100).toFixed(0).padStart(3, ' ');
-    const speedStr = data ? ` | ${data.speed.padStart(7, ' ')} KB/s` : '';
     
-    const currentMB = (this.current / (1024 * 1024)).toFixed(2);
-    const totalMB = (this.total / (1024 * 1024)).toFixed(2);
+    const currentMB = (this.current / (1024 * 1024)).toFixed(1);
+    const totalMB = (this.total / (1024 * 1024)).toFixed(1);
+    const speedStr = data ? ` ${data.speed}KB/s` : '';
     
-    // Use \r to return to start and \x1b[2K to clear the entire line
-    process.stdout.write(`\r\x1b[2K ${bar} | ${percentStr}% | ${currentMB}/${totalMB} MB${speedStr}`);
+    // Total length is roughly: 1(space) + 20(bar) + 3(sep) + 3(%) + 3(sep) + 4(MB) + 1(/) + 4(MB) + 10(speed) = ~50 chars
+    // This will fit in ALMOST ANY terminal window.
+    process.stdout.write(`\r\x1b[2K ${bar} ${percentStr}% | ${currentMB}/${totalMB}MB${speedStr}`);
   }
 }
 
