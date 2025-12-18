@@ -1,6 +1,6 @@
 {
   "name": "@bvm-cli/core",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "The native version manager for Bun. Cross-platform, shell-agnostic, and zero-dependency.",
   "main": "src/index.ts",
   "publishConfig": {
