@@ -96,9 +96,46 @@ Get-ChildItem -Path "$BVM_RUNTIME_DIR" -Directory | ForEach-Object {
 
 $BatchContent = "@echo off
 SET BVM_DIR=$BVM_DIR
-"$BUN_RUNTIME_EXE" "$BVM_JS_PATH" %*
+""$BUN_RUNTIME_EXE"" ""$BVM_JS_PATH"" %*
 "
 Set-Content -Path $WRAPPER_PATH -Value $BatchContent
 
 Write-Host "BVM installed successfully!" -ForegroundColor Green
-Write-Host "Please add $BVM_BIN_DIR to your PATH."
+
+# 6. Auto-configure Shell
+Write-Host "Configuring shell environment..." -ForegroundColor Cyan
+& "$WRAPPER_PATH" setup --silent
+
+# 7. Optional: Set Runtime as Default Global Version
+$VERSIONS_DIR = "$BVM_DIR\versions"
+$DEFAULT_ALIAS_LINK = "$BVM_DIR\aliases\default"
+$AliasesDir = "$BVM_DIR\aliases"
+
+if (-not (Test-Path $DEFAULT_ALIAS_LINK)) {
+    Write-Host "Setting Bun v$REQUIRED_BUN_VERSION (runtime) as the default global version." -ForegroundColor Cyan
+    
+    $DefaultVersionDir = "$VERSIONS_DIR\v$REQUIRED_BUN_VERSION"
+    New-Item -ItemType Directory -Force -Path $DefaultVersionDir | Out-Null
+    
+    # Copy bun exe
+    $RuntimeBun = "$TARGET_RUNTIME_DIR\bin\bun.exe"
+    if (-not (Test-Path $RuntimeBun)) {
+         # Fallback for some windows structure if bin is missing
+         $RuntimeBun = "$TARGET_RUNTIME_DIR\bun.exe"
+    }
+    
+    Copy-Item $RuntimeBun -Destination "$DefaultVersionDir\bun.exe" -Force
+    
+    New-Item -ItemType Directory -Force -Path $AliasesDir | Out-Null
+    "v$REQUIRED_BUN_VERSION" | Set-Content -Path "$DEFAULT_ALIAS_LINK" -NoNewline
+    
+    & "$WRAPPER_PATH" use default --silent
+    Write-Host "Bun v$REQUIRED_BUN_VERSION is now your default version." -ForegroundColor Green
+}
+
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor White -NoNewline
+Write-Host ""
+Write-Host "  1. To activate BVM, run:" -ForegroundColor White
+Write-Host "     . `$PROFILE" -ForegroundColor Cyan
+Write-Host "  2. Run bvm --help to get started." -ForegroundColor Cyan
