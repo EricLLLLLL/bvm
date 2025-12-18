@@ -27,7 +27,7 @@ jobs:
         run: bun run scripts/sync-runtime.ts
 
       - name: Bundle BVM Source
-        run: bun build src/index.ts --target=bun --outfile dist/index.js --minify
+        run: bun run build
 
       - name: Compress Source
         run: zip -j bvm-source.zip dist/index.js
