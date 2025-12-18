@@ -8,7 +8,35 @@ BVM_RUNTIME_DIR="${BVM_DIR}/runtime"
 BVM_BIN_DIR="${BVM_DIR}/bin"
 
 # The Bun version that BVM itself runs on
-REQUIRED_BUN_VERSION="1.3.4"
+# You can override this with BVM_INSTALL_BUN_VERSION environment variable
+if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
+    REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
+else
+    # This is the version validated at release time
+    FALLBACK_BUN_VERSION="1.3.4"
+    REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
+    
+    echo -e "${CYAN}🔍 Resolving latest Bun version...${NC}"
+    
+    # Try to resolve latest version via npm registry (more reliable than GitHub redirect)
+    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^"]+"' | cut -d'"' -f4)
+    
+    # Check if we got a valid version
+    if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
+        
+        if [ "$LATEST_MAJOR" == "$REQUIRED_MAJOR_VERSION" ]; then
+             echo -e "${GREEN}✓ Found latest v${LATEST_VERSION} (compatible with v${REQUIRED_MAJOR_VERSION}.x)${NC}"
+             REQUIRED_BUN_VERSION="$LATEST_VERSION"
+        else
+             echo -e "${YELLOW}⚠️  Latest version v${LATEST_VERSION} has a different major version. Falling back to v${FALLBACK_BUN_VERSION}.${NC}"
+             REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  Could not resolve latest version. Falling back to v${FALLBACK_BUN_VERSION}.${NC}"
+        REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
+    fi
+fi
 
 # Colors & Styles
 RED='\033[1;31m'      # Error (Bold Red)
@@ -189,6 +217,32 @@ echo -e "${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
 echo -e "${CYAN}⚙️  Configuring shell environment...${NC}"
 # Use the newly installed bvm to run setup
 "$WRAPPER_PATH" setup --silent
+
+# 7. Optional: Set Runtime as Default Global Version
+VERSIONS_DIR="${BVM_DIR}/versions"
+DEFAULT_ALIAS_LINK="${BVM_DIR}/aliases/default"
+
+# Only check if versions directory is empty or doesn't exist
+if [ ! -d "$VERSIONS_DIR" ] || [ -z "$(ls -A "$VERSIONS_DIR" 2>/dev/null)" ]; then
+    echo -e "\n${CYAN}ℹ️  Setting Bun v${REQUIRED_BUN_VERSION} (runtime) as the default global version.${NC}"
+    
+    # Create versions dir
+    mkdir -p "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}"
+    
+    # Copy bun binary
+    cp "${TARGET_RUNTIME_DIR}/bin/bun" "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}/bun"
+    
+    # Setup aliases dir
+    mkdir -p "${BVM_DIR}/aliases"
+    
+    # Create default alias file
+    echo "v${REQUIRED_BUN_VERSION}" > "${BVM_DIR}/aliases/default"
+    
+    # Run bvm use default to set up bin symlink
+    "$WRAPPER_PATH" use default --silent
+    
+    echo -e "${GREEN}✓ Bun v${REQUIRED_BUN_VERSION} is now your default version.${NC}"
+fi
 
 # Detect shell for the final message
 SHELL_NAME=$(basename "$SHELL")
