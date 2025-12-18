@@ -102,7 +102,11 @@ export class ProgressBar {
     const percentStr = (percentage * 100).toFixed(0);
     const speedStr = data ? ` | ${data.speed} kb/s` : '';
     
-    process.stdout.write(`\r ${bar} | ${percentStr}% | ${this.current}/${this.total} bytes${speedStr}`);
+    const currentMB = (this.current / (1024 * 1024)).toFixed(2);
+    const totalMB = (this.total / (1024 * 1024)).toFixed(2);
+    
+    // Clear line (\x1b[K) and move to start (\r)
+    process.stdout.write(`\r\x1b[K ${bar} | ${percentStr}% | ${currentMB}/${totalMB} MB${speedStr}`);
   }
 }
 

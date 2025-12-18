@@ -154,6 +154,7 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
             let lastLoaded = 0;
             let lastTime = Date.now();
     
+            let lastRenderTime = 0;
             try {
               while (true) {
                 const { done, value } = await reader.read();
@@ -162,14 +163,18 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
                 loaded += value.length;
                 if (progressBar) {
                   const now = Date.now();
-                  const diffTime = now - lastTime;
-                  if (diffTime >= 500) {
-                    const speed = (loaded - lastLoaded) / diffTime * 1000 / 1024 * 8;
+                  // Update speed info every 500ms
+                  if (now - lastTime >= 500) {
+                    const speed = (loaded - lastLoaded) / (now - lastTime) * 1000 / 1024;
                     progressBar.update(loaded, { speed: speed.toFixed(2) });
                     lastLoaded = loaded;
                     lastTime = now;
-                  } else {
+                    lastRenderTime = now;
+                  } 
+                  // Update progress visual at most every 100ms
+                  else if (now - lastRenderTime >= 100) {
                     progressBar.update(loaded);
+                    lastRenderTime = now;
                   }
                 }
               }
