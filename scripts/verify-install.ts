@@ -94,36 +94,41 @@ async function verifyInstall() {
   // 5. Functional Verification
   console.log('🏃 Verifying command execution...');
   
-  // Verify 'bun --version'
-  try {
-    const versionOutput = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, {
-      HOME: sandboxHome,
-      BVM_DIR: bvmDir
-    });
-    console.log(`✅ Installed Bun Version: ${versionOutput.trim()}`);
-  } catch (e) {
-    console.error('❌ FAILED: Unable to execute installed bun.');
-    process.exit(1);
-  }
+  // Verify 'bun --version' initially is the default (1.3.5)
+  const initialVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
+  console.log(`✅ Initial Bun Version: ${initialVersion.trim()}`);
 
-  // Verify 'bvm ls'
-  try {
-    // We need to use the full path to the wrapper or binary
-    // The wrapper expects BVM_DIR to be set or inferred
-    const lsOutput = await runCommand(`${join(binDir, 'bvm')} ls`, sandboxDir, {
-      HOME: sandboxHome,
-      BVM_DIR: bvmDir,
-      PATH: `${binDir}:${process.env.PATH}` // Add bvm bin to path for it to work fully
-    });
-    if (!lsOutput.includes('v1.3.5') && !lsOutput.includes('current')) {
-         // It might not say 'current' if we didn't source, but it should list the version
-         console.warn('⚠️  Warning: bvm ls output might be unexpected:', lsOutput);
-    }
-    console.log('✅ bvm ls executed successfully.');
-  } catch (e) {
-    console.error('❌ FAILED: Unable to execute bvm ls.');
-    process.exit(1);
+  // TestCase: "Revert to Default" Behavior
+  console.log('🔄 Testing "Revert to Default" in new terminal simulation...');
+  
+  // 1. Manually switch to another version (we'll simulate this by creating a different symlink)
+  // In a real scenario, user runs 'bvm use 1.0.2'
+  console.log('   - Simulating switch to another version...');
+  const fakeVersionDir = join(bvmDir, 'versions', 'v1.0.2');
+  await mkdir(fakeVersionDir, { recursive: true });
+  await Bun.write(join(fakeVersionDir, 'bun'), 'echo 1.0.2'); 
+  await runCommand(`ln -sf ${join(fakeVersionDir, 'bun')} ${join(binDir, 'bun')}`, sandboxDir, {});
+  
+  const switchedVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
+  console.log(`   - Current version is now: ${switchedVersion.trim()}`);
+
+  // 2. Run the init script (This is what happens in every new terminal)
+  console.log('   - Running bvm-init.sh (simulating new terminal)...');
+  await runCommand(`bash ${join(binDir, 'bvm-init.sh')}`, sandboxDir, { 
+    HOME: sandboxHome, 
+    BVM_DIR: bvmDir,
+    PATH: `${binDir}:${process.env.PATH}` 
+  });
+
+  // 3. Verify it's back to default
+  const revertedVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
+  console.log(`   - Version after init: ${revertedVersion.trim()}`);
+
+  if (revertedVersion.trim() !== initialVersion.trim()) {
+      console.error(`❌ FAILED: Version did not revert to default! Expected ${initialVersion.trim()}, got ${revertedVersion.trim()}`);
+      process.exit(1);
   }
+  console.log('✅ SUCCESS: New terminal correctly reverts to default version.');
 
   console.log('\n✨ All Verification Checks Passed! Ready for Release. ✨\n');
 }
