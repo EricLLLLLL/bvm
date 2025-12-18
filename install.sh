@@ -13,7 +13,7 @@ if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
     REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
 else
     # This is the version validated at release time
-    FALLBACK_BUN_VERSION="1.3.4"
+    FALLBACK_BUN_VERSION="1.3.5"
     REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
     
     echo -e "${CYAN}🔍 Resolving latest Bun version...${NC}"

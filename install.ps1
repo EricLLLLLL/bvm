@@ -6,7 +6,7 @@ $BVM_SRC_DIR = "$BVM_DIR\src"
 $BVM_RUNTIME_DIR = "$BVM_DIR\runtime"
 $BVM_BIN_DIR = "$BVM_DIR\bin"
 
-$REQUIRED_BUN_VERSION = "1.3.4"
+$REQUIRED_BUN_VERSION = "1.3.5"
 
 Write-Host "Installing BVM (Bun Version Manager)..." -ForegroundColor Blue
 
