@@ -7,6 +7,38 @@ $BVM_RUNTIME_DIR = "$BVM_DIR\runtime"
 $BVM_BIN_DIR = "$BVM_DIR\bin"
 
 $REQUIRED_BUN_VERSION = "1.3.5"
+$REQUIRED_MAJOR_VERSION = $REQUIRED_BUN_VERSION.Split(".")[0]
+
+# Resolve latest compatible version from NPM
+try {
+    Write-Host "Resolving latest Bun v$REQUIRED_MAJOR_VERSION.x version..." -ForegroundColor Gray
+    $NpmInfo = Invoke-RestMethod -Uri "https://registry.npmjs.org/bun" -ErrorAction SilentlyContinue
+    if ($NpmInfo -and $NpmInfo.versions) {
+        $LatestCompatible = $NpmInfo.versions.PSObject.Properties.Name | 
+            Where-Object { $_ -match "^$REQUIRED_MAJOR_VERSION\." } | 
+            Sort-Object { [version]$_ } -Descending | 
+            Select-Object -First 1
+            
+        if ($LatestCompatible) {
+            $REQUIRED_BUN_VERSION = $LatestCompatible
+            Write-Host "v$REQUIRED_BUN_VERSION" -ForegroundColor Blue
+        } else {
+            Write-Host "v$REQUIRED_BUN_VERSION (fallback)" -ForegroundColor Gray
+        }
+    }
+} catch {
+    Write-Host "v$REQUIRED_BUN_VERSION (fallback)" -ForegroundColor Gray
+}
+
+# Optimization: Smart Runtime Reuse
+if (Test-Path $BVM_RUNTIME_DIR) {
+    $ExistingRuntime = Get-ChildItem -Path $BVM_RUNTIME_DIR -Directory -Filter "v$REQUIRED_MAJOR_VERSION.*" | Sort-Object Name -Descending | Select-Object -First 1
+    if ($ExistingRuntime) {
+        $ExistingVer = $ExistingRuntime.Name.Substring(1) # Remove 'v'
+        $REQUIRED_BUN_VERSION = $ExistingVer
+        Write-Host "Reusing existing compatible Runtime v$ExistingVer (skip download)" -ForegroundColor Green
+    }
+}
 
 Write-Host "Installing BVM (Bun Version Manager)..." -ForegroundColor Blue
 

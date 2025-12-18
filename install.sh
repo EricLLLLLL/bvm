@@ -37,24 +37,43 @@ spinner() {
 if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
     REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
 else
-    FALLBACK_BUN_VERSION="1.3.5"
-    REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
-    
-    printf "${GRAY}🔍 Resolving latest Bun version...${NC}"
-    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^" ]+"' | cut -d'"' -f4)
-    
-    if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
-        if [ "$LATEST_MAJOR" == "$REQUIRED_MAJOR_VERSION" ]; then
-             REQUIRED_BUN_VERSION="$LATEST_VERSION"
+        FALLBACK_BUN_VERSION="1.3.5"
+        REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
+        
+        printf "${GRAY}🔍 Resolving latest Bun v${REQUIRED_MAJOR_VERSION}.x version...${NC}"
+        
+        # Fetch all versions from NPM, filter for major version match, sort, and take the last one.
+        # We use a simple regex to extract versions from the JSON keys to avoid jq dependency.
+        LATEST_COMPATIBLE_VERSION=$(curl -s https://registry.npmjs.org/bun | \
+            grep -oE '"[0-9]+\.[0-9]+\.[0-9]+":' | \
+            tr -d '":' | \
+            grep -E "^${REQUIRED_MAJOR_VERSION}\." | \
+            sort -V | \
+            tail -n 1)
+        
+        if [[ -n "$LATEST_COMPATIBLE_VERSION" ]]; then
+             REQUIRED_BUN_VERSION="$LATEST_COMPATIBLE_VERSION"
              echo -e " ${BLUE}v${REQUIRED_BUN_VERSION}${NC}"
         else
              REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
              echo -e " ${GRAY}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
         fi
-    else
-        REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
-        echo -e " ${GRAY}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
+    fi
+
+# Optimization: Smart Runtime Reuse
+# If we are upgrading (not fresh install), and we already have a compatible runtime (same Major version),
+# use it instead of downloading the absolute latest version. This makes upgrades instant.
+if [ -d "$BVM_RUNTIME_DIR" ]; then
+    # Find latest installed runtime matching the major version (v1.*)
+    EXISTING_RUNTIME=$(find "$BVM_RUNTIME_DIR" -mindepth 1 -maxdepth 1 -type d -name "v${REQUIRED_MAJOR_VERSION}.*" 2>/dev/null | sort -V | tail -n 1)
+    
+    if [ -n "$EXISTING_RUNTIME" ]; then
+        EXISTING_VER=$(basename "$EXISTING_RUNTIME") # e.g. v1.3.4
+        EXISTING_VER_NUM="${EXISTING_VER#v}"         # 1.3.4
+        
+        # Override the target version to reuse the existing one
+        REQUIRED_BUN_VERSION="$EXISTING_VER_NUM"
+        echo -e "${GREEN}♻️  Reusing existing compatible Runtime ${EXISTING_VER} (skip download)${NC}"
     fi
 fi
 
