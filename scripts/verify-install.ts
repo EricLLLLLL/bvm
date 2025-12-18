@@ -106,8 +106,10 @@ async function verifyInstall() {
   console.log('   - Simulating switch to another version...');
   const fakeVersionDir = join(bvmDir, 'versions', 'v1.0.2');
   await mkdir(fakeVersionDir, { recursive: true });
-  await Bun.write(join(fakeVersionDir, 'bun'), 'echo 1.0.2'); 
-  await runCommand(`ln -sf ${join(fakeVersionDir, 'bun')} ${join(binDir, 'bun')}`, sandboxDir, {});
+  const fakeBunPath = join(fakeVersionDir, 'bun');
+  await Bun.write(fakeBunPath, '#!/bin/bash\necho 1.0.2'); 
+  await runCommand(`chmod +x ${fakeBunPath}`, sandboxDir, {});
+  await runCommand(`ln -sf ${fakeBunPath} ${join(binDir, 'bun')}`, sandboxDir, {});
   
   const switchedVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
   console.log(`   - Current version is now: ${switchedVersion.trim()}`);
