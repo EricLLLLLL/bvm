@@ -132,7 +132,8 @@ async function verifyInstall() {
   });
 
   // Debug: check where the symlink points
-  const currentLink = await Bun.file(join(binDir, 'bun')).readlink();
+  const { readlink: readlinkFs } = require('node:fs/promises');
+  const currentLink = await readlinkFs(join(binDir, 'bun'));
   console.log(`   - Symlink now points to: ${currentLink}`);
 
   // 3. Verify it's back to default
