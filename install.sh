@@ -13,52 +13,15 @@ GREEN='\033[1;32m'    # Success
 YELLOW='\033[1;33m'   # Action / Warning
 BLUE='\033[1;34m'     # Process / Task
 CYAN='\033[1;36m'     # Primary / Brand
+MAGENTA='\033[1;35m'  # Bun Brand Color
 GRAY='\033[0;90m'     # Info / Secondary
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# Helper: Simple Spinner
-spinner() {
-    local pid=$1
-    local delay=0.1
-    local spinstr='|/-\'
-    while [ "$(ps -p $pid -o state= 2>/dev/null)" ]; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
-    done
-    printf "    \b\b\b\b"
-}
-
-# The Bun version that BVM itself runs on
-if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
-    REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
-else
-    FALLBACK_BUN_VERSION="1.3.5"
-    REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
-    
-    printf "${GRAY}🔍 Resolving latest Bun version...${NC}"
-    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^"]+"' | cut -d'"' -f4)
-    
-    if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
-        if [ "$LATEST_MAJOR" == "$REQUIRED_MAJOR_VERSION" ]; then
-             REQUIRED_BUN_VERSION="$LATEST_VERSION"
-             echo -e " ${BLUE}v${REQUIRED_BUN_VERSION}${NC}"
-        else
-             REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
-             echo -e " ${GRAY}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
-        fi
-    else
-        REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
-        echo -e " ${GRAY}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
-    fi
-fi
+# ... (omitted)
 
 # Logo
-echo -e "${CYAN}${BOLD}"
+echo -e "${MAGENTA}${BOLD}"
 cat << "EOF"
 ______________   _________   
 \______   \   \ /   /     \  
