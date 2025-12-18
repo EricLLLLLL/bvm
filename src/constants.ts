@@ -15,8 +15,8 @@ export const BVM_DIR = join(HOME, '.bvm');
 export const BVM_VERSIONS_DIR = join(BVM_DIR, 'versions');
 // Directory for symlinks to active Bun version (~/.bvm/bin)
 export const BVM_BIN_DIR = join(BVM_DIR, 'bin');
-// Directory for aliases (~/.bvm/alias)
-export const BVM_ALIAS_DIR = join(BVM_DIR, 'alias');
+// Directory for aliases (~/.bvm/aliases)
+export const BVM_ALIAS_DIR = join(BVM_DIR, 'aliases');
 // Directory for cache (~/.bvm/cache)
 export const BVM_CACHE_DIR = join(BVM_DIR, 'cache');
 // Executable name (bun or bun.exe)

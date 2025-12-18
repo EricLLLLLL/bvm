@@ -25,8 +25,10 @@ export async function pathExists(path: string): Promise<boolean> {
 }
 
 export async function createSymlink(target: string, path: string): Promise<void> {
-  if (await pathExists(path)) {
+  try {
     await unlink(path);
+  } catch (error) {
+    // Ignore if path doesn't exist
   }
   await symlink(target, path, 'file');
 }

@@ -7,37 +7,6 @@ BVM_SRC_DIR="${BVM_DIR}/src"
 BVM_RUNTIME_DIR="${BVM_DIR}/runtime"
 BVM_BIN_DIR="${BVM_DIR}/bin"
 
-# The Bun version that BVM itself runs on
-# You can override this with BVM_INSTALL_BUN_VERSION environment variable
-if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
-    REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
-else
-    # This is the version validated at release time
-    FALLBACK_BUN_VERSION="1.3.5"
-    REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
-    
-    echo -e "${CYAN}🔍 Resolving latest Bun version...${NC}"
-    
-    # Try to resolve latest version via npm registry (more reliable than GitHub redirect)
-    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^"]+"' | cut -d'"' -f4)
-    
-    # Check if we got a valid version
-    if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
-        
-        if [ "$LATEST_MAJOR" == "$REQUIRED_MAJOR_VERSION" ]; then
-             echo -e "${GREEN}✓ Found latest v${LATEST_VERSION} (compatible with v${REQUIRED_MAJOR_VERSION}.x)${NC}"
-             REQUIRED_BUN_VERSION="$LATEST_VERSION"
-        else
-             echo -e "${YELLOW}⚠️  Latest version v${LATEST_VERSION} has a different major version. Falling back to v${FALLBACK_BUN_VERSION}.${NC}"
-             REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
-        fi
-    else
-        echo -e "${YELLOW}⚠️  Could not resolve latest version. Falling back to v${FALLBACK_BUN_VERSION}.${NC}"
-        REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
-    fi
-fi
-
 # Colors & Styles
 RED='\033[1;31m'      # Error (Bold Red)
 GREEN='\033[1;32m'    # Success (Bold Green)
@@ -48,19 +17,60 @@ GRAY='\033[0;90m'     # Dim/Muted
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Helper: Simple Spinner
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps -p $pid -o state= 2>/dev/null)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+# The Bun version that BVM itself runs on
+if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
+    REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
+else
+    FALLBACK_BUN_VERSION="1.3.5"
+    REQUIRED_MAJOR_VERSION=$(echo "$FALLBACK_BUN_VERSION" | cut -d. -f1)
+    
+    printf "${CYAN}🔍 Resolving latest Bun version...${NC}"
+    # Resolving via npm in background
+    LATEST_VERSION=$(curl -s https://registry.npmjs.org/bun/latest | grep -oE '"version":"[^" ]+"' | cut -d'"' -f4)
+    
+    if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        LATEST_MAJOR=$(echo "$LATEST_VERSION" | cut -d. -f1)
+        if [ "$LATEST_MAJOR" == "$REQUIRED_MAJOR_VERSION" ]; then
+             REQUIRED_BUN_VERSION="$LATEST_VERSION"
+             echo -e " ${GREEN}v${REQUIRED_BUN_VERSION}${NC}"
+        else
+             REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
+             echo -e " ${YELLOW}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
+        fi
+    else
+        REQUIRED_BUN_VERSION="$FALLBACK_BUN_VERSION"
+        echo -e " ${YELLOW}v${REQUIRED_BUN_VERSION} (fallback)${NC}"
+    fi
+fi
+
 # Logo
 echo -e "${CYAN}${BOLD}"
 cat << "EOF"
 ______________   _________   
 \______   \   \ /   /     \  
- |    |  _/\   Y   /  \ /  \ 
+ |    |  _|\   Y   /  \ /  \ 
  |    |   \ \     /    Y    \
  |______  /  \___/\____|__  /
         \/                \/ 
 EOF
 echo -e "${NC}"
 
-echo -e "${CYAN}${BOLD}🚀 Installing BVM (Bun Version Manager) [v1.2.1]...${NC}"
+echo -e "${CYAN}${BOLD}🚀 Installing BVM (Bun Version Manager)...${NC}"
 
 # 1. Detect Platform
 OS="$(uname -s)"
@@ -93,7 +103,6 @@ case "$ARCH" in
 esac
 
 BUN_ASSET_NAME="bun-${PLATFORM}-${BUN_ARCH}"
-# Allow overriding download URL for mirrors (e.g. China)
 if [ -z "$BUN_DOWNLOAD_URL" ]; then
   BUN_DOWNLOAD_URL="https://github.com/oven-sh/bun/releases/download/bun-v${REQUIRED_BUN_VERSION}/${BUN_ASSET_NAME}.zip"
 fi
@@ -111,136 +120,83 @@ LOCAL_VERSION_DIR="${BVM_DIR}/versions/v${REQUIRED_BUN_VERSION}"
 if [ -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
   echo -e "${GREEN}✅ BVM Runtime (Bun v${REQUIRED_BUN_VERSION}) already installed.${NC}"
 elif [ -f "${LOCAL_VERSION_DIR}/bun" ]; then
-  # Optimization: Copy from ~/.bvm/versions if available
   echo -e "${GREEN}♻️  Found Bun v${REQUIRED_BUN_VERSION} in versions. Copying to runtime...${NC}"
-  
-  # Clean up target
   rm -rf "$TARGET_RUNTIME_DIR"
   mkdir -p "$TARGET_RUNTIME_DIR/bin"
-  
-  # Copy binary (bvm only needs the binary to run itself)
   cp "${LOCAL_VERSION_DIR}/bun" "$TARGET_RUNTIME_DIR/bin/bun"
   chmod +x "$TARGET_RUNTIME_DIR/bin/bun"
-  
   echo -e "${GREEN}✅ BVM Runtime installed from local copy.${NC}"
-elif command -v bun >/dev/null 2>&1 && [ "$(bun --version)" == "$REQUIRED_BUN_VERSION" ]; then
-  # Optimization: Copy from global bun if version matches
-  echo -e "${GREEN}♻️  Found matching global Bun v${REQUIRED_BUN_VERSION}. Copying to runtime...${NC}"
-  
-  # Clean up target
-  rm -rf "$TARGET_RUNTIME_DIR"
-  mkdir -p "$TARGET_RUNTIME_DIR/bin"
-  
-  # Copy binary
-  GLOBAL_BUN_PATH=$(command -v bun)
-  cp "$GLOBAL_BUN_PATH" "$TARGET_RUNTIME_DIR/bin/bun"
-  chmod +x "$TARGET_RUNTIME_DIR/bin/bun"
-  
-  echo -e "${GREEN}✅ BVM Runtime installed from global copy.${NC}"
 else
-  echo -e "${CYAN}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
-  
-  # Ensure clean slate
-  if [ -d "$TARGET_RUNTIME_DIR" ]; then
-      rm -rf "$TARGET_RUNTIME_DIR"
-  fi
-
-  # Download to temp with progress bar
+  printf "${CYAN}📦 Downloading BVM Runtime (Bun v${REQUIRED_BUN_VERSION})...${NC}"
   TEMP_ZIP="${BVM_DIR}/bun-runtime.zip"
-  curl -fL --progress-bar "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP"
+  curl -sL "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP" &
+  spinner $!
+  echo -e " ${GREEN}Done.${NC}"
   
-  # Extract
-  echo -e "${CYAN}📂 Extracting...${NC}"
-  unzip -q -o "$TEMP_ZIP" -d "$BVM_DIR"
+  printf "${CYAN}📂 Extracting...${NC}"
+  rm -rf "$TARGET_RUNTIME_DIR"
+  unzip -q -o "$TEMP_ZIP" -d "$BVM_DIR" &
+  spinner $!
   
-  # Move
   mv "${BVM_DIR}/${BUN_ASSET_NAME}" "$TARGET_RUNTIME_DIR"
   rm "$TEMP_ZIP"
   
-  # Normalize runtime structure: ensure bin/bun exists
-  # Official Bun release zips extract to folder/bun (no bin dir)
   if [ -f "$TARGET_RUNTIME_DIR/bun" ] && [ ! -d "$TARGET_RUNTIME_DIR/bin" ]; then
       mkdir -p "$TARGET_RUNTIME_DIR/bin"
       mv "$TARGET_RUNTIME_DIR/bun" "$TARGET_RUNTIME_DIR/bin/bun"
   fi
-  
-  echo -e "${GREEN}✅ BVM Runtime installed.${NC}"
+  echo -e " ${GREEN}Done.${NC}"
 fi
 
-# Cleanup old runtime versions (excluding the current one)
+# Cleanup old runtime versions
 echo -e "${BLUE}🗑️  Cleaning up old BVM Runtimes...${NC}"
 find "$BVM_RUNTIME_DIR" -mindepth 1 -maxdepth 1 -type d -not -name "v$REQUIRED_BUN_VERSION" -exec rm -rf {} +
-
 
 # Link 'current' runtime
 rm -f "${BVM_RUNTIME_DIR}/current"
 ln -s "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
 # 4. Install BVM Source Code
-# We expect a bundled 'index.js' to be available.
 if [ -f "dist/index.js" ]; then
     echo -e "${BLUE}📄 Installing BVM source from local dist/index.js...${NC}"
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
-    echo -e "${CYAN}⬇️  Downloading BVM source...${NC}"
-    # Download directly from GitHub Releases (latest)
+    printf "${CYAN}⬇️  Downloading BVM source...${NC}"
     SOURCE_URL="https://github.com/EricLLLLLL/bvm/releases/latest/download/index.js"
-    
-    # Allow override
     if [ -n "$BVM_SOURCE_URL" ]; then
         SOURCE_URL="$BVM_SOURCE_URL"
     fi
-
-    if curl -fL --progress-bar "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js"; then
-        echo -e "${GREEN}✅ Source downloaded.${NC}"
-    else
-        echo -e "${RED}❌ Failed to download source. Please check your network.${NC}"
-        exit 1
-    fi
+    curl -sL "$SOURCE_URL" -o "${BVM_SRC_DIR}/index.js" &
+    spinner $!
+    echo -e " ${GREEN}Done.${NC}"
 fi
-
 
 # 5. Create Wrapper Script
 WRAPPER_PATH="${BVM_BIN_DIR}/bvm"
 cat > "$WRAPPER_PATH" <<EOF
 #!/bin/bash
 export BVM_DIR="$BVM_DIR"
-# Use the private runtime
 exec "${BVM_RUNTIME_DIR}/current/bin/bun" "${BVM_SRC_DIR}/index.js" "\$@"
 EOF
-
 chmod +x "$WRAPPER_PATH"
 
 echo -e "${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
 
 # 6. Auto-configure Shell
 echo -e "${CYAN}⚙️  Configuring shell environment...${NC}"
-# Use the newly installed bvm to run setup
 "$WRAPPER_PATH" setup --silent
 
 # 7. Optional: Set Runtime as Default Global Version
 VERSIONS_DIR="${BVM_DIR}/versions"
 DEFAULT_ALIAS_LINK="${BVM_DIR}/aliases/default"
 
-# Only check if versions directory is empty or doesn't exist
-if [ ! -d "$VERSIONS_DIR" ] || [ -z "$(ls -A "$VERSIONS_DIR" 2>/dev/null)" ]; then
+if [ ! -f "$DEFAULT_ALIAS_LINK" ]; then
     echo -e "\n${CYAN}ℹ️  Setting Bun v${REQUIRED_BUN_VERSION} (runtime) as the default global version.${NC}"
-    
-    # Create versions dir
     mkdir -p "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}"
-    
-    # Copy bun binary
     cp "${TARGET_RUNTIME_DIR}/bin/bun" "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}/bun"
-    
-    # Setup aliases dir
     mkdir -p "${BVM_DIR}/aliases"
-    
-    # Create default alias file
     echo "v${REQUIRED_BUN_VERSION}" > "${BVM_DIR}/aliases/default"
-    
-    # Run bvm use default to set up bin symlink
     "$WRAPPER_PATH" use default --silent
-    
     echo -e "${GREEN}✓ Bun v${REQUIRED_BUN_VERSION} is now your default version.${NC}"
 fi
 
@@ -266,5 +222,8 @@ case "$SHELL_NAME" in
 esac
 
 echo -e "\n${BOLD}Next steps:${NC}"
-echo -e "  1. Restart your terminal or run: ${YELLOW}source $CONF_FILE${NC}"
+echo -e "  1. To start using BVM immediately, run:"
+echo -e "     ${CYAN}export BVM_DIR=\"$BVM_DIR\"; export PATH=\"
+$BVM_DIR/bin:\
+$PATH\"${NC}"
 echo -e "  2. Run ${CYAN}bvm --help${NC} to get started."
