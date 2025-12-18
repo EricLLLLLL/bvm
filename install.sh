@@ -223,7 +223,5 @@ esac
 
 echo -e "\n${BOLD}Next steps:${NC}"
 echo -e "  1. To start using BVM immediately, run:"
-echo -e "     ${CYAN}export BVM_DIR=\"$BVM_DIR\"; export PATH=\"
-$BVM_DIR/bin:\
-$PATH\"${NC}"
+echo -e "     ${CYAN}export BVM_DIR=\"\$HOME/.bvm\"; export PATH=\"\$BVM_DIR/bin:\$PATH\"${NC}"
 echo -e "  2. Run ${CYAN}bvm --help${NC} to get started."
