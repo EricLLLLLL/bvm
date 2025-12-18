@@ -66,10 +66,6 @@ async function prompt(question: string): Promise<string> {
     console.log('\n🕵️‍♂️ Running End-to-End Installation Verification...');
     run('bun', ['run', 'scripts/verify-install.ts']);
 
-    // 6. Build
-    console.log('\n🏗️  Building Project...');
-    run('bun', ['run', 'build']);
-
     // 6. Bump Version
     console.log('\n📈 Version Bump');
     console.log('Select release type:');
