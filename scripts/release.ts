@@ -62,7 +62,11 @@ async function prompt(question: string): Promise<string> {
     console.log('\n🧪 Running Tests...');
     run('bun', ['test']);
 
-    // 5. Build
+    // 5. Run E2E Verification (New Step)
+    console.log('\n🕵️‍♂️ Running End-to-End Installation Verification...');
+    run('bun', ['run', 'scripts/verify-install.ts']);
+
+    // 6. Build
     console.log('\n🏗️  Building Project...');
     run('bun', ['run', 'build']);
 
