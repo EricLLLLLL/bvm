@@ -224,6 +224,4 @@ esac
 echo -e "\n${BOLD}Next steps:${NC}"
 echo -e "  1. To activate BVM, run:"
 echo -e "     ${CYAN}source $CONF_FILE${NC}"
-echo -e "  2. Or run manually:"
-echo -e "     ${CYAN}export BVM_DIR=\"\$HOME/.bvm\"; export PATH=\"\$BVM_DIR/bin:\$PATH\"${NC}"
-echo -e "  3. Run ${CYAN}bvm --help${NC} to get started."
+echo -e "  2. Run ${CYAN}bvm --help${NC} to get started."

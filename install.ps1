@@ -133,7 +133,6 @@ if (-not (Test-Path $DEFAULT_ALIAS_LINK)) {
     Write-Host "Bun v$REQUIRED_BUN_VERSION is now your default version." -ForegroundColor Green
 }
 
-Write-Host ""
 Write-Host "Next steps:" -ForegroundColor White -NoNewline
 Write-Host ""
 Write-Host "  1. To activate BVM, run:" -ForegroundColor White
