@@ -51,6 +51,7 @@ export async function upgradeBvm(): Promise<void> {
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',
+      env: { ...process.env, BVM_MODE: 'upgrade' },
     });
 
     proc.stdin?.write(script);

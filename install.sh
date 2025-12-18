@@ -180,17 +180,21 @@ exec "${BVM_RUNTIME_DIR}/current/bin/bun" "${BVM_SRC_DIR}/index.js" "\$@"
 EOF
 chmod +x "$WRAPPER_PATH"
 
-# 6. Auto-configure Shell
-printf "${BLUE}⚙️  Configuring shell environment...${NC}"
-"$WRAPPER_PATH" setup --silent &
-spinner $!
-echo -e " ${GREEN}Done.${NC}"
+# 6. Auto-configure Shell (Skip if upgrading)
+if [ "$BVM_MODE" != "upgrade" ]; then
+    printf "${BLUE}⚙️  Configuring shell environment...${NC}"
+    "$WRAPPER_PATH" setup --silent &
+    spinner $!
+    echo -e " ${GREEN}Done.${NC}"
+else
+    echo -e "${GRAY}⚙️  Skipping shell configuration (upgrade mode).${NC}"
+fi
 
 # 7. Optional: Set Runtime as Default Global Version
 VERSIONS_DIR="${BVM_DIR}/versions"
 DEFAULT_ALIAS_LINK="${BVM_DIR}/aliases/default"
 
-if [ ! -f "$DEFAULT_ALIAS_LINK" ]; then
+if [ "$BVM_MODE" != "upgrade" ] && [ ! -f "$DEFAULT_ALIAS_LINK" ]; then
     echo -e "\n${BLUE}ℹ️  Setting Bun v${REQUIRED_BUN_VERSION} as the default global version.${NC}"
     mkdir -p "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}"
     cp "${TARGET_RUNTIME_DIR}/bin/bun" "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}/bun"

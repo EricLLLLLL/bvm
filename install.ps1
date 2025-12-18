@@ -134,16 +134,20 @@ Set-Content -Path $WRAPPER_PATH -Value $BatchContent
 
 Write-Host "BVM installed successfully!" -ForegroundColor Green
 
-# 6. Auto-configure Shell
-Write-Host "Configuring shell environment..." -ForegroundColor Cyan
-& "$WRAPPER_PATH" setup --silent
+# 6. Auto-configure Shell (Skip if upgrading)
+if ($env:BVM_MODE -ne "upgrade") {
+    Write-Host "Configuring shell environment..." -ForegroundColor Cyan
+    & "$WRAPPER_PATH" setup --silent
+} else {
+    Write-Host "Skipping shell configuration (upgrade mode)." -ForegroundColor Gray
+}
 
 # 7. Optional: Set Runtime as Default Global Version
 $VERSIONS_DIR = "$BVM_DIR\versions"
 $DEFAULT_ALIAS_LINK = "$BVM_DIR\aliases\default"
 $AliasesDir = "$BVM_DIR\aliases"
 
-if (-not (Test-Path $DEFAULT_ALIAS_LINK)) {
+if ($env:BVM_MODE -ne "upgrade" -and (-not (Test-Path $DEFAULT_ALIAS_LINK))) {
     Write-Host "Setting Bun v$REQUIRED_BUN_VERSION (runtime) as the default global version." -ForegroundColor Cyan
     
     $DefaultVersionDir = "$VERSIONS_DIR\v$REQUIRED_BUN_VERSION"
