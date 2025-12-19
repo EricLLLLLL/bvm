@@ -23,6 +23,7 @@ export async function whichBunVersion(version?: string): Promise<void> {
       if (!targetVersion || targetVersion === 'current') {
         if (await pathExists(BVM_CURRENT_DIR)) {
           try {
+            const { realpath } = require('node:fs/promises');
             const realPath = await realpath(BVM_CURRENT_DIR);
             console.log(join(realPath, 'bin', EXECUTABLE_NAME));
           } catch {
@@ -34,13 +35,18 @@ export async function whichBunVersion(version?: string): Promise<void> {
         return;
       }
 
-      const normalized = normalizeVersion(targetVersion);
-      const binPath = join(BVM_VERSIONS_DIR, normalized, 'bin', EXECUTABLE_NAME);
+      const { resolveLocalVersion } = require('./version');
+      let resolvedVersion = await resolveLocalVersion(targetVersion);
+      if (!resolvedVersion) {
+          resolvedVersion = normalizeVersion(targetVersion);
+      }
+
+      const binPath = join(BVM_VERSIONS_DIR, resolvedVersion, 'bin', EXECUTABLE_NAME);
 
       if (await pathExists(binPath)) {
         console.log(binPath);
       } else {
-        throw new Error(`Bun ${targetVersion} (${normalized}) is not installed.`);
+        throw new Error(`Bun ${targetVersion} (${resolvedVersion}) is not installed.`);
       }
     },
     { failMessage: 'Failed to resolve Bun path' },

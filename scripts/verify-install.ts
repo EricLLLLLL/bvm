@@ -97,9 +97,37 @@ async function verifyInstall() {
   // 5. Functional Verification
   console.log('🏃 Verifying command execution...');
   
+  const bvmCmd = join(binDir, 'bvm');
+  const env = { 
+    HOME: sandboxHome, 
+    BVM_DIR: bvmDir,
+    PATH: `${binDir}:${process.env.PATH}` 
+  };
+
   // Verify 'bun --version' initially is the default (1.3.5)
   const initialVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
   console.log(`✅ Initial Bun Version: ${initialVersion.trim()}`);
+
+  const smokeTests = [
+    { name: 'ls', args: ['ls'] },
+    { name: 'current', args: ['current'] },
+    { name: 'which', args: ['which', 'default'] },
+    { name: 'alias', args: ['alias', 'smoke-test', 'v1.3.5'] },
+    { name: 'doctor', args: ['doctor'] },
+    { name: 'help', args: ['--help'] }
+  ];
+
+  for (const test of smokeTests) {
+    console.log(`   - Testing 'bvm ${test.args.join(' ')}'...`);
+    try {
+      await runCommand(`${bvmCmd} ${test.args.join(' ')}`, sandboxDir, env);
+      console.log(`     ✅ passed`);
+    } catch (e: any) {
+      console.error(`❌ FAILED: 'bvm ${test.name}' failed during smoke test!`);
+      console.error(e.message);
+      process.exit(1);
+    }
+  }
 
   // TestCase: "Revert to Default" Behavior
   console.log('🔄 Testing "Revert to Default" in new terminal simulation...');
