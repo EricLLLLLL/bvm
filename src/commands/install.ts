@@ -221,37 +221,26 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     
         // Note: We DO NOT delete cachedArchivePath here. That's the point of caching.
     
-        spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
-    
-        // Auto-set as default if this is the first installed version
-        const currentlyInstalledVersions = await getInstalledVersions();
-        // After install, the newly installed version will be in the list, so if size is 1, it's the first.
-        if (currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
-            console.log(colors.cyan(`This is the first Bun version installed. Setting 'default' alias to ${foundVersion}.`));
-            // Use the alias creation logic
-            await createAlias('default', foundVersion); 
-        }
-            installedVersion = foundVersion;
-            shouldConfigureShell = true;
-    }
-      },
-      { failMessage: `Failed to install Bun ${versionToInstall}` },
-    );
-  } catch (error: any) {
-    throw new Error(`Failed to install Bun: ${error.message}`);
-  }
-
-  if (shouldConfigureShell) {
-    await configureShell(false); // Suppress the prompt here
-  }
-
-      if (installedVersion) {
-      await useBunVersion(installedVersion);
-    }
-    
-    await rehash();
-  }
-async function writeTestBunBinary(targetPath: string, version: string): Promise<void> {
+            spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
+            
+            // In Shim architecture, 'install' should not automatically 'use' or set default.
+            // User should explicitly call 'bvm use <version>' after install.
+            // However, if this is the very first version, we should set it as default.
+            const currentlyInstalledVersions = await getInstalledVersions();
+            const activeInfo = await getActiveVersion();
+        
+            if (!activeInfo.version && currentlyInstalledVersions.length === 1 && currentlyInstalledVersions[0] === foundVersion) {
+                // This is the first version installed, so set it as default
+                await createAlias('default', foundVersion);
+                console.log(colors.cyan(`✓ Bun ${foundVersion} is now your default version.`));
+            } else if (activeInfo.version === foundVersion) {
+                console.log(colors.cyan(`✓ Bun ${foundVersion} is already your active version.`));
+            } else {
+                console.log(colors.cyan(`✓ Bun ${foundVersion} installed. Run 'bvm use ${foundVersion}' to activate.`));
+            }
+            
+            // Run rehash after every install to ensure shims are updated for any new global binaries in the new version
+            await rehash();async function writeTestBunBinary(targetPath: string, version: string): Promise<void> {
   const plainVersion = version.replace(/^v/, '');
   const script = `#!/usr/bin/env bash
 set -euo pipefail
