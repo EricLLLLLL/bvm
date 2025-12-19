@@ -8,8 +8,8 @@ import { withSpinner } from '../command-runner';
 import { createAlias } from './alias';
 
 /**
- * Switches to a specific Bun version.
- * @param targetVersion The version to use (e.g., "1.0.0").
+ * Sets the global default Bun version. This affects new terminal sessions.
+ * @param targetVersion The version to set as default (e.g., "1.0.0").
  * @param options Configuration options
  */
 export async function useBunVersion(targetVersion?: string, options: { silent?: boolean } = {}): Promise<void> {
@@ -50,16 +50,11 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
         throw new Error(`Version ${normalizedFinalResolvedVersion} is not properly installed (binary missing).`);
     }
 
-    // In Shim architecture, 'use' typically sets the global default.
-    // If the user wants session-only, they should export BVM_ACTIVE_VERSION.
-    // We will set the 'default' alias to this version.
-    
+    // In Shim architecture, 'use' sets the global default.
     await createAlias('default', normalizedFinalResolvedVersion);
 
     if (spinner) {
-        spinner.succeed(colors.green(`Now using Bun ${normalizedFinalResolvedVersion} (default).`));
-        // console.log(colors.dim('To use this version only in this shell, run:'));
-        // console.log(colors.cyan(`export BVM_ACTIVE_VERSION=${normalizedFinalResolvedVersion}`));
+        spinner.succeed(colors.green(`✓ Default set to ${normalizedFinalResolvedVersion}. New terminals will now start with this version.`));
     }
   };
 
@@ -69,7 +64,7 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
       await withSpinner(
         `Setting default to Bun ${versionToUse}...`,
         (spinner) => runLogic(spinner),
-        { failMessage: () => `Failed to use Bun ${versionToUse}` },
+        { failMessage: () => `Failed to set default to Bun ${versionToUse}` },
       );
   }
 }

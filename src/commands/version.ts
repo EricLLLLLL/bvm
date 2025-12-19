@@ -1,6 +1,6 @@
 import { join } from 'path';
-import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH } from '../constants';
-import { getInstalledVersions, normalizeVersion, pathExists, readTextFile } from '../utils';
+import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
+import { getInstalledVersions, normalizeVersion, pathExists, readTextFile, getActiveVersion } from '../utils';
 import { readlink } from 'fs/promises';
 import { maxSatisfying } from '../utils/semver-lite';
 import { withSpinner } from '../command-runner';
@@ -16,14 +16,8 @@ import { withSpinner } from '../command-runner';
 export async function resolveLocalVersion(spec: string): Promise<string | null> {
   // 1. Handle "current"
   if (spec === 'current') {
-    if (await pathExists(BVM_CURRENT_BUN_PATH)) {
-      try {
-        const link = await readlink(BVM_CURRENT_BUN_PATH);
-        const parts = link.split('/');
-        return normalizeVersion(parts[parts.length - 2]);
-      } catch { return null; }
-    }
-    return null;
+    const { version } = await getActiveVersion();
+    return version;
   }
 
   // 2. Handle Alias or 'latest'

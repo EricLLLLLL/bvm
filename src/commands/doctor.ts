@@ -1,5 +1,4 @@
 import { colors } from '../utils/ui';
-import { readlink } from 'fs/promises';
 import { homedir } from 'os';
 import { join } from 'path';
 import {
@@ -7,13 +6,14 @@ import {
   BVM_VERSIONS_DIR,
   BVM_BIN_DIR,
   BVM_ALIAS_DIR,
-  BVM_CURRENT_BUN_PATH,
+  BVM_SHIMS_DIR, // New
 } from '../constants';
 import {
   getInstalledVersions,
   normalizeVersion,
   pathExists,
   readDir,
+  getActiveVersion, // New
 } from '../utils';
 import { withSpinner } from '../command-runner';
 
@@ -27,12 +27,13 @@ interface DoctorReport {
 export async function doctor(): Promise<void> {
   await withSpinner('Gathering BVM diagnostics...', async () => {
     const report: DoctorReport = {
-      currentVersion: await detectCurrentVersion(),
+      currentVersion: (await getActiveVersion()).version,
       installedVersions: await getInstalledVersions(),
       aliases: await readAliases(),
       env: {
         BVM_DIR,
         BVM_BIN_DIR,
+        BVM_SHIMS_DIR,
         BVM_VERSIONS_DIR,
         BVM_TEST_MODE: process.env.BVM_TEST_MODE,
         HOME: process.env.HOME || homedir(),
@@ -43,18 +44,7 @@ export async function doctor(): Promise<void> {
   });
 }
 
-async function detectCurrentVersion(): Promise<string | null> {
-  if (!(await pathExists(BVM_CURRENT_BUN_PATH))) {
-    return null;
-  }
-  try {
-    const target = await readlink(BVM_CURRENT_BUN_PATH);
-    const parts = target.split('/');
-    return normalizeVersion(parts[parts.length - 2]);
-  } catch {
-    return null;
-  }
-}
+// detectCurrentVersion is no longer needed
 
 async function readAliases(): Promise<Array<{ name: string; target: string }>> {
   if (!(await pathExists(BVM_ALIAS_DIR))) {
@@ -76,6 +66,7 @@ function printReport(report: DoctorReport): void {
   console.log(colors.bold('\nDirectories'));
   console.log(`  BVM_DIR: ${colors.cyan(report.env.BVM_DIR || '')}`);
   console.log(`  BIN_DIR: ${colors.cyan(BVM_BIN_DIR)}`);
+  console.log(`  SHIMS_DIR: ${colors.cyan(BVM_SHIMS_DIR)}`); // New
   console.log(`  VERSIONS_DIR: ${colors.cyan(BVM_VERSIONS_DIR)}`);
 
   console.log(colors.bold('\nEnvironment'));

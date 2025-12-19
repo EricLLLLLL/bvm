@@ -1,6 +1,6 @@
 import { colors } from '../utils/ui';
 import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile, getActiveVersion } from '../utils';
-import { BVM_CURRENT_BUN_PATH, BVM_ALIAS_DIR, BVM_CURRENT_DIR } from '../constants';
+import { BVM_ALIAS_DIR } from '../constants';
 import { readlink, realpath } from 'fs/promises';
 import { join, basename } from 'path';
 import { withSpinner } from '../command-runner';

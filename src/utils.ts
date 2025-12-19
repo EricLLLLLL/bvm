@@ -71,7 +71,7 @@ export async function writeTextFile(filePath: string, data: string | Uint8Array)
 }
 
 export function normalizeVersion(version: string): string {
-  let normalized = version;
+  let normalized = version.trim();
   if (normalized.startsWith('bun-v')) {
     normalized = normalized.substring(4);
   }
@@ -105,7 +105,7 @@ export async function getActiveVersion(): Promise<{ version: string | null, sour
   }
 
   // 3. Global Default Alias
-  const { BVM_ALIAS_DIR } = require('./constants');
+  const { BVM_ALIAS_DIR } = await import('./constants');
   const defaultPath = join(BVM_ALIAS_DIR, 'default');
   if (await pathExists(defaultPath)) {
     const content = (await readTextFile(defaultPath)).trim();

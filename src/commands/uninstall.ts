@@ -1,9 +1,9 @@
 import { colors } from '../utils/ui';
-import { join, basename } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME, BVM_CURRENT_DIR } from '../constants';
-import { pathExists, removeDir, normalizeVersion } from '../utils';
-import { readlink, realpath } from 'fs/promises';
+import { join } from 'path';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_ALIAS_DIR } from '../constants';
+import { pathExists, removeDir, normalizeVersion, readTextFile } from '../utils';
 import { withSpinner } from '../command-runner';
+import { rehash } from './rehash'; // New import
 
 /**
  * Uninstalls a specific Bun version.
@@ -22,15 +22,12 @@ export async function uninstallBunVersion(targetVersion: string): Promise<void> 
         throw new Error(`Bun ${targetVersion} is not installed.`);
       }
 
-    // 2. Check if the version is currently active (default)
-    // In Shim architecture, we check if it matches the default alias
+    // 2. Check if the version is currently set as default
     let isDefault = false;
     try {
-        const { BVM_ALIAS_DIR } = require('../constants');
-        const { readFile } = require('fs/promises');
         const defaultPath = join(BVM_ALIAS_DIR, 'default');
         if (await pathExists(defaultPath)) {
-            const defaultVer = (await readFile(defaultPath, 'utf8')).trim();
+            const defaultVer = await readTextFile(defaultPath);
             if (normalizeVersion(defaultVer) === normalizedTargetVersion) {
                 isDefault = true;
             }
@@ -38,12 +35,16 @@ export async function uninstallBunVersion(targetVersion: string): Promise<void> 
     } catch (e) {}
 
     if (isDefault) {
+      console.log(colors.yellow(`Hint: Set a new default using 'bvm default <new_version>'`));
       throw new Error(`Bun ${targetVersion} is currently set as default. Please set another default before uninstalling.`);
     }
 
     // 3. Remove the version directory
     await removeDir(installPath);
       spinner.succeed(colors.green(`Bun ${normalizedTargetVersion} uninstalled successfully.`));
+      
+      // Rehash after uninstall to remove stale shims
+      await rehash();
     },
     { failMessage: `Failed to uninstall Bun ${targetVersion}` },
   );

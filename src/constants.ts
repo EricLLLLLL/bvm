@@ -15,18 +15,14 @@ export const BVM_DIR = join(HOME, '.bvm');
 export const BVM_VERSIONS_DIR = join(BVM_DIR, 'versions');
 // Directory for symlinks to active Bun version (~/.bvm/bin)
 export const BVM_BIN_DIR = join(BVM_DIR, 'bin');
-// Directory for shims (~/.bvm/shims) - BVM 2.0 Architecture
+// Directory for shims (~/.bvm/shims)
 export const BVM_SHIMS_DIR = join(BVM_DIR, 'shims');
-// Active version symlink (~/.bvm/current) - used for global package isolation
-export const BVM_CURRENT_DIR = join(BVM_DIR, 'current');
 // Directory for aliases (~/.bvm/aliases)
 export const BVM_ALIAS_DIR = join(BVM_DIR, 'aliases');
 // Directory for cache (~/.bvm/cache)
 export const BVM_CACHE_DIR = join(BVM_DIR, 'cache');
 // Executable name (bun or bun.exe)
 export const EXECUTABLE_NAME = OS_PLATFORM === 'win32' ? 'bun.exe' : 'bun';
-// Path to the active bun executable symlink (~/.bvm/bin/bun)
-export const BVM_CURRENT_BUN_PATH = join(BVM_BIN_DIR, EXECUTABLE_NAME);
 
 // GitHub API for Bun releases
 export const BUN_GITHUB_RELEASES_API = 'https://api.github.com/repos/oven-sh/bun/releases';

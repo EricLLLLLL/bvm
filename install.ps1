@@ -111,72 +111,125 @@ if (Test-Path "dist\index.js") {
     }
 }
 
-# 4. Create Wrapper Script (bvm.cmd)
-$WRAPPER_PATH = "$BVM_BIN_DIR\bvm.cmd"
-$BVM_JS_PATH = "$BVM_SRC_DIR\index.js"
-$BUN_RUNTIME_EXE = "$TARGET_RUNTIME_DIR\bun.exe"
-
-# Cleanup old runtime versions (excluding the current one)
-Write-Host "Cleaning up old BVM Runtimes..." -ForegroundColor Blue
-Get-ChildItem -Path "$BVM_RUNTIME_DIR" -Directory | ForEach-Object {
-    if ($_.Name -ne "v$REQUIRED_BUN_VERSION") {
-        Write-Host "Removing old runtime: $($_.Name)" -ForegroundColor Blue
-        Remove-Item -LiteralPath $_.FullName -Recurse -Force
-    }
-}
-
+# 5. Create Wrapper Script for BVM (bvm.cmd)
+$WRAPPER_PATH = Join-Path $BVM_BIN_DIR "bvm.cmd"
+$BVM_JS_PATH = Join-Path $BVM_SRC_DIR "index.js"
 
 $BatchContent = "@echo off
 SET BVM_DIR=$BVM_DIR
-""$BUN_RUNTIME_EXE"" ""$BVM_JS_PATH"" %*
+REM This wrapper executes the main BVM JavaScript code via the active Bun shim.
+REM The bun shim internally resolves the version to use.
+""%BVM_DIR%\shims\bun.ps1"" ""%BVM_JS_PATH"" %*
 "
 Set-Content -Path $WRAPPER_PATH -Value $BatchContent
 
-Write-Host "BVM installed successfully!" -ForegroundColor Green
+# 6. Setup Shim Scripts (bun.ps1, bunx.ps1)
+$ShimsDir = Join-Path $BVM_DIR "shims"
+New-Item -ItemType Directory -Force -Path $ShimsDir | Out-Null
 
-# 6. Auto-configure Shell (Skip if upgrading)
-if ($env:BVM_MODE -ne "upgrade") {
-    Write-Host "Configuring shell environment..." -ForegroundColor Cyan
-    & "$WRAPPER_PATH" setup --silent
-} else {
-    Write-Host "Skipping shell configuration (upgrade mode)." -ForegroundColor Gray
+$ShimScript = @"
+# Shim managed by BVM (Bun Version Manager)
+# This script dynamically routes commands to the correct Bun version.
+
+$BvmDir = "$HOME\.bvm"
+$Command = $MyInvocation.MyCommand.Name
+
+# Remove .ps1 extension for command name
+if ($Command -like "*.ps1") { $Command = $Command.Substring(0, $Command.Length - 4) }
+
+
+# 1. Determine Bun version based on priority:
+#    a) BVM_ACTIVE_VERSION (session override)
+#    b) .bvmrc (project specific)
+#    c) Global default
+$Version = $null
+if ($env:BVM_ACTIVE_VERSION) {
+    $Version = $env:BVM_ACTIVE_VERSION
+} elseif (Test-Path ".\.bvmrc") {
+    $Version = "v" + (Get-Content ".\.bvmrc" | Select-Object -First 1)
+} elseif (Test-Path "$BvmDir\aliases\default") {
+    $Version = Get-Content "$BvmDir\aliases\default" | Select-Object -First 1
 }
 
-# 7. Optional: Set Runtime as Default Global Version
-$VERSIONS_DIR = "$BVM_DIR\versions"
-$DEFAULT_ALIAS_LINK = "$BVM_DIR\aliases\default"
-$AliasesDir = "$BVM_DIR\aliases"
+# 2. Validate and locate the version
+if (-not $Version) {
+    Write-Error "BVM Error: No Bun version is active or default is set."
+    exit 1
+}
+if ($Version -notmatch "^v") { $Version = "v" + $Version } # Ensure 'v' prefix
 
-if ($env:BVM_MODE -ne "upgrade" -and (-not (Test-Path $DEFAULT_ALIAS_LINK))) {
-    Write-Host "Setting Bun v$REQUIRED_BUN_VERSION (runtime) as the default global version." -ForegroundColor Cyan
+$VersionDir = Join-Path $BvmDir "versions\$Version"
+
+if (-not (Test-Path $VersionDir)) {
+    Write-Error "BVM Error: Version $Version is not installed."
+    exit 1
+}
+
+$RealExecutable = Join-Path $VersionDir "bin\$Command.exe" # PowerShell prefers .exe for binaries
+
+# 3. Execution with environment injection
+if (Test-Path $RealExecutable) {
+    $env:BUN_INSTALL = $VersionDir
+    $env:PATH = "$(Join-Path $VersionDir 'bin');$env:PATH" # Prioritize this version's bin for sub-commands
     
-    $DefaultVersionDir = "$VERSIONS_DIR\v$REQUIRED_BUN_VERSION"
-    $DefaultBinDir = "$DefaultVersionDir\bin"
-    New-Item -ItemType Directory -Force -Path $DefaultBinDir | Out-Null
-    
-    # Copy bun exe
-    $RuntimeBun = "$TARGET_RUNTIME_DIR\bin\bun.exe"
-    if (-not (Test-Path $RuntimeBun)) {
-         $RuntimeBun = "$TARGET_RUNTIME_DIR\bun.exe"
+    # Smart Hook: If this is 'bun' and it's a global install command, auto-rehash
+    if (($Command -eq "bun") -and ($args -match "-g") -and (($args -match "install") -or ($args -match "add") -or ($args -match "remove") -or ($args -match "uninstall"))) {
+        # PowerShell needs Start-Process -NoNewWindow for background execution
+        Start-Process -FilePath "$BvmDir\bin\bvm.cmd" -ArgumentList "rehash" -NoNewWindow
     }
     
-    Copy-Item $RuntimeBun -Destination "$DefaultBinDir\bun.exe" -Force
-    
-    New-Item -ItemType Directory -Force -Path $AliasesDir | Out-Null
-    "v$REQUIRED_BUN_VERSION" | Set-Content -Path "$DEFAULT_ALIAS_LINK" -NoNewline
-    
-    # Setup initial symlinks/junctions
-    # Note: On Windows we often use the full path in the wrapper, but let's set up the current pointer
-    $CurrentDir = "$BVM_DIR\current"
-    if (Test-Path $CurrentDir) { Remove-Item $CurrentDir -Force }
-    New-Item -ItemType Junction -Path $CurrentDir -Value $DefaultVersionDir | Out-Null
+    & $RealExecutable $args
+} else {
+    Write-Error "BVM Error: Command '$Command' not found in Bun $Version."
+    exit 127
+}
+"@
 
-    & "$WRAPPER_PATH" use default --silent
+Set-Content -Path (Join-Path $ShimsDir "bun.ps1") -Value $ShimScript
+Set-Content -Path (Join-Path $ShimsDir "bunx.ps1") -Value $ShimScript # bunx is usually a symlink to bun
+
+# 7. Auto-configure Shell
+Write-Host "Configuring PowerShell environment..." -ForegroundColor Cyan
+& "$WRAPPER_PATH" setup --silent
+
+# 8. Setup Default Version (Only if no default exists)
+# New Shim arch: This just creates the default alias file.
+$VersionsDir = Join-Path $BVM_DIR "versions"
+$DefaultAliasPath = Join-Path (Join-Path $BVM_DIR "aliases") "default"
+
+if ($env:BVM_MODE -ne "upgrade" -and (-not (Test-Path $DefaultAliasPath))) {
+    Write-Host "Setting Bun v$REQUIRED_BUN_VERSION (runtime) as the default global version." -ForegroundColor Blue
+    
+    $DefaultVersionBinDir = Join-Path (Join-Path $VersionsDir "v$REQUIRED_BUN_VERSION") "bin"
+    New-Item -ItemType Directory -Force -Path $DefaultVersionBinDir | Out-Null
+    
+    # Copy bun exe
+    $RuntimeBun = Join-Path $TARGET_RUNTIME_DIR "bin\bun.exe"
+    if (-not (Test-Path $RuntimeBun)) {
+         $RuntimeBun = Join-Path $TARGET_RUNTIME_DIR "bun.exe"
+    }
+    
+    Copy-Item $RuntimeBun -Destination (Join-Path $DefaultVersionBinDir "bun.exe") -Force
+    
+    $AliasesDir = Join-Path $BVM_DIR "aliases"
+    New-Item -ItemType Directory -Force -Path $AliasesDir | Out-Null
+    "v$REQUIRED_BUN_VERSION" | Set-Content -Path $DefaultAliasPath -NoNewline
+    
+    # In Shim architecture, 'use' modifies the default alias file.
+    # We call 'use' here to trigger the alias creation.
+    & "$WRAPPER_PATH" use "$REQUIRED_BUN_VERSION" | Out-Null # Redirect output
+    
     Write-Host "Bun v$REQUIRED_BUN_VERSION is now your default version." -ForegroundColor Green
 }
 
-Write-Host "Next steps:" -ForegroundColor White -NoNewline
+Write-Host ""
+Write-Host "🎉 BVM installed successfully!" -ForegroundColor Green -NoNoLine
+Write-Host ""
+
+Write-Host "Next steps:" -ForegroundColor White -NoNoLine
 Write-Host ""
 Write-Host "  1. To activate BVM, run:" -ForegroundColor White
-Write-Host "     . `$PROFILE" -ForegroundColor Cyan
-Write-Host "  2. Run bvm --help to get started." -ForegroundColor Cyan
+Write-Host "     . `$PROFILE" -ForegroundColor Yellow -NoNoLine
+Write-Host ""
+Write-Host "  2. Now 'bun install -g' will be isolated per version!" -ForegroundColor Cyan
+Write-Host "  3. Run bvm --help to get started." -ForegroundColor Cyan

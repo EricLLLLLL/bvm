@@ -29,7 +29,7 @@ export async function whichBunVersion(version?: string): Promise<void> {
              throw new Error('No active Bun version found.');
          }
       } else {
-          const { resolveLocalVersion } = require('./version');
+          const { resolveLocalVersion } = await import('./version');
           resolvedVersion = await resolveLocalVersion(targetVersion);
           if (!resolvedVersion) {
               resolvedVersion = normalizeVersion(targetVersion);
