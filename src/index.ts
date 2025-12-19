@@ -16,12 +16,23 @@ import { cacheCommand } from './commands/cache';
 import { configureShell } from './commands/setup';
 import { upgradeBvm } from './commands/upgrade';
 import { doctor } from './commands/doctor';
+import { rehash } from './commands/rehash';
 import { printCompletion } from './commands/completion';
 import { colors } from './utils/ui';
 
 const app = new App('bvm');
 
 // Placeholder for commands
+app.command('rehash', 'Regenerate shims for all installed binaries')
+  .action(async () => {
+    try {
+      await rehash();
+    } catch (error: any) {
+      console.error(colors.red(`✖ ${error.message}`));
+      process.exit(1);
+    }
+  });
+
 app.command('install [version]', 'Install a Bun version')
   .action(async (args) => {
     try {

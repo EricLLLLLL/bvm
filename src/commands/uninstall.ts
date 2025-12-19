@@ -22,19 +22,23 @@ export async function uninstallBunVersion(targetVersion: string): Promise<void> 
         throw new Error(`Bun ${targetVersion} is not installed.`);
       }
 
-    // 2. Check if the version is currently active
-    let currentVersionName: string | null = null;
+    // 2. Check if the version is currently active (default)
+    // In Shim architecture, we check if it matches the default alias
+    let isDefault = false;
     try {
-      if (await pathExists(BVM_CURRENT_DIR)) {
-        const realPath = await realpath(BVM_CURRENT_DIR);
-        currentVersionName = normalizeVersion(basename(realPath));
-      }
-    } catch (error: any) {
-      // Ignore
-    }
+        const { BVM_ALIAS_DIR } = require('../constants');
+        const { readFile } = require('fs/promises');
+        const defaultPath = join(BVM_ALIAS_DIR, 'default');
+        if (await pathExists(defaultPath)) {
+            const defaultVer = (await readFile(defaultPath, 'utf8')).trim();
+            if (normalizeVersion(defaultVer) === normalizedTargetVersion) {
+                isDefault = true;
+            }
+        }
+    } catch (e) {}
 
-    if (currentVersionName === normalizedTargetVersion) {
-      throw new Error(`Bun ${targetVersion} is currently active. Please use 'bvm use <another-version>' or 'bvm deactivate' before uninstalling.`);
+    if (isDefault) {
+      throw new Error(`Bun ${targetVersion} is currently set as default. Please set another default before uninstalling.`);
     }
 
     // 3. Remove the version directory

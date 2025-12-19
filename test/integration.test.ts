@@ -33,7 +33,7 @@ describe("CLI Integration Suite", () => {
   test("use fuzzy version (e.g., 1.3 to v1.3.4)", async () => {
     const { exitCode, allOutput } = await runBvm(["use", "1.3"]);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Bun v1.3.4 is now active.");
+    expect(allOutput).toContain("Now using Bun v1.3.4 (default)");
   });
 
   test("install fuzzy version (e.g., 1.2 to v1.2.23) and reports already installed", async () => {
@@ -45,7 +45,7 @@ describe("CLI Integration Suite", () => {
   test("use latest resolves to highest installed", async () => {
     const { exitCode, allOutput } = await runBvm(["use", "latest"]);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Bun v1.3.4 is now active.");
+    expect(allOutput).toContain("Now using Bun v1.3.4 (default)");
   });
 
   test("install latest installs/reports latest remote", async () => {
@@ -59,7 +59,7 @@ describe("CLI Integration Suite", () => {
   test("use invalid partial version fails gracefully", async () => {
     const { exitCode, allOutput } = await runBvm(["use", "99.x"]);
     expect(exitCode).not.toBe(0);
-    expect(allOutput).toContain("Bun version '99.x' is not installed or cannot be resolved.");
+    expect(allOutput).toContain("Bun version '99.x' is not installed");
   });
 
   test("install invalid partial version fails gracefully", async () => {
@@ -97,28 +97,29 @@ describe("CLI Integration Suite", () => {
     const installedBinPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bin", "bun");
     expect(await Bun.file(installedBinPath).exists()).toBe(true);
 
-    const symlinkPath = join(TEST_BVM_DIR, "bin", "bun");
-    expect(existsSync(symlinkPath)).toBe(true);
-    const symlinkTarget = readlinkSync(symlinkPath);
-    // Now bin/bun points to current/bin/bun
-    expect(symlinkTarget).toContain("current");
-
-    const currentLinkPath = join(TEST_BVM_DIR, "current");
-    expect(existsSync(currentLinkPath)).toBe(true);
-    const currentTarget = readlinkSync(currentLinkPath);
-    expect(currentTarget).toContain(join("versions", "v1.0.0"));
+    const shimPath = join(TEST_BVM_DIR, "shims", "bun");
+    expect(existsSync(shimPath)).toBe(true);
+    
+    // Check default alias
+    const defaultAliasPath = join(TEST_BVM_DIR, "aliases", "default");
+    expect(await Bun.file(defaultAliasPath).text()).toContain("v1.0.0");
 
     const { allOutput: currentOutput } = await runBvm(["current"]);
     expect(currentOutput).toContain("v1.0.0");
+    expect(currentOutput).toContain("(default)"); // Should indicate source
   });
 
   test("install 1.0.0 (re-install should skip but still activate)", async () => {
-    await runBvm(["use", "1.3.4"]);
+    // Manually set default to something else first
+    const defaultAliasPath = join(TEST_BVM_DIR, "aliases", "default");
+    await writeFileSync(defaultAliasPath, "v1.3.4");
+
     const { exitCode, allOutput } = await runBvm(["install", "1.0.0"]);
     expect(exitCode).toBe(0);
     expect(allOutput).toContain("already installed");
-    const { allOutput: currentOutput } = await runBvm(["current"]);
-    expect(currentOutput).toContain("v1.0.0");
+    
+    // Verify default switched back to 1.0.0
+    expect(await Bun.file(defaultAliasPath).text()).toContain("v1.0.0");
   });
 
   test("install invalid version fails", async () => {
@@ -148,7 +149,7 @@ describe("CLI Integration Suite", () => {
   test("which 1.0.0 returns path", async () => {
     const { exitCode, output } = await runBvm(["which", "1.0.0"]);
     expect(exitCode).toBe(0);
-    expect(output).toContain(".bvm/versions/v1.0.0/bin/bun");
+    expect(output).toContain("versions/v1.0.0/bin/bun");
   });
 
   // --- Aliases ---
@@ -198,7 +199,7 @@ describe("CLI Integration Suite", () => {
     
     const { exitCode, allOutput } = await runBvm(["use"], projectDir);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Found '.bvmrc' with version <1.0.0>");
+    expect(allOutput).toContain("Now using Bun v1.0.0 (default)");
   });
 
   test(".bvmrc invalid version", async () => {
@@ -217,7 +218,7 @@ describe("CLI Integration Suite", () => {
     
     const { exitCode, allOutput } = await runBvm(["uninstall", "1.0.0"]);
     expect(exitCode).not.toBe(0);
-    expect(allOutput).toContain("currently active");
+    expect(allOutput).toContain("currently set as default");
   });
 
   test("uninstall 1.0.0 works", async () => {

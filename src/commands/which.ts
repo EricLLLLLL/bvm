@@ -20,24 +20,29 @@ export async function whichBunVersion(version?: string): Promise<void> {
   await withSpinner(
     `Resolving Bun path for ${targetVersion || 'current'}...`,
     async () => {
-      if (!targetVersion || targetVersion === 'current') {
-        if (await pathExists(BVM_CURRENT_DIR)) {
-          try {
-            const { realpath } = require('node:fs/promises');
-            const realPath = await realpath(BVM_CURRENT_DIR);
-            console.log(join(realPath, 'bin', EXECUTABLE_NAME));
-          } catch {
-            throw new Error('Unable to resolve current Bun path.');
-          }
-        } else {
-          throw new Error('No active Bun version found (system version is not managed by bvm).');
-        }
-        return;
-      }
+      let resolvedVersion: string | null = null;
 
-      const { resolveLocalVersion } = require('./version');
-      let resolvedVersion = await resolveLocalVersion(targetVersion);
-      if (!resolvedVersion) {
+      if (!targetVersion || targetVersion === 'current') {
+         if (process.env.BVM_ACTIVE_VERSION) {
+            resolvedVersion = normalizeVersion(process.env.BVM_ACTIVE_VERSION);
+         } else {
+            const { BVM_ALIAS_DIR } = require('../constants');
+            const { readTextFile } = require('../utils');
+            const rcPath = join(process.cwd(), '.bvmrc');
+            if (await pathExists(rcPath)) {
+                 resolvedVersion = normalizeVersion((await readTextFile(rcPath)).trim());
+            } else {
+                const defaultPath = join(BVM_ALIAS_DIR, 'default');
+                if (await pathExists(defaultPath)) {
+                    resolvedVersion = normalizeVersion((await readTextFile(defaultPath)).trim());
+                }
+            }
+         }
+         
+         if (!resolvedVersion) {
+             throw new Error('No active Bun version found.');
+         }
+      } else {
           resolvedVersion = normalizeVersion(targetVersion);
       }
 
@@ -46,7 +51,7 @@ export async function whichBunVersion(version?: string): Promise<void> {
       if (await pathExists(binPath)) {
         console.log(binPath);
       } else {
-        throw new Error(`Bun ${targetVersion} (${resolvedVersion}) is not installed.`);
+        throw new Error(`Bun ${targetVersion || 'current'} (${resolvedVersion}) is not installed.`);
       }
     },
     { failMessage: 'Failed to resolve Bun path' },

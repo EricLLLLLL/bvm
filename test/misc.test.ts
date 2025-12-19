@@ -53,19 +53,19 @@ describe("Miscellaneous Commands Suite", () => {
   });
   
   // --- Deactivate ---
-  test("deactivate removes current symlink", async () => {
-      // 1. Ensure a version is active
+    test("deactivate removes default alias", async () => {
+      // 1. Ensure a version is active (sets default)
       await runBvm(["use", "1.0.0"]);
-      const binLink = join(TEST_HOME, ".bvm", "bin", "bun");
+      const defaultAliasPath = join(TEST_HOME, ".bvm", "aliases", "default");
       
-      // Verify link exists
-      expect(existsSync(binLink)).toBe(true);
+      // Verify alias exists
+      expect(existsSync(defaultAliasPath)).toBe(true);
 
-      // 2. Deactivate
+      // 2. Run deactivate
       const { exitCode } = await runBvm(["deactivate"]);
       expect(exitCode).toBe(0);
 
-      // 3. Verify link is gone
-      expect(existsSync(binLink)).toBe(false);
-  });
+      // 3. Verify alias is gone
+      expect(existsSync(defaultAliasPath)).toBe(false);
+    });
 });

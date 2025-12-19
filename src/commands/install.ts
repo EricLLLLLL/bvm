@@ -12,6 +12,7 @@ import { createAlias } from './alias';
 import { withSpinner } from '../command-runner';
 import { runCommand } from '../helpers/process';
 import { useBunVersion } from './use';
+import { rehash } from './rehash';
 
 /**
  * Installs a specific Bun version.
@@ -244,11 +245,12 @@ export async function installBunVersion(targetVersion?: string): Promise<void> {
     await configureShell(false); // Suppress the prompt here
   }
 
-  if (installedVersion) {
-    await useBunVersion(installedVersion);
+      if (installedVersion) {
+      await useBunVersion(installedVersion);
+    }
+    
+    await rehash();
   }
-}
-
 async function writeTestBunBinary(targetPath: string, version: string): Promise<void> {
   const plainVersion = version.replace(/^v/, '');
   const script = `#!/usr/bin/env bash

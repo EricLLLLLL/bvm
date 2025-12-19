@@ -19,11 +19,11 @@ describe("Setup & Shell Configuration Suite", () => {
     const { exitCode, allOutput } = await runBvm(["setup"], process.cwd(), { SHELL: "/bin/bash", BVM_TEST_MODE: "" });
     
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Successfully configured BVM path");
+    expect(allOutput).toContain("updated BVM configuration");
     
     const content = readFileSync(bashrcPath, "utf-8");
     expect(content).toContain('export BVM_DIR=');
-    expect(content).toContain('bvm-init.sh');
+    expect(content).toContain('/shims');
   });
 
   test("setup configures zshrc", async () => {
@@ -33,10 +33,11 @@ describe("Setup & Shell Configuration Suite", () => {
     const { exitCode, allOutput } = await runBvm(["setup"], process.cwd(), { SHELL: "/bin/zsh", BVM_TEST_MODE: "" });
     
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Successfully configured BVM path");
+    expect(allOutput).toContain("updated BVM configuration");
     
     const content = readFileSync(zshrcPath, "utf-8");
     expect(content).toContain('export BVM_DIR=');
+    expect(content).toContain('/shims');
   });
 
   test("setup configures fish config", async () => {
@@ -50,7 +51,7 @@ describe("Setup & Shell Configuration Suite", () => {
     
     const content = readFileSync(fishConfigPath, "utf-8");
     expect(content).toContain('set -Ux BVM_DIR');
-    expect(content).toContain('bvm-init.fish');
+    expect(content).toContain('shims');
   });
 
   test("setup is idempotent (runs twice without duplicate)", async () => {

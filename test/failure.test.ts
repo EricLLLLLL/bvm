@@ -34,19 +34,11 @@ describe("Failure & Edge Cases Suite", () => {
       rmSync(binPath);
 
       // 3. Try to use it
-      // The current logic checks pathExists(bunExecutablePath).
-      // If it fails, it might throw "Internal Error" (before my fix) or "Resolved version ... not installed" (after my fix).
       const { exitCode, allOutput } = await runBvm(["use", "1.2.23"]);
-      
+
       expect(exitCode).not.toBe(0);
-      // It should fall through to the error "Bun version '1.2.23' is not installed or cannot be resolved."
-      // Because resolveVersion logic might filter it out if validation is strict, 
-      // or if resolveLocalVersion finds the dir but then the final check fails.
-      // Actually getInstalledVersions() checks if dir exists.
-      // useBunVersion -> resolveLocalVersion -> check installed -> found.
-      // Then strict check for binary.
-      expect(allOutput).toContain("not installed"); 
-  });
+      expect(allOutput).toContain("is not properly installed");
+    });
 
   // --- Uninstall Failures ---
   test("uninstall fails for non-existent version", async () => {

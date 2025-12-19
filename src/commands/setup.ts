@@ -71,43 +71,53 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
       throw error;
     }
   }
-  const exportStr = `export BVM_DIR="${BVM_DIR}"
-export BUN_INSTALL="$BVM_DIR/current"
-export PATH="$BUN_INSTALL/bin:$BVM_DIR/bin:$PATH"
-[ -s "$BVM_DIR/bin/bvm-init.sh" ] && . "$BVM_DIR/bin/bvm-init.sh" # Load BVM default init`;
+  const startMarker = '# >>> bvm initialize >>>';
+  const endMarker = '# <<< bvm initialize <<<';
 
-  const fishStr = `set -Ux BVM_DIR "${BVM_DIR}"
-set -Ux BUN_INSTALL "$BVM_DIR/current"
-fish_add_path "$BUN_INSTALL/bin"
+  const configBlock = `${startMarker}
+# !! Contents within this block are managed by 'bvm setup' !!
+export BVM_DIR="${BVM_DIR}"
+export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$PATH"
+${endMarker}`;
+
+  const fishConfigBlock = `# >>> bvm initialize >>>
+# !! Contents within this block are managed by 'bvm setup' !!
+set -Ux BVM_DIR "${BVM_DIR}"
+fish_add_path "$BVM_DIR/shims"
 fish_add_path "$BVM_DIR/bin"
-if test -f "$BVM_DIR/bin/bvm-init.fish"
-  source "$BVM_DIR/bin/bvm-init.fish"
-end`;
-
-  const targetStr = shellName === 'fish' ? 'bvm-init.fish' : 'bvm-init.sh';
-
-  if (content.includes(targetStr)) {
-    return;
-  }
+# <<< bvm initialize <<<`;
 
   if (displayPrompt) {
     console.log(colors.cyan(`Configuring ${shellName} environment in ${configFile}...`));
   }
 
   try {
-    if (shellName === 'fish') {
-        await appendFile(configFile, `
-# BVM Configuration
-${fishStr}
-`);
+    let newContent = content;
+    const blockRegex = new RegExp(`${startMarker}[\s\S]*?${endMarker}`, 'g');
+
+    if (content.includes(startMarker)) {
+      // 1. Update existing managed block
+      newContent = content.replace(blockRegex, shellName === 'fish' ? fishConfigBlock : configBlock);
+    } else if (content.includes('export BVM_DIR=') || content.includes('set -Ux BVM_DIR')) {
+      // 2. Transition from old unmanaged config to new managed block
+      // We'll append the new block and suggest the user remove the old lines, 
+      // or just append. For safety, let's append.
+      newContent = content + '\n' + (shellName === 'fish' ? fishConfigBlock : configBlock);
     } else {
-        await appendFile(configFile, `
-# BVM Configuration
-${exportStr}
-`);
+      // 3. Fresh install
+      newContent = content + '\n' + (shellName === 'fish' ? fishConfigBlock : configBlock);
     }
+
+    if (newContent !== content) {
+      await writeFile(configFile, newContent);
+      if (displayPrompt) {
+        console.log(colors.green(`✓ Successfully updated BVM configuration in ${configFile}`));
+      }
+    } else if (displayPrompt) {
+      console.log(colors.gray('✓ Configuration is already up to date.'));
+    }
+
     if (displayPrompt) {
-        console.log(colors.green(`✓ Successfully configured BVM path in ${configFile}`));
         console.log(colors.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
     }
   } catch (error: any) {

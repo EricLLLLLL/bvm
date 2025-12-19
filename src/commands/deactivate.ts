@@ -1,29 +1,22 @@
 import { unlink } from 'fs/promises';
-import { BVM_CURRENT_BUN_PATH, BVM_CURRENT_DIR } from '../constants';
+import { BVM_ALIAS_DIR } from '../constants';
 import { pathExists } from '../utils';
 import { colors } from '../utils/ui';
 import { withSpinner } from '../command-runner';
+import { join } from 'path';
 
 export async function deactivate(): Promise<void> {
   await withSpinner(
     'Deactivating current Bun version...',
     async (spinner) => {
-      let removedAny = false;
-
-      if (await pathExists(BVM_CURRENT_BUN_PATH)) {
-        await unlink(BVM_CURRENT_BUN_PATH);
-        removedAny = true;
-      }
-
-      if (await pathExists(BVM_CURRENT_DIR)) {
-        await unlink(BVM_CURRENT_DIR);
-        removedAny = true;
-      }
-
-      if (removedAny) {
-        spinner.succeed(colors.green('Current Bun version deactivated.'));
+      const defaultAliasPath = join(BVM_ALIAS_DIR, 'default');
+      
+      if (await pathExists(defaultAliasPath)) {
+        await unlink(defaultAliasPath);
+        spinner.succeed(colors.green('Default Bun version deactivated.'));
+        console.log(colors.gray('Run `bvm use <version>` to reactivate.'));
       } else {
-        spinner.info('No Bun version is currently active via bvm.');
+        spinner.info('No default Bun version is currently active.');
       }
     },
     { failMessage: 'Failed to deactivate' },

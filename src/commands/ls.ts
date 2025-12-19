@@ -15,17 +15,20 @@ export async function listLocalVersions(): Promise<void> {
       const installedVersions = await getInstalledVersions(); // Returns normalized 'vX.Y.Z'
       let currentVersion: string | null = null; // Normalized 'vX.Y.Z'
 
-    // Determine the currently active version by reading the 'current' directory symlink
-    try {
-      if (await pathExists(BVM_CURRENT_DIR)) {
-        // Resolve the symlink to its actual destination to get the version name
-        const realPath = await realpath(BVM_CURRENT_DIR);
-        currentVersion = normalizeVersion(basename(realPath));
-      }
-    } catch (error: any) {
-      if (error.code !== 'ENOENT' && error.code !== 'EINVAL') {
-        throw error;
-      }
+    // Determine the currently active version
+    // Priority: Env > .bvmrc > default alias
+    if (process.env.BVM_ACTIVE_VERSION) {
+        currentVersion = normalizeVersion(process.env.BVM_ACTIVE_VERSION);
+    } else {
+        const rcPath = join(process.cwd(), '.bvmrc');
+        if (await pathExists(rcPath)) {
+             currentVersion = normalizeVersion((await readTextFile(rcPath)).trim());
+        } else {
+            const defaultPath = join(BVM_ALIAS_DIR, 'default');
+            if (await pathExists(defaultPath)) {
+                currentVersion = normalizeVersion((await readTextFile(defaultPath)).trim());
+            }
+        }
     }
 
       spinner.succeed(colors.green('Locally installed Bun versions:'));

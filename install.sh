@@ -193,6 +193,64 @@ fi
 # 7. Optional: Set Runtime as Default Global Version
 VERSIONS_DIR="${BVM_DIR}/versions"
 DEFAULT_ALIAS_LINK="${BVM_DIR}/aliases/default"
+SHIMS_DIR="${BVM_DIR}/shims"
+
+# Ensure shims dir exists
+mkdir -p "$SHIMS_DIR"
+
+# Create the master shim script
+cat > "${SHIMS_DIR}/bun" << 'EOF'
+#!/bin/bash
+export BVM_DIR="${BVM_DIR:-$HOME/.bvm}"
+COMMAND=$(basename "$0")
+
+# 1. Resolve Version
+if [ -n "$BVM_ACTIVE_VERSION" ]; then
+    VERSION="$BVM_ACTIVE_VERSION"
+elif [ -f "$PWD/.bvmrc" ]; then
+    VERSION="v$(cat "$PWD/.bvmrc" | tr -d 'v')"
+elif [ -f "$(git rev-parse --show-toplevel 2>/dev/null)/.bvmrc" ]; then
+    VERSION="v$(cat "$(git rev-parse --show-toplevel)/.bvmrc" | tr -d 'v')"
+else
+    VERSION=$(cat "$BVM_DIR/aliases/default" 2>/dev/null)
+fi
+
+if [ -z "$VERSION" ]; then
+    echo "BVM Error: No Bun version selected." >&2
+    exit 1
+fi
+
+[[ "$VERSION" != v* ]] && VERSION="v$VERSION"
+VERSION_DIR="$BVM_DIR/versions/$VERSION"
+
+if [ ! -d "$VERSION_DIR" ]; then
+    echo "BVM Error: Version $VERSION is not installed." >&2
+    exit 1
+fi
+
+REAL_BIN="$VERSION_DIR/bin/$COMMAND"
+
+if [ -x "$REAL_BIN" ]; then
+    export BUN_INSTALL="$VERSION_DIR"
+    export PATH="$VERSION_DIR/bin:$PATH"
+    
+    "$REAL_BIN" "$@"
+    EXIT_CODE=$?
+    
+    if [[ "$COMMAND" == "bun" ]] && [[ "$*" == *"-g"* ]] && ([[ "$*" == *"install"* ]] || [[ "$*" == *"add"* ]] || [[ "$*" == *"remove"* ]] || [[ "$*" == *"uninstall"* ]]); then
+        "$BVM_DIR/bin/bvm" rehash >/dev/null 2>&1 &
+    fi
+    
+    exit $EXIT_CODE
+else
+    echo "BVM Error: Command '$COMMAND' not found in Bun $VERSION." >&2
+    exit 127
+fi
+EOF
+chmod +x "${SHIMS_DIR}/bun"
+
+# Also symlink bunx
+ln -sf bun "${SHIMS_DIR}/bunx"
 
 if [ "$BVM_MODE" != "upgrade" ] && [ ! -f "$DEFAULT_ALIAS_LINK" ]; then
     echo -e "\n${BLUE}ℹ️  Setting Bun v${REQUIRED_BUN_VERSION} as the default global version.${NC}"
@@ -201,10 +259,7 @@ if [ "$BVM_MODE" != "upgrade" ] && [ ! -f "$DEFAULT_ALIAS_LINK" ]; then
     mkdir -p "${BVM_DIR}/aliases"
     echo "v${REQUIRED_BUN_VERSION}" > "${BVM_DIR}/aliases/default"
     
-    # Critical: Initialize the 'current' symlink and PATH-facing symlink
-    ln -sf "${VERSIONS_DIR}/v${REQUIRED_BUN_VERSION}" "${BVM_DIR}/current"
-    ln -sf "${BVM_DIR}/current/bin/bun" "${BVM_DIR}/bin/bun"
-    
+    # We don't need 'use' anymore, just the alias file and the shim
     echo -e "${GREEN}✓ Bun v${REQUIRED_BUN_VERSION} is now your default version.${NC}"
 fi
 
