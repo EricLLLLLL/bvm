@@ -53,3 +53,9 @@ tmp-*.bin
 .tmp-bun/
 .sandbox-logic/
 verify.log
+
+# Benchmark & Debug
+.bench-*/
+.sandbox-*/
+debug-upgrade.ts
+shim-binary
