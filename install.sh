@@ -217,7 +217,9 @@ spinner $!
 echo -e " ${GREEN}Done.${NC}"
 
 "$WRAPPER_PATH" rehash >/dev/null 2>&1
-echo -e "\n${GREEN}${BOLD}🎉 BVM installed successfully!${NC}"
+
+BVM_VERSION=$("$WRAPPER_PATH" --version 2>/dev/null || echo "unknown")
+echo -e "\n${GREEN}${BOLD}🎉 BVM v${BVM_VERSION} installed successfully!${NC}"
 
 # Detect shell
 case "$(basename "$SHELL")" in

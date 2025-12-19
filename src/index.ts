@@ -22,6 +22,7 @@ import { doctor } from './commands/doctor';
 import { rehash } from './commands/rehash';
 import { printCompletion } from './commands/completion';
 import { colors } from './utils/ui';
+import { notifyUpdate, checkUpdateBackground } from './utils/update-checker';
 
 // --- Lightweight CLI Router (Inlined for bundle stability) ---
 
@@ -125,6 +126,7 @@ class App {
 // --- Main Execution ---
 
 async function main() {
+  await notifyUpdate();
   const app = new App('bvm');
 
   app.command('rehash', 'Regenerate shims for all installed binaries')
@@ -208,7 +210,8 @@ async function main() {
   app.command('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
     .action(async (args) => { if (!args[0]) throw new Error('Shell name is required'); printCompletion(args[0]); });
 
-  app.run();
+  await app.run();
+  await checkUpdateBackground();
 }
 
 main();
