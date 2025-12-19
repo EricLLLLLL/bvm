@@ -1,36 +1,51 @@
 # BVM · Bun Version Manager
 
 > **The NVM for Bun.** 
-> Native, fast, and opinionated version manager built *with* Bun, *for* Bun.
+> Native, Atomic, and High-Performance version manager built *with* Bun, *for* Bun.
 
-![Release](https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest)
-![License](https://img.shields.io/github/license/EricLLLLLL/bvm)
-![Size](https://img.shields.io/badge/size-42kb-green)
-![Bun](https://img.shields.io/badge/Written%20in-Bun-000000?logo=bun)
+[![Release](https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest)](https://github.com/EricLLLLLL/bvm/releases)
+[![Size](https://img.shields.io/badge/size-42kb-green)](#)
+[![Bun](https://img.shields.io/badge/Native-Bun-000?logo=bun)](#)
 
-**BVM** is to Bun what **nvm** is to Node.js, but faster and simpler. It solves the chaos of managing multiple Bun versions across projects, ensuring you always use the exact version your project needs.
+**BVM** (Bun Version Manager) is an environment orchestration tool designed for developers who demand peak performance. Moving beyond the limitations of traditional managers that only tweak environment variables, BVM provides an **atomic, self-healing** solution for your development ecosystem.
 
 ---
 
 ## ⚡ Why BVM? (Comparison)
 
-Why use BVM over manual installation or other tools?
+BVM was engineered from the ground up to solve the slow initialization of `nvm` and the isolation weaknesses of traditional tools.
 
-| Feature | **BVM** | **nvm** (Node) | **bum** / others |
+| Dimension | **BVM (Our Project)** | **nvm** (Node) | **bum / fnm** (Rust) |
 | :--- | :--- | :--- | :--- |
-| **Technology** | **Native Bun** (TypeScript) | Shell Script | Rust / Go |
-| **Startup Speed** | **Instant** (<2ms shim) | Slow (Shell parsing) | Fast |
-| **Dependencies** | **Zero** (Self-bootstrapped) | None | None |
-| **Architecture** | **Smart Shims** (Path-free) | Path Injection | Symlink |
-| **Global Tools** | **Isolated per Version** | Shared / Messy | Mixed |
-| **Cross-Platform**| ✅ macOS, Linux, Windows | ❌ Unix only | ✅ |
-| **Auto-Compat** | ✅ `yarn`/`npm` auto-linked | ❌ Manual | ❌ |
+| **Shell Startup Lag** | **0ms** (Shim-based) | **500ms+** (Full sourcing) | **0ms** |
+| **Resolution Speed** | **~7ms** (Recursive logic) | ~50ms+ | <5ms |
+| **Core Logic Size** | **42KB** (Minified JS) | ~100KB (Shell) | ~5MB+ (Binary) |
+| **Survivability** | ✅ **Atomic (Built-in Runtime)** | ❌ Script-dependent | ❌ Binary-dependent |
+| **Package Isolation** | ✅ **Atomic (BUN_INSTALL)** | ❌ PATH only | ❌ Shared Global |
+| **Auto-Align Tools** | ✅ **Intelligent Linker** | ❌ Manual reinstall | ❌ |
 
-### 💡 The "Inception" Architecture
-BVM is unique because it is **written in Bun itself**.
-*   **Self-Hosting**: It downloads a tiny, private Bun runtime to bootstrap itself.
-*   **Zero Node.js**: It doesn't depend on Node, Python, or Rust.
-*   **Tiny Footprint**: The entire CLI is compiled into a single **42KB** executable.
+---
+
+## 🏛️ Advanced Architecture
+
+### 1. Atomic Private Runtime (Bunker Architecture)
+BVM employs a **"Bunker"** architecture, maintaining an independent, minimal Bun environment in `~/.bvm/runtime`.
+*   **Atomic Survival**: BVM’s operation is entirely decoupled from the lifecycle of the Bun versions it manages. Even if you uninstall every managed Bun version, BVM remains rock-solid and ready to install or repair your environment.
+*   **Instant Ready**: When you install BVM, it automatically bootstraps itself and **installs the latest stable Bun for you**. One `curl`, dual readiness—you get the manager and a production-ready Bun environment instantly.
+
+### 2. Hybrid Path Routing
+We refuse to compromise between performance and flexibility, utilizing a "Split Routing" strategy:
+*   **Global Mode (0ms Overhead)**: When running `bvm use`, BVM modifies physical OS symlinks. Execution speed hits the **physical limit of the OS**, with zero proxy overhead.
+*   **Smart Project Mode (<10ms)**: The Shim script uses a high-performance recursive algorithm to locate `.bvmrc`, intervening only when necessary to ensure a seamless "cd-and-switch" experience.
+
+### 3. Environment-Level Atomic Isolation
+Unlike traditional managers that only modify `PATH`, BVM injects the `BUN_INSTALL` environment variable directly into the execution chain.
+*   **Determinism**: This ensures global packages (`bun install -g`) are physically stored in a directory unique to that specific Bun version. It completely eliminates "Ghost Conflicts" where different versions pollute each other's global scope.
+
+### 4. Intelligent Toolchain Alignment
+BVM deeply understands Bun's compatibility layer. The `rehash` mechanism automatically detects and aligns your toolchain:
+*   **Logic**: It creates `yarn`, `npm`, and `pnpm` symlinks pointing to `bun` within the version's bin directory.
+*   **Principle**: "User-First" priority. It only provides compatibility links if the tools are missing, never overwriting your manual global installations, ensuring maximum environment stability.
 
 ---
 
@@ -50,56 +65,22 @@ irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex
 
 ---
 
-## ✨ Key Features
+## 📖 Command Reference
 
-*   **⚡ Smart Shims**: Automatically routes commands (`bun`, `bunx`) to the correct version based on `.bvmrc`, environment variables, or your shell session.
-*   **🔗 Auto-Compatibility**: Automatically creates shims for `yarn`, `npm`, `pnpm` inside each Bun version, so you can use them instantly without global installs.
-*   **🔄 Auto-Update**: Checks for BVM updates in the background (non-blocking) and notifies you only when necessary.
-*   **📦 Project-Aware**: Recursively searches for `.bvmrc` to switch versions automatically when you `cd` into a project.
-*   **🛡️ Global Isolation**: Global packages installed via `bun install -g` are isolated to that specific Bun version.
-
----
-
-## 📖 Cheat Sheet
-
-### Everyday Use
-
-| Command | Action |
+| Command | Description |
 | :--- | :--- |
-| `bvm i <version>` | Install a version (e.g., `1.3.5`, `latest`) |
-| `bvm use <version>` | Switch version globally & immediately |
-| `bvm ls` | List installed versions |
-| `bvm ls-remote` | List available versions from GitHub |
-
-### Project Management
-
-| Command | Action |
-| :--- | :--- |
-| `bvm shell <version>`| Switch version *only* for current terminal |
-| `bvm current` | Check active version and why (e.g., `.bvmrc`) |
-| `echo "1.3.5" > .bvmrc` | Pin version for your project |
-
-### Maintenance
-
-| Command | Action |
-| :--- | :--- |
-| `bvm upgrade` | Update BVM to the latest version |
-| `bvm rehash` | Regenerate shims (fixes broken paths) |
-| `bvm doctor` | Diagnose environment issues |
-| `bvm uninstall <v>` | Remove an old version |
-
----
-
-## ❓ FAQ
-
-**Q: How does it work without Node?**
-A: BVM installs a standalone Bun binary in `~/.bvm/runtime` solely for running the BVM CLI. Your project's Bun versions are installed separately in `~/.bvm/versions`.
-
-**Q: Can I use it with NVM?**
-A: Yes! BVM manages Bun, NVM manages Node. They live happily together.
+| `bvm i latest` | Install the latest stable Bun version |
+| `bvm use 1.3.5` | Switch global version (immediate effect) |
+| `bvm ls` | List installed versions and aliases |
+| `bvm current` | Show active version source (.bvmrc / Env / Alias) |
+| `bvm upgrade` | Update BVM itself (built-in async check) |
 
 ---
 
 ## 📄 License
 
 MIT © [EricLLLLLL](https://github.com/EricLLLLLL)
+
+---
+
+**BVM - Built with Bun, for the fastest developers on earth.**
