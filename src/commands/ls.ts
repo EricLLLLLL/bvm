@@ -1,5 +1,5 @@
 import { colors } from '../utils/ui';
-import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile } from '../utils';
+import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile, getActiveVersion } from '../utils';
 import { BVM_CURRENT_BUN_PATH, BVM_ALIAS_DIR, BVM_CURRENT_DIR } from '../constants';
 import { readlink, realpath } from 'fs/promises';
 import { join, basename } from 'path';
@@ -16,20 +16,8 @@ export async function listLocalVersions(): Promise<void> {
       let currentVersion: string | null = null; // Normalized 'vX.Y.Z'
 
     // Determine the currently active version
-    // Priority: Env > .bvmrc > default alias
-    if (process.env.BVM_ACTIVE_VERSION) {
-        currentVersion = normalizeVersion(process.env.BVM_ACTIVE_VERSION);
-    } else {
-        const rcPath = join(process.cwd(), '.bvmrc');
-        if (await pathExists(rcPath)) {
-             currentVersion = normalizeVersion((await readTextFile(rcPath)).trim());
-        } else {
-            const defaultPath = join(BVM_ALIAS_DIR, 'default');
-            if (await pathExists(defaultPath)) {
-                currentVersion = normalizeVersion((await readTextFile(defaultPath)).trim());
-            }
-        }
-    }
+    const activeInfo = await getActiveVersion();
+    currentVersion = activeInfo.version;
 
       spinner.succeed(colors.green('Locally installed Bun versions:'));
 

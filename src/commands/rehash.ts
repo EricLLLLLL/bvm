@@ -5,8 +5,6 @@ import { ensureDir, pathExists, readDir } from '../utils';
 import { colors } from '../utils/ui';
 
 // The universal shim script template
-// It dynamically determines the command name based on the filename ($0)
-// This ensures we don't need to generate different scripts for different commands
 const SHIM_TEMPLATE = `#!/bin/bash
 export BVM_DIR="\${BVM_DIR:-$HOME/.bvm}"
 COMMAND=$(basename "$0")
@@ -14,12 +12,21 @@ COMMAND=$(basename "$0")
 # 1. Resolve Version
 if [ -n "$BVM_ACTIVE_VERSION" ]; then
     VERSION="$BVM_ACTIVE_VERSION"
-elif [ -f "$PWD/.bvmrc" ]; then
-    VERSION="v$(cat "$PWD/.bvmrc" | tr -d 'v')"
-elif [ -f "$(git rev-parse --show-toplevel 2>/dev/null)/.bvmrc" ]; then
-    VERSION="v$(cat "$(git rev-parse --show-toplevel)/.bvmrc" | tr -d 'v')"
 else
-    VERSION=$(cat "$BVM_DIR/aliases/default" 2>/dev/null)
+    # Recursively look for .bvmrc
+    CUR_DIR="$PWD"
+    while [ "$CUR_DIR" != "/" ]; do
+        if [ -f "$CUR_DIR/.bvmrc" ]; then
+            VERSION="v$(cat "$CUR_DIR/.bvmrc" | tr -d 'v')"
+            break
+        fi
+        CUR_DIR=$(dirname "$CUR_DIR")
+    done
+    
+    # Fallback to default
+    if [ -z "$VERSION" ]; then
+        VERSION=$(cat "$BVM_DIR/aliases/default" 2>/dev/null)
+    fi
 fi
 
 # Fallback if no version found

@@ -1,8 +1,7 @@
 import { join } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CURRENT_BUN_PATH, EXECUTABLE_NAME, BVM_CURRENT_DIR } from '../constants';
-import { pathExists, normalizeVersion } from '../utils';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
+import { pathExists, normalizeVersion, getActiveVersion } from '../utils';
 import { getRcVersion } from '../rc';
-import { readlink, realpath } from 'fs/promises';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -23,27 +22,18 @@ export async function whichBunVersion(version?: string): Promise<void> {
       let resolvedVersion: string | null = null;
 
       if (!targetVersion || targetVersion === 'current') {
-         if (process.env.BVM_ACTIVE_VERSION) {
-            resolvedVersion = normalizeVersion(process.env.BVM_ACTIVE_VERSION);
-         } else {
-            const { BVM_ALIAS_DIR } = require('../constants');
-            const { readTextFile } = require('../utils');
-            const rcPath = join(process.cwd(), '.bvmrc');
-            if (await pathExists(rcPath)) {
-                 resolvedVersion = normalizeVersion((await readTextFile(rcPath)).trim());
-            } else {
-                const defaultPath = join(BVM_ALIAS_DIR, 'default');
-                if (await pathExists(defaultPath)) {
-                    resolvedVersion = normalizeVersion((await readTextFile(defaultPath)).trim());
-                }
-            }
-         }
+         const activeInfo = await getActiveVersion();
+         resolvedVersion = activeInfo.version;
          
          if (!resolvedVersion) {
              throw new Error('No active Bun version found.');
          }
       } else {
-          resolvedVersion = normalizeVersion(targetVersion);
+          const { resolveLocalVersion } = require('./version');
+          resolvedVersion = await resolveLocalVersion(targetVersion);
+          if (!resolvedVersion) {
+              resolvedVersion = normalizeVersion(targetVersion);
+          }
       }
 
       const binPath = join(BVM_VERSIONS_DIR, resolvedVersion, 'bin', EXECUTABLE_NAME);

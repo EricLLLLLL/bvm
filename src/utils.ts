@@ -87,6 +87,34 @@ export async function getInstalledVersions(): Promise<string[]> {
   return dirs.filter(dir => valid(normalizeVersion(dir))).sort(rcompare);
 }
 
+/**
+ * The core version resolution logic for BVM 2.0.
+ * Priority: Env Variable > .bvmrc File > Default Alias
+ */
+export async function getActiveVersion(): Promise<{ version: string | null, source: 'env' | '.bvmrc' | 'default' | null }> {
+  // 1. Session Environment Variable
+  if (process.env.BVM_ACTIVE_VERSION) {
+    return { version: normalizeVersion(process.env.BVM_ACTIVE_VERSION), source: 'env' };
+  }
+
+  // 2. Project Local .bvmrc
+  const rcPath = join(process.cwd(), '.bvmrc');
+  if (await pathExists(rcPath)) {
+    const content = (await readTextFile(rcPath)).trim();
+    return { version: normalizeVersion(content), source: '.bvmrc' };
+  }
+
+  // 3. Global Default Alias
+  const { BVM_ALIAS_DIR } = require('./constants');
+  const defaultPath = join(BVM_ALIAS_DIR, 'default');
+  if (await pathExists(defaultPath)) {
+    const content = (await readTextFile(defaultPath)).trim();
+    return { version: normalizeVersion(content), source: 'default' };
+  }
+
+  return { version: null, source: null };
+}
+
 export function resolveVersion(targetVersion: string, availableVersions: string[]): string | null {
   if (!targetVersion || availableVersions.length === 0) {
     return null;

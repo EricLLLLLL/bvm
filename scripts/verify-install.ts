@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { rmdir, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
@@ -62,16 +62,21 @@ async function verifyInstall() {
   console.log('🔍 Verifying installation artifacts...');
   const bvmDir = join(sandboxHome, '.bvm');
   const binDir = join(bvmDir, 'bin');
+  const shimsDir = join(bvmDir, 'shims');
   const aliasesDir = join(bvmDir, 'aliases'); 
   
   // Verify .zshrc update
   const zshrcContent = await Bun.file(zshrcPath).text();
-  if (!zshrcContent.includes('bvm-init.sh')) {
-      console.error('❌ FAILED: .zshrc was not updated with bvm-init.sh source command.');
+  if (!zshrcContent.includes('bvm initialize')) {
+      console.error('❌ FAILED: .zshrc was not updated with the managed BVM block.');
       console.error('Content:', zshrcContent);
       process.exit(1);
   }
-  console.log('✅ .zshrc updated with init script.');
+  if (!zshrcContent.includes('/shims')) {
+      console.error('❌ FAILED: .zshrc PATH does not include shims directory.');
+      process.exit(1);
+  }
+  console.log('✅ .zshrc updated correctly.');
 
   // Check Default Alias 
   
@@ -84,28 +89,28 @@ async function verifyInstall() {
   }
   console.log('✅ Default alias created.');
 
-  // Check Bun Symlink
-  const bunLinkPath = join(binDir, 'bun');
-  const bunLinkFile = Bun.file(bunLinkPath);
-  // Note: Bun.file().exists() returns false for broken symlinks, ensuring it's valid
-  if (!(await bunLinkFile.exists())) { 
-    console.error(`❌ FAILED: Bun symlink missing or broken at ${bunLinkPath}`);
+  // Check Bun Shim
+  const bunShimPath = join(shimsDir, 'bun');
+  const bunShimFile = Bun.file(bunShimPath);
+  if (!(await bunShimFile.exists())) { 
+    console.error(`❌ FAILED: Bun shim missing at ${bunShimPath}`);
     process.exit(1);
   }
-  console.log('✅ Bun symlink exists and is valid.');
+  console.log('✅ Bun shim exists.');
 
   // 5. Functional Verification
   console.log('🏃 Verifying command execution...');
   
   const bvmCmd = join(binDir, 'bvm');
+  const bunCmd = join(shimsDir, 'bun'); // Use Shim for bun!
   const env = { 
     HOME: sandboxHome, 
     BVM_DIR: bvmDir,
-    PATH: `${binDir}:${process.env.PATH}` 
+    PATH: `${shimsDir}:${binDir}:${process.env.PATH}` 
   };
 
   // Verify 'bun --version' initially is the default (1.3.5)
-  const initialVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
+  const initialVersion = await runCommand(`${bunCmd} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
   console.log(`✅ Initial Bun Version: ${initialVersion.trim()}`);
 
   const smokeTests = [
@@ -137,42 +142,30 @@ async function verifyInstall() {
   console.log('   - Simulating switch to another version...');
   const fakeVersionDir = join(bvmDir, 'versions', 'v1.0.2');
   await mkdir(fakeVersionDir, { recursive: true });
-  const fakeBunPath = join(fakeVersionDir, 'bun');
+  const fakeBunPath = join(fakeVersionDir, 'bin', 'bun'); // NEW PATH
+  await mkdir(dirname(fakeBunPath), { recursive: true });
   await Bun.write(fakeBunPath, '#!/bin/bash\necho 1.0.2'); 
   await runCommand(`chmod +x ${fakeBunPath}`, sandboxDir, {});
-  await runCommand(`ln -sf ${fakeBunPath} ${join(binDir, 'bun')}`, sandboxDir, {});
   
-  const switchedVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
+  // We simulate 'bvm use 1.0.2' by updating the default alias
+  await Bun.write(join(aliasesDir, 'default'), 'v1.0.2');
+  
+  const switchedVersion = await runCommand(`${bunCmd} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
   console.log(`   - Current version is now: ${switchedVersion.trim()}`);
 
-  // 2. Run the init script (This is what happens in every new terminal)
-  console.log('   - Running bvm-init.sh (simulating new terminal)...');
-  // Remove silent to see errors
-  const initScriptPath = join(binDir, 'bvm-init.sh');
-  let scriptContent = await Bun.file(initScriptPath).text();
-  scriptContent = scriptContent.replace('--silent >/dev/null 2>&1 || true', ''); 
-  await Bun.write(initScriptPath, scriptContent);
-
-  await runCommand(`bash ${initScriptPath}`, sandboxDir, { 
-    HOME: sandboxHome, 
-    BVM_DIR: bvmDir,
-    PATH: `${binDir}:${process.env.PATH}` 
-  });
-
-  // Debug: check where the symlink points
-  const { readlink: readlinkFs } = require('node:fs/promises');
-  const currentLink = await readlinkFs(join(binDir, 'bun'));
-  console.log(`   - Symlink now points to: ${currentLink}`);
+  // 2. Set default back to initial
+  console.log('   - Setting default back to 1.3.5...');
+  await Bun.write(join(aliasesDir, 'default'), 'v1.3.5');
 
   // 3. Verify it's back to default
-  const revertedVersion = await runCommand(`${join(binDir, 'bun')} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
-  console.log(`   - Version after init: ${revertedVersion.trim()}`);
+  const revertedVersion = await runCommand(`${bunCmd} --version`, sandboxDir, { HOME: sandboxHome, BVM_DIR: bvmDir });
+  console.log(`   - Version after revert: ${revertedVersion.trim()}`);
 
   if (revertedVersion.trim() !== initialVersion.trim()) {
-      console.error(`❌ FAILED: Version did not revert to default! Expected ${initialVersion.trim()}, got ${revertedVersion.trim()}`);
+      console.error(`❌ FAILED: Version did not revert! Expected ${initialVersion.trim()}, got ${revertedVersion.trim()}`);
       process.exit(1);
   }
-  console.log('✅ SUCCESS: New terminal correctly reverts to default version.');
+  console.log('✅ SUCCESS: Shim correctly follows the default alias.');
 
   console.log('\n✨ All Verification Checks Passed! Ready for Release. ✨\n');
 }
