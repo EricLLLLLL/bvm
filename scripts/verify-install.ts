@@ -145,14 +145,14 @@ async function verifyInstall() {
       
       console.log('   - Verifying alias exists...');
       const lsOutput = stripAnsi(await runCommand(`${bvmCmd} ls`, sandboxDir, env));
-      if (!/prod -> v1\.3\.5/.test(lsOutput)) throw new Error('Alias not found in ls output');
+      if (!/prod -> v1\.3\.5(?: \(current\))?/.test(lsOutput)) throw new Error('Alias not found in ls output');
       
       console.log('   - Removing alias prod...');
       await runCommand(`${bvmCmd} unalias prod`, sandboxDir, env);
       
       console.log('   - Verifying alias gone...');
       const lsOutputAfter = stripAnsi(await runCommand(`${bvmCmd} ls`, sandboxDir, env));
-      if (/prod -> v1\.3\.5/.test(lsOutputAfter)) throw new Error('Alias still present after unalias');
+      if (/prod -> v1\.3\.5(?: \(current\))?/.test(lsOutputAfter)) throw new Error('Alias still present after unalias');
       console.log('   ✅ Alias lifecycle passed');
   } catch (e: any) {
       console.error(`❌ Alias Scenario Failed: ${e.message}`);
