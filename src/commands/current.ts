@@ -12,7 +12,8 @@ export async function displayCurrentVersion(): Promise<void> {
       const { version, source } = await getActiveVersion();
 
       if (version) {
-        spinner.succeed(colors.green(`Current Bun version: ${version} (${source})`));
+        spinner.stop();
+        console.log(`${colors.green('✓')} Current Bun version: ${colors.green(version)} ${colors.dim(`(${source})`)}`);
       } else {
         spinner.info(colors.blue('No Bun version is currently active.'));
         console.log(colors.yellow(`Use 'bvm use <version>' to set a default, or create a .bvmrc file.`));

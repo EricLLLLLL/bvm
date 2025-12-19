@@ -26,9 +26,9 @@ export async function listLocalVersions(): Promise<void> {
       console.log('  (No versions installed yet)');
     } else {
       installedVersions.forEach(version => {
-        const displayVersion = version; // Already normalized
+        const displayVersion = version; 
         if (displayVersion === currentVersion) {
-          console.log(`* ${colors.green(displayVersion)} (current)`);
+          console.log(`* ${colors.green(displayVersion)} ${colors.dim('(current)')}`);
         } else {
           console.log(`  ${displayVersion}`);
         }
@@ -44,16 +44,12 @@ export async function listLocalVersions(): Promise<void> {
             for (const aliasName of aliasFiles) {
                 const aliasTargetVersion = (await readTextFile(join(BVM_ALIAS_DIR, aliasName))).trim();
                 const normalizedAliasTarget = normalizeVersion(aliasTargetVersion);
-                const isInstalled = installedVersions.includes(normalizedAliasTarget);
                 
-                let aliasStatus = `-> ${normalizedAliasTarget}`;
-                if (!isInstalled) {
-                    aliasStatus = `-> ${normalizedAliasTarget} (N/A - not installed)`;
-                }
+                let aliasStatus = `-> ${colors.cyan(normalizedAliasTarget)}`;
                 if (normalizedAliasTarget === currentVersion) {
-                    aliasStatus += ' (current)';
+                    aliasStatus += ` ${colors.dim('(current)')}`;
                 }
-                console.log(`  ${aliasName} ${colors.cyan(aliasStatus)}`);
+                console.log(`  ${aliasName} ${colors.gray(aliasStatus)}`);
             }
         }
     }
