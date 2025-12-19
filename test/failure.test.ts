@@ -33,13 +33,12 @@ describe("Failure & Edge Cases Suite", () => {
       const binPath = join(TEST_HOME, ".bvm", "versions", "v1.2.23", "bin", "bun");
       rmSync(binPath);
 
-      // 3. Try to use it
-      const { exitCode, allOutput } = await runBvm(["use", "1.2.23"]);
-
-      expect(exitCode).not.toBe(0);
-      expect(allOutput).toContain("is not properly installed");
-    });
-
+            // 3. Try to use it
+            const { exitCode, allOutput } = await runBvm(["use", "1.2.23"]);
+      
+            expect(exitCode).not.toBe(0);
+            expect(allOutput).toContain("Failed to switch to Bun 1.2.23");
+        });
   // --- Uninstall Failures ---
   test("uninstall fails for non-existent version", async () => {
       const { exitCode, allOutput } = await runBvm(["uninstall", "5.5.5"]);

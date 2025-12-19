@@ -78,6 +78,8 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
 # !! Contents within this block are managed by 'bvm setup' !!
 export BVM_DIR="${BVM_DIR}"
 export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$PATH"
+# Reset current version to default for new terminal sessions
+[ -L "$BVM_DIR/current" ] && rm "$BVM_DIR/current"
 ${endMarker}`;
 
   const fishConfigBlock = `# >>> bvm initialize >>>
@@ -85,6 +87,10 @@ ${endMarker}`;
 set -Ux BVM_DIR "${BVM_DIR}"
 fish_add_path "$BVM_DIR/shims"
 fish_add_path "$BVM_DIR/bin"
+# Reset current version to default
+if test -L "$BVM_DIR/current"
+    rm "$BVM_DIR/current"
+end
 # <<< bvm initialize <<<`;
 
   if (displayPrompt) {

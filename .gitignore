@@ -47,3 +47,9 @@ tmp-*.bin
 .sandbox-home/
 .gemini/
 .sandbox-verify
+
+# Temporary test artifacts
+.test-env/
+.tmp-bun/
+.sandbox-logic/
+verify.log

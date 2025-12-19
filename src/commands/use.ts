@@ -1,15 +1,14 @@
 import { join } from 'path';
-import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
-import { ensureDir, pathExists, normalizeVersion, resolveVersion, getInstalledVersions } from '../utils';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_CURRENT_DIR } from '../constants';
+import { ensureDir, pathExists, normalizeVersion, resolveVersion, getInstalledVersions, createSymlink } from '../utils';
 import { colors } from '../utils/ui';
 import { getRcVersion } from '../rc';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
-import { createAlias } from './alias';
 
 /**
- * Sets the global default Bun version. This affects new terminal sessions.
- * @param targetVersion The version to set as default (e.g., "1.0.0").
+ * Switches the active Bun version immediately by updating the `current` symlink.
+ * @param targetVersion The version to use (e.g., "1.0.0").
  * @param options Configuration options
  */
 export async function useBunVersion(targetVersion?: string, options: { silent?: boolean } = {}): Promise<void> {
@@ -50,11 +49,11 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
         throw new Error(`Version ${normalizedFinalResolvedVersion} is not properly installed (binary missing).`);
     }
 
-    // In Shim architecture, 'use' sets the global default.
-    await createAlias('default', normalizedFinalResolvedVersion);
+    // Update the 'current' directory symlink for immediate global effect
+    await createSymlink(installPath, BVM_CURRENT_DIR);
 
     if (spinner) {
-        spinner.succeed(colors.green(`✓ Default set to ${normalizedFinalResolvedVersion}. New terminals will now start with this version.`));
+        spinner.succeed(colors.green(`Now using Bun ${normalizedFinalResolvedVersion} (immediate effect).`));
     }
   };
 
@@ -62,9 +61,9 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
       await runLogic();
   } else {
       await withSpinner(
-        `Setting default to Bun ${versionToUse}...`,
+        `Switching to Bun ${versionToUse}...`,
         (spinner) => runLogic(spinner),
-        { failMessage: () => `Failed to set default to Bun ${versionToUse}` },
+        { failMessage: () => `Failed to switch to Bun ${versionToUse}` },
       );
   }
 }

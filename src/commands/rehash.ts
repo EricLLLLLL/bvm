@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { readdir, chmod, unlink } from 'fs/promises';
+import { readdir, chmod, unlink, symlink } from 'fs/promises';
 import { BVM_SHIMS_DIR, BVM_VERSIONS_DIR, BVM_DIR, OS_PLATFORM, EXECUTABLE_NAME } from '../constants';
 import { ensureDir, pathExists, readDir } from '../utils';
 import { colors } from '../utils/ui';
@@ -10,32 +10,47 @@ const SHIM_TEMPLATE_BASH = `#!/bin/bash
 # This script dynamically routes commands to the correct Bun version.
 
 BVM_DIR="\${BVM_DIR:-$HOME/.bvm}"
-COMMAND=$(basename "$0") # e.g., "bun", "yarn", "pm2"
+COMMAND=$(basename "$0")
 
-# 1. Determine Bun version based on priority:
-#    a) BVM_ACTIVE_VERSION (session override)
-#    b) .bvmrc (project specific)
-#    c) Global default
+# 1. Resolve Version
 if [ -n "$BVM_ACTIVE_VERSION" ]; then
     VERSION="$BVM_ACTIVE_VERSION"
-elif [ -f ".bvmrc" ]; then
-    VERSION="v$(cat .bvmrc | tr -d 'v')"
-elif [ -f "$(git rev-parse --show-toplevel 2>/dev/null)/.bvmrc" ]; then # Recursive .bvmrc check
-    VERSION="v$(cat "$(git rev-parse --show-toplevel)/.bvmrc" | tr -d 'v')"
 else
-    # Fallback to default, if not found, let it error below
-    VERSION=$(cat "$BVM_DIR/aliases/default" 2>/dev/null)
+    # Project Context (.bvmrc)
+    CUR_DIR="$PWD"
+    while [ "$CUR_DIR" != "/" ]; do
+        if [ -f "$CUR_DIR/.bvmrc" ]; then
+            VERSION="v$(cat "$CUR_DIR/.bvmrc" | tr -d 'v')"
+            break
+        fi
+        CUR_DIR=$(dirname "$CUR_DIR")
+    done
+    
+    # Global Current Symlink
+    if [ -z "$VERSION" ] && [ -L "$BVM_DIR/current" ]; then
+        VERSION_PATH=$(readlink "$BVM_DIR/current")
+        VERSION_TMP=$(basename "$VERSION_PATH")
+        if [ -d "$BVM_DIR/versions/$VERSION_TMP" ]; then
+            VERSION="$VERSION_TMP"
+        fi
+    fi
+
+    # Global Default Alias
+    if [ -z "$VERSION" ]; then
+        if [ -f "$BVM_DIR/aliases/default" ]; then
+            VERSION=$(cat "$BVM_DIR/aliases/default")
+        fi
+    fi
 fi
 
-# 2. Validate and locate the version
+# 2. Validate
 if [ -z "$VERSION" ]; then
     echo "BVM Error: No Bun version is active or default is set." >&2
     exit 1
 fi
-[[ "$VERSION" != v* ]] && VERSION="v$VERSION" # Ensure 'v' prefix
+[[ "$VERSION" != v* ]] && VERSION="v$VERSION"
 
 VERSION_DIR="$BVM_DIR/versions/$VERSION"
-
 if [ ! -d "$VERSION_DIR" ]; then
     echo "BVM Error: Bun version $VERSION is not installed." >&2
     exit 1
@@ -43,21 +58,21 @@ fi
 
 REAL_EXECUTABLE="$VERSION_DIR/bin/$COMMAND"
 
-# 3. Execution with environment injection
+# 3. Execution
 if [ -x "$REAL_EXECUTABLE" ]; then
-    export BUN_INSTALL="$VERSION_DIR" # Tell Bun where its root is for global installs
-    export PATH="$VERSION_DIR/bin:$PATH" # Prioritize this version's bin for sub-commands
+    export BUN_INSTALL="$VERSION_DIR"
+    export PATH="$VERSION_DIR/bin:$PATH"
     
-    # Smart Hook: If this is 'bun' and it's a global install command, rehash in background
+    "$REAL_EXECUTABLE" "$@"
+    EXIT_CODE=$?
+    
+    # Smart Hook: Auto-rehash on global installs
     if [[ "$COMMAND" == "bun" ]] && [[ "$*" == *"-g"* ]] && ([[ "$*" == *"install"* ]] || [[ "$*" == *"add"* ]] || [[ "$*" == *"remove"* ]] || [[ "$*" == *"uninstall"* ]]); then
-        "$BVM_DIR/bin/bvm" rehash >/dev/null 2>&1 &
+        "$BVM_DIR/bin/bvm" rehash >/dev/null 2>&1
     fi
-    
-    exec "$REAL_EXECUTABLE" "$@"
+
+    exit $EXIT_CODE
 else
-    # If the specific command doesn't exist in this version,
-    # the 'exec' above would fail. This part only runs if exec fails.
-    # So it means this shim points to a non-existent command in the current version.
     echo "BVM Error: Command '$COMMAND' not found in Bun $VERSION." >&2
     exit 127
 fi
@@ -68,53 +83,53 @@ const SHIM_TEMPLATE_POWERSHELL = `# Shim managed by BVM (Bun Version Manager)
 # This script dynamically routes commands to the correct Bun version.
 
 $BvmDir = "$HOME\.bvm"
-$Command = $MyInvocation.MyCommand.Name # e.g., "bun.ps1", "yarn.ps1"
+$Command = $MyInvocation.MyCommand.Name
 
-# Remove .ps1 extension for command name
 if ($Command -like "*.ps1") { $Command = $Command.Substring(0, $Command.Length - 4) }
 
-
-# 1. Determine Bun version based on priority:
-#    a) BVM_ACTIVE_VERSION (session override)
-#    b) .bvmrc (project specific)
-#    c) Global default
 $Version = $null
 if ($env:BVM_ACTIVE_VERSION) {
     $Version = $env:BVM_ACTIVE_VERSION
 } elseif (Test-Path ".\.bvmrc") {
     $Version = "v" + (Get-Content ".\.bvmrc" | Select-Object -First 1)
 } else {
-    # Fallback to default, if not found, let it error below
-    $DefaultPath = Join-Path $BvmDir "aliases\default"
-    if (Test-Path $DefaultPath) {
-        $Version = Get-Content $DefaultPath | Select-Object -First 1
+    $CurrentPath = Join-Path $BvmDir "current"
+    if (Test-Path $CurrentPath) {
+        $Target = (Get-Item $CurrentPath).Target
+        if ($Target) {
+            $VersionTmp = [System.IO.Path]::GetFileName($Target)
+            if (Test-Path (Join-Path $BvmDir "versions\$VersionTmp")) {
+                $Version = $VersionTmp
+            }
+        }
+    }
+
+    if (-not $Version) {
+        $DefaultPath = Join-Path $BvmDir "aliases\default"
+        if (Test-Path $DefaultPath) {
+            $Version = Get-Content $DefaultPath | Select-Object -First 1
+        }
     }
 }
 
-# 2. Validate and locate the version
 if (-not $Version) {
     Write-Error "BVM Error: No Bun version is active or default is set."
     exit 1
 }
-if ($Version -notmatch "^v") { $Version = "v" + $Version } # Ensure 'v' prefix
+if ($Version -notmatch "^v") { $Version = "v" + $Version }
 
 $VersionDir = Join-Path $BvmDir "versions\$Version"
-
 if (-not (Test-Path $VersionDir)) {
     Write-Error "BVM Error: Bun version $Version is not installed."
     exit 1
 }
 
-$RealExecutable = Join-Path $VersionDir "bin\$Command.exe" # PowerShell prefers .exe for binaries
+$RealExecutable = Join-Path $VersionDir "bin\$Command.exe"
 
-# 3. Execution with environment injection
 if (Test-Path $RealExecutable) {
     $env:BUN_INSTALL = $VersionDir
-    $env:PATH = "$(Join-Path $VersionDir 'bin');$env:PATH" # Prioritize this version's bin for sub-commands
+    $env:PATH = "$(Join-Path $VersionDir 'bin');$env:PATH"
     
-    # Smart Hook: If this is 'bun' and it's a global install command, rehash in background
-    # Note: PowerShell needs `&` to run a command in background, might not be truly detached.
-    # Or needs Start-Job / Start-Process. Let's make it Start-Process -NoNewWindow for now.
     if (($Command -eq "bun") -and ($args -match "-g") -and (($args -match "install") -or ($args -match "add") -or ($args -match "remove") -or ($args -match "uninstall"))) {
         Start-Process -FilePath "$BvmDir\bin\bvm.cmd" -ArgumentList "rehash" -NoNewWindow
     }
@@ -133,33 +148,44 @@ export async function rehash(): Promise<void> {
   const shimExtension = isWindows ? '.ps1' : '';
   const template = isWindows ? SHIM_TEMPLATE_POWERSHELL : SHIM_TEMPLATE_BASH;
 
-  // 1. Scan all installed versions for executables
   const executables = new Set<string>();
   executables.add('bun');
-  executables.add('bunx'); // bunx is usually a symlink to bun, but let's make a shim for it
+  executables.add('bunx');
 
   if (await pathExists(BVM_VERSIONS_DIR)) {
     const versions = await readDir(BVM_VERSIONS_DIR);
     for (const version of versions) {
+      if (version.startsWith('.')) continue;
+      
       const binDir = join(BVM_VERSIONS_DIR, version, 'bin');
       if (await pathExists(binDir)) {
+        const bunPath = join(binDir, EXECUTABLE_NAME);
+        if (await pathExists(bunPath)) {
+          const compatLinks = ['bunx', 'yarn', 'npm', 'pnpm'];
+          for (const linkName of compatLinks) {
+            const linkPath = join(binDir, linkName);
+            if (!(await pathExists(linkPath))) {
+              try {
+                await symlink(`./${EXECUTABLE_NAME}`, linkPath);
+              } catch (e) {}
+            }
+          }
+        }
+
         const files = await readDir(binDir);
         for (const file of files) {
-          // Add only executable files (ignore .ps1 or .cmd extension for command name)
           executables.add(file.replace(/\.(exe|ps1|cmd)$/i, ''));
         }
       }
     }
   }
 
-  // 2. Generate shims for each executable
   for (const exe of executables) {
     const shimPath = join(BVM_SHIMS_DIR, exe + shimExtension);
     await Bun.write(shimPath, template);
-    await chmod(shimPath, 0o755); // Make it executable
+    await chmod(shimPath, 0o755);
   }
 
-  // 3. Cleanup stale shims
   const existingShims = await readDir(BVM_SHIMS_DIR);
   for (const shim of existingShims) {
     const shimNameWithoutExt = shim.replace(/\.(ps1|cmd)$/i, '');

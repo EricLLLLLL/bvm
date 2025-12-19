@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
-import { getInstalledVersions, normalizeVersion, pathExists, readTextFile, getActiveVersion } from '../utils';
+import { getInstalledVersions, normalizeVersion, pathExists, readTextFile, getActiveVersion, resolveVersion } from '../utils';
 import { readlink } from 'fs/promises';
 import { maxSatisfying } from '../utils/semver-lite';
 import { withSpinner } from '../command-runner';
@@ -43,25 +43,8 @@ export async function resolveLocalVersion(spec: string): Promise<string | null> 
   const normalizedSpec = normalizeVersion(spec);
   const installed = await getInstalledVersions(); // Returns normalized vX.Y.Z
 
-  // Exact match
-  if (installed.includes(normalizedSpec)) {
-    return normalizedSpec;
-  }
-
-  // Range match (find highest installed satisfying spec)
-  // Remove 'v' for semver.satisfies check if needed, but installed has 'v'.
-  // semver.maxSatisfying works best.
-  const cleanInstalled = installed.map(v => v); 
-  // Note: installed versions from getInstalledVersions are usually sorted, but let's trust maxSatisfying
-  
-  const found = maxSatisfying(cleanInstalled, spec);
-  if (found) return found;
-  
-  // Try matching against 'v' prefix explicitly if spec didn't have it
-  const foundV = maxSatisfying(cleanInstalled, normalizedSpec);
-  if (foundV) return foundV;
-
-  return null;
+  // Use the shared resolveVersion utility for consistent behavior
+  return resolveVersion(spec, installed);
 }
 
 export async function displayVersion(spec: string): Promise<void> {

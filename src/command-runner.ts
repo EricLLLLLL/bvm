@@ -28,9 +28,10 @@ export async function withSpinner<T>(
     // If they didn't, we should probably stop it.
     spinner.stop(); 
     return result;
-  } catch (error) {
+  } catch (error: any) {
     const failureText = resolveFailMessage(error, options?.failMessage);
     spinner.fail(colors.red(failureText));
+    error.reported = true;
     throw error;
   }
 }

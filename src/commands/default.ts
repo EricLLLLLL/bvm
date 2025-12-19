@@ -41,9 +41,8 @@ export async function defaultBunVersion(targetVersion?: string): Promise<void> {
           throw new Error(`Bun version '${targetVersion}' is not installed.`);
         }
 
-        await createAlias('default', finalResolvedVersion);
+        await createAlias('default', finalResolvedVersion, { silent: true });
         spinner.succeed(colors.green(`✓ Default set to ${finalResolvedVersion}. New terminals will now start with this version.`));
-        await rehash(); // Rehash after setting default
       },
       { failMessage: `Failed to set global default to Bun ${targetVersion}` },
     );

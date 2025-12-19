@@ -1,49 +1,55 @@
 import { join } from 'path';
-import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
-import { pathExists, normalizeVersion, getActiveVersion } from '../utils';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_ALIAS_DIR } from '../constants';
+import { pathExists, normalizeVersion, getActiveVersion, readTextFile } from '../utils';
 import { getRcVersion } from '../rc';
+import { realpath } from 'fs/promises';
 import { withSpinner } from '../command-runner';
+import { resolveLocalVersion } from './version';
 
 /**
- * Displays the path to the executable for a specific Bun version.
- * @param version The version to look up. If omitted, uses .bvmrc or current.
+ * Displays the path to the real binary for a specific command or version.
+ * Usage:
+ *   bvm which           -> Path to current bun
+ *   bvm which 1.0.0     -> Path to bun v1.0.0
+ *   bvm which yarn      -> Path to yarn in current bun version
  */
-export async function whichBunVersion(version?: string): Promise<void> {
-  let targetVersion = version;
-
-  // 1. If no version provided, try .bvmrc
-  if (!targetVersion) {
-    targetVersion = await getRcVersion() || undefined;
-  }
-
+export async function whichBunVersion(target?: string): Promise<void> {
   await withSpinner(
-    `Resolving Bun path for ${targetVersion || 'current'}...`,
+    `Resolving path...`,
     async () => {
       let resolvedVersion: string | null = null;
+      let command = 'bun';
 
-      if (!targetVersion || targetVersion === 'current') {
-         const activeInfo = await getActiveVersion();
-         resolvedVersion = activeInfo.version;
-         
-         if (!resolvedVersion) {
-             throw new Error('No active Bun version found.');
-         }
+      const { version: currentVersion } = await getActiveVersion();
+
+      if (!target || target === 'current') {
+          // Case: bvm which
+          resolvedVersion = currentVersion;
+          if (!resolvedVersion) throw new Error('No active Bun version found.');
       } else {
+          // Case: bvm which 1.0.0 OR bvm which yarn
           const { resolveLocalVersion } = await import('./version');
-          resolvedVersion = await resolveLocalVersion(targetVersion);
+          resolvedVersion = await resolveLocalVersion(target);
+          
           if (!resolvedVersion) {
-              resolvedVersion = normalizeVersion(targetVersion);
+              // If it's not a version/alias, it might be a command name (like 'yarn')
+              if (currentVersion) {
+                  resolvedVersion = currentVersion;
+                  command = target;
+              } else {
+                  throw new Error(`Bun version or command '${target}' not found.`);
+              }
           }
       }
 
-      const binPath = join(BVM_VERSIONS_DIR, resolvedVersion, 'bin', EXECUTABLE_NAME);
+      const binPath = join(BVM_VERSIONS_DIR, resolvedVersion, 'bin', command === 'bun' ? EXECUTABLE_NAME : command);
 
       if (await pathExists(binPath)) {
         console.log(binPath);
       } else {
-        throw new Error(`Bun ${targetVersion || 'current'} (${resolvedVersion}) is not installed.`);
+        throw new Error(`Command '${command}' not found in Bun ${resolvedVersion}.`);
       }
     },
-    { failMessage: 'Failed to resolve Bun path' },
+    { failMessage: 'Failed to resolve path' },
   );
 }

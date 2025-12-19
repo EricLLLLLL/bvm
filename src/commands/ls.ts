@@ -1,8 +1,7 @@
 import { colors } from '../utils/ui';
 import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile, getActiveVersion } from '../utils';
 import { BVM_ALIAS_DIR } from '../constants';
-import { readlink, realpath } from 'fs/promises';
-import { join, basename } from 'path';
+import { join } from 'path';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -10,14 +9,12 @@ import { withSpinner } from '../command-runner';
  */
 export async function listLocalVersions(): Promise<void> {
   await withSpinner(
-    'Fetching locally installed Bun versions...',
+    'Fetching locally installed Bun versions...', 
     async (spinner) => {
       const installedVersions = await getInstalledVersions(); // Returns normalized 'vX.Y.Z'
-      let currentVersion: string | null = null; // Normalized 'vX.Y.Z'
-
-    // Determine the currently active version
-    const activeInfo = await getActiveVersion();
-    currentVersion = activeInfo.version;
+      
+      const activeInfo = await getActiveVersion();
+      const currentVersion = activeInfo.version;
 
       spinner.succeed(colors.green('Locally installed Bun versions:'));
 
@@ -26,11 +23,10 @@ export async function listLocalVersions(): Promise<void> {
       console.log('  (No versions installed yet)');
     } else {
       installedVersions.forEach(version => {
-        const displayVersion = version; 
-        if (displayVersion === currentVersion) {
-          console.log(`* ${colors.green(displayVersion)} ${colors.dim('(current)')}`);
+        if (version === currentVersion) {
+          console.log(`* ${colors.green(version)} ${colors.dim('(current)')}`);
         } else {
-          console.log(`  ${displayVersion}`);
+          console.log(`  ${version}`);
         }
       });
     }
@@ -42,14 +38,18 @@ export async function listLocalVersions(): Promise<void> {
         if (aliasFiles.length > 0) {
             console.log(colors.green('\nAliases:'));
             for (const aliasName of aliasFiles) {
-                const aliasTargetVersion = (await readTextFile(join(BVM_ALIAS_DIR, aliasName))).trim();
-                const normalizedAliasTarget = normalizeVersion(aliasTargetVersion);
-                
-                let aliasStatus = `-> ${colors.cyan(normalizedAliasTarget)}`;
-                if (normalizedAliasTarget === currentVersion) {
-                    aliasStatus += ` ${colors.dim('(current)')}`;
+                try {
+                    const aliasTargetVersion = (await readTextFile(join(BVM_ALIAS_DIR, aliasName))).trim();
+                    const normalizedAliasTarget = normalizeVersion(aliasTargetVersion);
+                    
+                    let aliasStatus = `-> ${colors.cyan(normalizedAliasTarget)}`;
+                    if (normalizedAliasTarget === currentVersion) {
+                        aliasStatus += ` ${colors.dim('(current)')}`;
+                    }
+                    console.log(`  ${aliasName} ${colors.gray(aliasStatus)}`);
+                } catch (e) {
+                    // Skip invalid aliases
                 }
-                console.log(`  ${aliasName} ${colors.gray(aliasStatus)}`);
             }
         }
     }

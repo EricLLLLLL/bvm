@@ -7,7 +7,7 @@ import { withSpinner } from '../command-runner';
  */
 export async function displayCurrentVersion(): Promise<void> {
   await withSpinner(
-    'Checking current Bun version...', 
+    'Checking current Bun version...',
     async (spinner) => {
       const { version, source } = await getActiveVersion();
 
@@ -16,7 +16,7 @@ export async function displayCurrentVersion(): Promise<void> {
         console.log(`${colors.green('✓')} Current Bun version: ${colors.green(version)} ${colors.dim(`(${source})`)}`);
       } else {
         spinner.info(colors.blue('No Bun version is currently active.'));
-        console.log(colors.yellow(`Use 'bvm use <version>' to set a default, or create a .bvmrc file.`));
+        console.log(colors.yellow(`Use 'bvm install <version>' to set a default, or create a .bvmrc file.`));
       }
     },
     { failMessage: 'Failed to determine current Bun version' },

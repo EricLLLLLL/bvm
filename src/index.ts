@@ -98,7 +98,9 @@ class App {
     try {
         await command.action(positionals.slice(1), values);
     } catch (error: any) {
-        console.error(colors.red(`✖ ${error.message}`));
+        if (!error.reported) {
+            console.error(colors.red(`✖ ${error.message}`));
+        }
         process.exit(1);
     }
   }
@@ -141,7 +143,7 @@ async function main() {
   app.command('ls-remote', 'List all available remote Bun versions')
     .action(async () => { await listRemoteVersions(); });
 
-  app.command('use <version>', 'Set the global default Bun version (affecting new terminals)')
+  app.command('use <version>', 'Switch the active Bun version immediately (all terminals)')
     .action(async (args) => { if (!args[0]) throw new Error('Version is required'); await useBunVersion(args[0]); });
 
   app.command('shell <version>', 'Switch Bun version for the current shell session')

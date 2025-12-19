@@ -1,7 +1,7 @@
 import { colors } from '../utils/ui';
 import { join } from 'path';
 import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
-import { ensureDir, pathExists, normalizeVersion, writeTextFile, readTextFile } from '../utils';
+import { ensureDir, pathExists, normalizeVersion, writeTextFile, readTextFile, resolveVersion } from '../utils';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
 
@@ -9,16 +9,17 @@ import { withSpinner } from '../command-runner';
  * Creates an alias for a Bun version.
  * @param aliasName The name of the alias (e.g., "default", "lts").
  * @param targetVersion The Bun version to alias (e.g., "1.0.0", "latest").
+ * @param options Configuration options
  */
-export async function createAlias(aliasName: string, targetVersion: string): Promise<void> {
-  await withSpinner(
-    `Creating alias '${aliasName}' for Bun ${targetVersion}...`,
-    async (spinner) => {
+export async function createAlias(aliasName: string, targetVersion: string, options: { silent?: boolean } = {}): Promise<void> {
+  const runLogic = async (spinner?: any) => {
       // Resolve the target version to a concrete installed version
       const resolvedVersion = await resolveLocalVersion(targetVersion);
       
       if (!resolvedVersion) {
-        console.log(colors.blue(`Please install Bun ${targetVersion} first using: bvm install ${targetVersion}`));
+        if (!options.silent) {
+            console.log(colors.blue(`Please install Bun ${targetVersion} first using: bvm install ${targetVersion}`));
+        }
         throw new Error(`Bun version '${targetVersion}' is not installed. Cannot create alias.`);
       }
 
@@ -42,8 +43,18 @@ export async function createAlias(aliasName: string, targetVersion: string): Pro
     // Write the alias file
     await writeTextFile(aliasFilePath, `${resolvedVersion}\n`);
 
-      spinner.succeed(colors.green(`Alias '${aliasName}' created for Bun ${resolvedVersion}.`));
-    },
-    { failMessage: `Failed to create alias '${aliasName}'` },
-  );
+      if (spinner) {
+        spinner.succeed(colors.green(`Alias '${aliasName}' created for Bun ${resolvedVersion}.`));
+      }
+  };
+
+  if (options.silent) {
+      await runLogic();
+  } else {
+      await withSpinner(
+        `Creating alias '${aliasName}' for Bun ${targetVersion}...`,
+        (spinner) => runLogic(spinner),
+        { failMessage: `Failed to create alias '${aliasName}'` },
+      );
+  }
 }

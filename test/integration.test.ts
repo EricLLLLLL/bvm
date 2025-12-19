@@ -33,7 +33,7 @@ describe("CLI Integration Suite", () => {
   test("use fuzzy version (e.g., 1.3 to v1.3.4)", async () => {
     const { exitCode, allOutput } = await runBvm(["use", "1.3"]);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Default set to v1.3.4");
+    expect(allOutput).toContain("Now using Bun v1.3.4 (immediate effect)");
   });
 
   test("install fuzzy version (e.g., 1.2 to v1.2.23) and reports already installed", async () => {
@@ -45,7 +45,7 @@ describe("CLI Integration Suite", () => {
   test("use latest resolves to highest installed", async () => {
     const { exitCode, allOutput } = await runBvm(["use", "latest"]);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Default set to v1.3.4");
+    expect(allOutput).toContain("Now using Bun v1.3.4 (immediate effect)");
   });
 
   test("install latest installs/reports latest remote", async () => {
@@ -57,7 +57,7 @@ describe("CLI Integration Suite", () => {
   test("use invalid partial version fails gracefully", async () => {
     const { exitCode, allOutput } = await runBvm(["use", "99.x"]);
     expect(exitCode).not.toBe(0);
-    expect(allOutput).toContain("Bun version '99.x' is not installed");
+    expect(allOutput).toContain("Failed to switch to Bun 99.x");
   });
 
   test("install invalid partial version fails gracefully", async () => {
@@ -137,7 +137,7 @@ describe("CLI Integration Suite", () => {
   test("current shows active version", async () => {
     const { exitCode, allOutput } = await runBvm(["current"]);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Bun version");
+    expect(allOutput).toContain("Current Bun version");
   });
 
   test("which 1.0.0 returns path", async () => {
@@ -203,15 +203,28 @@ describe("CLI Integration Suite", () => {
   });
 
   // --- Cleanup ---
-  test("uninstall active version fails", async () => {
-    // 1. Ensure 1.0.0 is installed and set as default
+  test("uninstall active version (but not default) should work", async () => {
+    // 1. Install 1.0.0 and 1.3.4
     await runBvm(["install", "1.0.0"]);
+    await runBvm(["install", "1.3.4"]);
+    // 2. Set 1.3.4 as default, but use 1.0.0 (active via current symlink)
+    await runBvm(["alias", "default", "1.3.4"]);
     await runBvm(["use", "1.0.0"]);
     
+    // 3. Try to uninstall 1.0.0
+    const { exitCode } = await runBvm(["uninstall", "1.0.0"]);
+    expect(exitCode).toBe(0);
+  });
+
+  test("uninstall default version fails", async () => {
+    // 1. Set 1.3.4 as default
+    await runBvm(["install", "1.3.4"]);
+    await runBvm(["alias", "default", "1.3.4"]);
+    
     // 2. Try to uninstall
-    const { exitCode, allOutput } = await runBvm(["uninstall", "1.0.0"]);
+    const { exitCode, allOutput } = await runBvm(["uninstall", "1.3.4"]);
     expect(exitCode).not.toBe(0);
-    expect(allOutput).toContain("set as default");
+    expect(allOutput).toContain("currently set as default");
   });
 
   test("uninstall 1.0.0 works", async () => {
@@ -220,6 +233,7 @@ describe("CLI Integration Suite", () => {
     await runBvm(["install", "1.3.4"]);
     
     // 2. Switch default away from 1.0.0
+    await runBvm(["alias", "default", "1.3.4"]);
     await runBvm(["use", "1.3.4"]);
 
     // 3. Uninstall
