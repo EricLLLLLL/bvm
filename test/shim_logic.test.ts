@@ -63,4 +63,46 @@ describe("Shim Logic Integration", () => {
     expect(proc.exitCode).toBe(0);
     expect(output.trim()).toBe("1.3.4");
   });
+
+  test("shim injects BUN_INSTALL environment variable", async () => {
+    // 1. Setup .bvmrc
+    const projectDir = join(TEST_HOME, "env-test");
+    await mkdirSync(projectDir, { recursive: true });
+    await writeFileSync(join(projectDir, ".bvmrc"), "1.3.4");
+
+    const shimPath = join(TEST_BVM_DIR, "shims", "bun");
+
+    // Overwrite the installed 'bun' binary with a script that just prints BUN_INSTALL
+    const versionBin = join(TEST_BVM_DIR, "versions", "v1.3.4", "bin", "bun");
+    const debugScript = `#!/bin/sh
+echo "$BUN_INSTALL"
+echo "$PATH"
+`;
+    await Bun.write(versionBin, debugScript);
+    await chmodSync(versionBin, 0o755);
+
+    // 2. Run 'bun run'
+    const proc = Bun.spawn([shimPath, "run"], {
+      cwd: projectDir,
+      env: {
+        ...process.env,
+        HOME: TEST_HOME,
+        BVM_DIR: TEST_BVM_DIR,
+      },
+      stdout: "pipe",
+      stderr: "pipe"
+    });
+
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+
+    expect(proc.exitCode).toBe(0);
+    
+    // 3. Verify BUN_INSTALL points to the version directory
+    const expectedPath = join(TEST_BVM_DIR, "versions", "v1.3.4");
+    const [bunInstall, pathEnv] = output.trim().split("\n");
+    
+    expect(bunInstall).toBe(expectedPath);
+    expect(pathEnv).toContain(join(expectedPath, "bin"));
+  });
 });
