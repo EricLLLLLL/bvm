@@ -1,9 +1,9 @@
 # Plan: 增强 Shim 解析逻辑与项目上下文检测
 
 ## Phase 1: Context Detection Logic
-- [ ] Task: Create reproduction test case for .bvmrc discovery
-- [ ] Task: Implement recursive .bvmrc search function in Shim
-- [ ] Task: Verify .bvmrc detection with unit tests
+- [x] Task: Create reproduction test case for .bvmrc discovery b06904d
+- [x] Task: Implement recursive .bvmrc search function in Shim b06904d
+- [x] Task: Verify .bvmrc detection with unit tests b06904d
 
 ## Phase 2: Environment Isolation
 - [ ] Task: Create test case for BUN_INSTALL injection
