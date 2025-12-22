@@ -6,9 +6,9 @@
 - [x] Task: Verify .bvmrc detection with unit tests b06904d
 
 ## Phase 2: Environment Isolation
-- [ ] Task: Create test case for BUN_INSTALL injection
-- [ ] Task: Modify Shim to inject BUN_INSTALL environment variable
-- [ ] Task: Verify global install isolation via integration test
+- [x] Task: Create test case for BUN_INSTALL injection 4e102a5
+- [x] Task: Modify Shim to inject BUN_INSTALL environment variable 4e102a5
+- [x] Task: Verify global install isolation via integration test 4e102a5
 
 ## Phase 3: Integration & Fallback
 - [ ] Task: Implement fallback to global current version logic
