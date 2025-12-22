@@ -20,7 +20,7 @@ else
     CUR_DIR="$PWD"
     while [ "$CUR_DIR" != "/" ]; do
         if [ -f "$CUR_DIR/.bvmrc" ]; then
-            VERSION="v$(cat "$CUR_DIR/.bvmrc" | tr -d 'v')"
+            VERSION="v$(cat "$CUR_DIR/.bvmrc" | tr -d 'v' | tr -d '[:space:]')"
             break
         fi
         CUR_DIR=$(dirname "$CUR_DIR")
@@ -90,10 +90,21 @@ if ($Command -like "*.ps1") { $Command = $Command.Substring(0, $Command.Length -
 $Version = $null
 if ($env:BVM_ACTIVE_VERSION) {
     $Version = $env:BVM_ACTIVE_VERSION
-} elseif (Test-Path ".\.bvmrc") {
-    $Version = "v" + (Get-Content ".\.bvmrc" | Select-Object -First 1)
 } else {
-    $CurrentPath = Join-Path $BvmDir "current"
+    $CurDir = (Get-Location).Path
+    while ($CurDir) {
+        $RcPath = Join-Path $CurDir ".bvmrc"
+        if (Test-Path $RcPath) {
+            $Version = "v" + (Get-Content $RcPath | Select-Object -First 1).Trim()
+            break
+        }
+        $Parent = Split-Path $CurDir -Parent
+        if ($Parent -eq $CurDir) { break }
+        $CurDir = $Parent
+    }
+
+    if (-not $Version) {
+        $CurrentPath = Join-Path $BvmDir "current"
     if (Test-Path $CurrentPath) {
         $Target = (Get-Item $CurrentPath).Target
         if ($Target) {
