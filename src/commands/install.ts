@@ -52,7 +52,7 @@ export async function installBunVersion(targetVersion?: string, options: { globa
         if (!result) {
           throw new Error(`Could not find a Bun release for ${resolvedVersion} compatible with your system.`);
         }
-        const { url, foundVersion } = result;
+        const { url, mirrorUrl, foundVersion } = result;
 
         const installDir = join(BVM_VERSIONS_DIR, foundVersion);
         const installBinDir = join(installDir, 'bin');
@@ -65,11 +65,19 @@ export async function installBunVersion(targetVersion?: string, options: { globa
         } else {
             const currentRuntimeVersion = normalizeVersion(Bun.version);
             if (currentRuntimeVersion === foundVersion && !IS_TEST_MODE) {
-                spinner.info(colors.cyan(`Requested version ${foundVersion} matches current BVM runtime. Copying local files...`));
+                spinner.info(colors.cyan(`Requested version ${foundVersion} matches current BVM runtime. Creating symlink...`));
                 await ensureDir(installBinDir);
-                await Bun.write(Bun.file(bunExecutablePath), Bun.file(process.execPath));
-                await chmod(bunExecutablePath, 0o755);
-                spinner.succeed(colors.green(`Bun ${foundVersion} installed from local runtime.`));
+                // Create a relative symlink to avoid disk duplication
+                const runtimeBinPath = process.execPath;
+                try {
+                  const { symlink } = await import('fs/promises');
+                  await symlink(runtimeBinPath, bunExecutablePath);
+                } catch (e) {
+                  // Fallback to copy if symlink fails (e.g., on Windows without admin)
+                  await Bun.write(Bun.file(bunExecutablePath), Bun.file(runtimeBinPath));
+                  await chmod(bunExecutablePath, 0o755);
+                }
+                spinner.succeed(colors.green(`Bun ${foundVersion} linked from local runtime.`));
                 installedVersion = foundVersion;
                 shouldConfigureShell = true;
             } else if (IS_TEST_MODE) {
@@ -87,7 +95,33 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                 } else {
                     spinner.stop();
                     console.log(colors.cyan(`Downloading Bun ${foundVersion} to cache...`));
-                    const response = await fetch(url);
+                    
+                    let response: Response;
+                    try {
+                        // Strategy 1: Direct Download with 10s timeout
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 10000);
+                        
+                        response = await fetch(url, { signal: controller.signal });
+                        clearTimeout(timeoutId);
+                        
+                        if (!response.ok) {
+                            throw new Error(`Direct download failed with status ${response.status}`);
+                        }
+                    } catch (error: any) {
+                        // Strategy 2: Failover to Mirror if available
+                        if (mirrorUrl) {
+                            const mirrorHost = new URL(mirrorUrl).hostname;
+                            console.log(colors.yellow(`Direct download failed or timed out. Retrying via mirror ${mirrorHost}...`));
+                            response = await fetch(mirrorUrl);
+                            if (!response.ok) {
+                                throw new Error(`Mirror download failed too: ${response.statusText} (${response.status})`);
+                            }
+                        } else {
+                            throw error;
+                        }
+                    }
+
                     if (!response.ok || !response.body) throw new Error(`Download failed: ${response.statusText}`);
         
                     const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);

@@ -205,8 +205,9 @@ ln -sf bun "${BVM_SHIMS_DIR}/bunx"
 
 # 7. Setup Default
 if [ "$BVM_MODE" != "upgrade" ] && [ ! -f "${BVM_ALIAS_DIR}/default" ]; then
-    mkdir -p "${BVM_DIR}/versions/v${REQUIRED_BUN_VERSION}/bin"
-    cp "${TARGET_RUNTIME_DIR}/bin/bun" "${BVM_DIR}/versions/v${REQUIRED_BUN_VERSION}/bin/bun"
+    VERSION_BIN_DIR="${BVM_DIR}/versions/v${REQUIRED_BUN_VERSION}/bin"
+    mkdir -p "$VERSION_BIN_DIR"
+    ln -sf "${TARGET_RUNTIME_DIR}/bin/bun" "${VERSION_BIN_DIR}/bun"
     echo "v${REQUIRED_BUN_VERSION}" > "${BVM_ALIAS_DIR}/default"
 fi
 
