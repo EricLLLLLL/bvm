@@ -75,6 +75,17 @@ async function verifyInstall() {
   // Force a rehash with the NEW code to fix the shims
   await runCommand(`${bvmCmd} rehash`, projectRoot, { HOME: sandboxHome, BVM_DIR: bvmDir });
 
+  console.log('\n🔒 Scenario: Node.js Tool Isolation');
+  const forbiddenShims = ['npm', 'yarn', 'pnpm', 'node'];
+  for (const shim of forbiddenShims) {
+    const shimPath = join(shimsDir, shim);
+    const exists = await Bun.file(shimPath).exists();
+    if (exists) {
+        throw new Error(`SECURITY FAILURE: Shim '${shim}' found in ${shimsDir}. BVM must not hijack Node tools!`);
+    }
+  }
+  console.log('   ✅ PASS: No forbidden shims found.');
+
   const bunShim = join(shimsDir, 'bun');
   const bvmEnvBase = { HOME: sandboxHome, BVM_DIR: bvmDir, PATH: `${shimsDir}:${binDir}:${process.env.PATH}` };
 

@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { readdir, chmod, unlink, symlink } from 'fs/promises';
+import { readdir, chmod, unlink, symlink, lstat, readlink } from 'fs/promises';
 import { BVM_SHIMS_DIR, BVM_VERSIONS_DIR, BVM_DIR, OS_PLATFORM, EXECUTABLE_NAME } from '../constants';
 import { ensureDir, pathExists, readDir } from '../utils';
 import { colors } from '../utils/ui';
@@ -172,13 +172,32 @@ export async function rehash(): Promise<void> {
       if (await pathExists(binDir)) {
         const bunPath = join(binDir, EXECUTABLE_NAME);
         if (await pathExists(bunPath)) {
-          const compatLinks = ['bunx', 'yarn', 'npm', 'pnpm'];
+          // 1. Create essential aliases (bunx)
+          const compatLinks = ['bunx'];
           for (const linkName of compatLinks) {
             const linkPath = join(binDir, linkName);
             if (!(await pathExists(linkPath))) {
               try {
                 await symlink(`./${EXECUTABLE_NAME}`, linkPath);
               } catch (e) {}
+            }
+          }
+
+          // 2. Clean up legacy problematic aliases (yarn, npm, pnpm) if they point to bun
+          const legacyLinks = ['yarn', 'npm', 'pnpm'];
+          for (const linkName of legacyLinks) {
+            const linkPath = join(binDir, linkName);
+            try {
+              const stats = await lstat(linkPath);
+              if (stats.isSymbolicLink()) {
+                const target = await readlink(linkPath);
+                // If it points to bun executable (either relative or absolute), it's a legacy BVM shim and should be removed
+                if (target === `./${EXECUTABLE_NAME}` || target.endsWith(`/${EXECUTABLE_NAME}`) || target === EXECUTABLE_NAME) {
+                   await unlink(linkPath);
+                }
+              }
+            } catch (e) {
+               // Ignore if file doesn't exist
             }
           }
         }
