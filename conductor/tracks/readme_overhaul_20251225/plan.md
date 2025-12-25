@@ -10,11 +10,11 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: 深度调研与内容准备' (Protocol in workflow.md)
 
 ## Phase 2: 英文 README 重构 (README Overhaul - English)
-- [ ] Task: 重构 `README.md` 结构。
-    - [ ] 更新安装部分，引入 JSDelivr 链接。
-    - [ ] 重新组织特性列表，突出“极速”与“国内友好”。
-    - [ ] 嵌入 Phase 1 准备的深度对比和架构章节。
-- [ ] Task: 审查并精简现有内容。
+- [x] Task: 重构 `README.md` 结构。
+    - [x] 更新安装部分，引入 JSDelivr 链接。
+    - [x] 重新组织特性列表，突出“极速”与“国内友好”。
+    - [x] 嵌入 Phase 1 准备的深度对比和架构章节。
+- [~] Task: 审查并精简现有内容。
     - [ ] 确保文档符合 Conductor 设计准则中的“清晰”与“一致性”。
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: 英文 README 重构' (Protocol in workflow.md)
 
