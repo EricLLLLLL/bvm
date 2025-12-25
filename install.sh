@@ -89,7 +89,28 @@ case "$ARCH" in
 esac
 
 BUN_ASSET_NAME="bun-${PLATFORM}-${BUN_ARCH}"
-BUN_DOWNLOAD_URL="https://github.com/oven-sh/bun/releases/download/bun-v${REQUIRED_BUN_VERSION}/${BUN_ASSET_NAME}.zip"
+
+# Determine NPM Package Name
+if [ "$PLATFORM" == "darwin" ] && [ "$BUN_ARCH" == "aarch64" ]; then
+    NPM_PKG="@oven/bun-darwin-aarch64"
+elif [ "$PLATFORM" == "darwin" ] && [ "$BUN_ARCH" == "x64" ]; then
+    NPM_PKG="@oven/bun-darwin-x64"
+elif [ "$PLATFORM" == "linux" ] && [ "$BUN_ARCH" == "aarch64" ]; then
+    NPM_PKG="@oven/bun-linux-aarch64"
+elif [ "$PLATFORM" == "linux" ] && [ "$BUN_ARCH" == "x64" ]; then
+    NPM_PKG="@oven/bun-linux-x64"
+else
+    # Fallback/Windows (script mostly for unix though)
+    NPM_PKG="bun" # Unlikely to work with this logic but safe fallback
+fi
+
+# NPM Tarball URL Construction
+# Format: https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.1.20.tgz
+TARBALL_NAME="${NPM_PKG##*/}-${REQUIRED_BUN_VERSION}.tgz"
+
+# Priority: 1. NPM Registry (Fastly/Cloudflare) 2. NPM Mirror (Aliyun)
+URL_NPM="https://registry.npmjs.org/${NPM_PKG}/-/${TARBALL_NAME}"
+URL_MIRROR="https://registry.npmmirror.com/${NPM_PKG}/-/${TARBALL_NAME}"
 
 # 2. Setup Directories
 mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR"
@@ -97,19 +118,46 @@ mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS
 # 3. Install Runtime
 TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${REQUIRED_BUN_VERSION}"
 if [ ! -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
-  printf "${BLUE}📦 Downloading BVM Runtime...${NC}"
-  TEMP_ZIP="${BVM_DIR}/bun-runtime.zip"
-  curl -sL "$BUN_DOWNLOAD_URL" -o "$TEMP_ZIP" &
-  spinner $!
-  unzip -q -o "$TEMP_ZIP" -d "$BVM_DIR" &
-  spinner $!
-  rm -rf "$TARGET_RUNTIME_DIR"
-  mv "${BVM_DIR}/${BUN_ASSET_NAME}" "$TARGET_RUNTIME_DIR"
-  if [ -f "$TARGET_RUNTIME_DIR/bun" ]; then
-      mkdir -p "$TARGET_RUNTIME_DIR/bin"
-      mv "$TARGET_RUNTIME_DIR/bun" "$TARGET_RUNTIME_DIR/bin/bun"
+  printf "${BLUE}📦 Downloading BVM Runtime (v${REQUIRED_BUN_VERSION})...${NC}"
+  TEMP_TGZ="${BVM_DIR}/bun-runtime.tgz"
+  
+  # Try NPM Registry first
+  if curl -sL --fail "$URL_NPM" -o "$TEMP_TGZ"; then
+      echo -e " ${GREEN}Downloaded from NPM.${NC}"
+  else
+      echo -e " ${YELLOW}NPM failed, trying Mirror...${NC}"
+      # Try Mirror
+      if curl -sL --fail "$URL_MIRROR" -o "$TEMP_TGZ"; then
+          echo -e " ${GREEN}Downloaded from Mirror.${NC}"
+      else
+          echo -e " ${RED}Failed to download Bun runtime from both NPM and Mirror.${NC}"
+          rm -f "$TEMP_TGZ"
+          exit 1
+      fi
   fi
-  rm "$TEMP_ZIP"
+
+  # Extract TGZ
+  # Structure is usually package/bin/bun
+  printf "${BLUE}🔓 Extracting...${NC}"
+  TEMP_EXTRACT_DIR="${BVM_DIR}/temp_extract"
+  mkdir -p "$TEMP_EXTRACT_DIR"
+  tar -xzf "$TEMP_TGZ" -C "$TEMP_EXTRACT_DIR"
+  
+  rm -rf "$TARGET_RUNTIME_DIR"
+  mkdir -p "$TARGET_RUNTIME_DIR/bin"
+  
+  # Find bun binary
+  FOUND_BUN=$(find "$TEMP_EXTRACT_DIR" -type f -name "bun" | head -n 1)
+  if [ -n "$FOUND_BUN" ]; then
+      mv "$FOUND_BUN" "$TARGET_RUNTIME_DIR/bin/bun"
+      chmod +x "$TARGET_RUNTIME_DIR/bin/bun"
+  else
+      echo -e " ${RED}Extraction failed: 'bun' binary not found in archive.${NC}"
+      rm -rf "$TEMP_EXTRACT_DIR" "$TEMP_TGZ"
+      exit 1
+  fi
+  
+  rm -rf "$TEMP_EXTRACT_DIR" "$TEMP_TGZ"
   echo -e " ${GREEN}Done.${NC}"
 fi
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
