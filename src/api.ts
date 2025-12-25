@@ -2,6 +2,7 @@ import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_P
 import { normalizeVersion } from './utils';
 import { valid, rcompare } from './utils/semver-lite';
 import { colors } from './utils/ui';
+import { getBunNpmPackage, getBunDownloadUrl } from './utils/npm-lookup';
 
 /**
  * Detects if the user is likely in China based on timezone.
@@ -146,9 +147,9 @@ export async function fetchBunVersions(): Promise<string[]> {
  * @returns The download URL and the exact version found.
  */
 export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: string; foundVersion: string } | null> {
-    let fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
-  
-  if (!valid(fullVersion)) {
+    const fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
+
+    if (!valid(fullVersion)) {
         console.error(colors.red(`Invalid version provided to findBunDownloadUrl: ${targetVersion}`));
         return null;
     }
@@ -158,16 +159,33 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
           foundVersion: fullVersion,
         };
     }
-    // Construct GitHub Download URL
-    // Format: https://github.com/oven-sh/bun/releases/download/bun-v{version}/bun-{platform}-{arch}.zip
-    const tagNameVersion = fullVersion.startsWith('v') ? fullVersion.substring(1) : fullVersion; // Strip 'v' for tagName
-    const tagName = `bun-v${tagNameVersion}`;
-    const assetName = getBunAssetName(fullVersion); // Use fullVersion for assetName lookup
-    
-    let baseUrl = 'https://github.com';
-    const url = `${baseUrl}/oven-sh/bun/releases/download/${tagName}/${assetName}`;
-    const returnValue = { url, foundVersion: fullVersion };
-    return returnValue;
+
+    // Determine platform/arch for NPM package lookup
+    const os_platform = OS_PLATFORM === 'win32' ? 'win32' : OS_PLATFORM; // nodejs platform style
+    const cpu_arch = CPU_ARCH === 'arm64' ? 'arm64' : 'x64';
+
+    const npmPackage = getBunNpmPackage(os_platform, cpu_arch);
+    if (!npmPackage) {
+        throw new Error(`Unsupported platform/arch for NPM download: ${OS_PLATFORM}-${CPU_ARCH}`);
+    }
+
+    // Determine Registry
+    // Priority: BVM_REGISTRY > BVM_DOWNLOAD_MIRROR (legacy) > Auto-detect
+    let registry = 'https://registry.npmjs.org';
+    if (process.env.BVM_REGISTRY) {
+        registry = process.env.BVM_REGISTRY;
+    } else if (process.env.BVM_DOWNLOAD_MIRROR) {
+        // Fallback for backward compatibility, though mirror URL structure might differ
+        registry = process.env.BVM_DOWNLOAD_MIRROR;
+    } else if (isChina()) {
+        registry = 'https://registry.npmmirror.com';
+    }
+
+    // Strip 'v' from version for NPM (1.1.0 not v1.1.0)
+    const plainVersion = fullVersion.replace(/^v/, '');
+    const url = getBunDownloadUrl(npmPackage, plainVersion, registry);
+
+    return { url, foundVersion: fullVersion };
 }
 
 /**

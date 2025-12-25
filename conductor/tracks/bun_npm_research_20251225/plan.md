@@ -29,16 +29,16 @@
     - [x] 讨论是否将此功能集成进 `bvm` 以及采用何种交互方式。 (用户确认全面转向 NPM)
 
 ## Phase 4: 核心逻辑实现 (Implementation)
-- [ ] Task: 扩展 `ArchiveUtils` 支持 `.tgz` 解压。
-    - [ ] 引入或实现 tar/gzip 解压能力 (使用 `bun` 内置或第三方库，优先复用现有工具)。
-    - [ ] 实现智能路径提取 (自动识别 `package/bin` 并提取到目标根目录)。
-- [ ] Task: 重构 `BunDownloader` 逻辑。
-    - [ ] 更新 `src/utils/npm-lookup.ts` 以作为生产代码使用。
-    - [ ] 修改 `src/api.ts` 中的下载 URL 获取逻辑，默认使用 NPM Registry。
-    - [ ] 增加环境变量 `BVM_REGISTRY` 支持，允许覆盖 Registry URL。
-- [ ] Task: 更新安装流程 (`src/commands/install.ts`)。
-    - [ ] 适配新的下载和解压接口。
-    - [ ] 确保安装后的目录结构与旧版一致。
+- [x] Task: 扩展 `ArchiveUtils` 支持 `.tgz` 解压。
+    - [x] 引入或实现 tar/gzip 解压能力 (使用 `bun` 内置或第三方库，优先复用现有工具)。
+    - [x] 实现智能路径提取 (自动识别 `package/bin` 并提取到目标根目录)。
+- [x] Task: 重构 `BunDownloader` 逻辑。
+    - [x] 更新 `src/utils/npm-lookup.ts` 以作为生产代码使用。
+    - [x] 修改 `src/api.ts` 中的下载 URL 获取逻辑，默认使用 NPM Registry。
+    - [x] 增加环境变量 `BVM_REGISTRY` 支持，允许覆盖 Registry URL。
+- [x] Task: 更新安装流程 (`src/commands/install.ts`)。
+    - [x] 适配新的下载和解压接口。
+    - [x] 确保安装后的目录结构与旧版一致。
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: 核心逻辑实现' (Protocol in workflow.md)
 
 ## Phase 5: 验证与清理 (Verification & Cleanup)

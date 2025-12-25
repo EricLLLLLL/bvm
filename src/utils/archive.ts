@@ -24,7 +24,7 @@ export async function extractArchive(sourcePath: string, destDir: string): Promi
         stderr: 'inherit'
       });
     }
-  } else if (sourcePath.endsWith('.tar.gz')) {
+  } else if (sourcePath.endsWith('.tar.gz') || sourcePath.endsWith('.tgz')) {
     // Use tar on all platforms (Windows 10+ has tar)
     await runCommand(['tar', '-xzf', sourcePath, '-C', destDir], {
         stdout: 'ignore',

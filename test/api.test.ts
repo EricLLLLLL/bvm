@@ -27,7 +27,23 @@ describe("API", () => {
   test("findBunDownloadUrl resolves specific version", async () => {
     const result = await findBunDownloadUrl("1.0.0");
     expect(result).not.toBeNull();
-    expect(result?.url).toContain("bun-v1.0.0");
+    // New NPM format check
+    // e.g. https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.0.0.tgz
+    expect(result?.url).toContain("registry.npmjs.org");
+    expect(result?.url).toContain("bun");
+    expect(result?.url).toContain("1.0.0.tgz");
     expect(result?.foundVersion).toBe("v1.0.0");
+  });
+
+  test("findBunDownloadUrl respects BVM_REGISTRY", async () => {
+    const oldEnv = process.env.BVM_REGISTRY;
+    process.env.BVM_REGISTRY = "https://custom.registry.com";
+    
+    try {
+        const result = await findBunDownloadUrl("1.0.0");
+        expect(result?.url).toContain("https://custom.registry.com");
+    } finally {
+        process.env.BVM_REGISTRY = oldEnv;
+    }
   });
 });

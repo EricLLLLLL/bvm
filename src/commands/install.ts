@@ -158,7 +158,12 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                 await extractArchive(cachedArchivePath, installDir);
         
                 let foundSourceBunPath = '';
-                const possiblePaths = [join(installDir, EXECUTABLE_NAME), join(installDir, 'bin', EXECUTABLE_NAME)];
+                // Updated Path Discovery for NPM packages (package/bin/bun) and GitHub zips (bun-xxx/bun)
+                const possiblePaths = [
+                    join(installDir, EXECUTABLE_NAME),
+                    join(installDir, 'bin', EXECUTABLE_NAME),
+                    join(installDir, 'package', 'bin', EXECUTABLE_NAME) // NPM .tgz structure
+                ];
                 const dirEntries = await readDir(installDir);
                 for (const entry of dirEntries) {
                     if (entry.startsWith('bun-')) {
@@ -167,7 +172,11 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                     }
                 }
                 for (const p of possiblePaths) { if (await pathExists(p)) { foundSourceBunPath = p; break; } }
+                
                 if (!foundSourceBunPath) throw new Error(`Could not find bun executable in ${installDir}`);
+                
+                // If found in package/bin/bun, we might want to move it or keep the structure?
+                // For simplicity and consistency with old BVM, let's move it to installBinDir and clean up.
                 await ensureDir(installBinDir);
                 if (foundSourceBunPath !== bunExecutablePath) {
                     await runCommand(['mv', foundSourceBunPath, bunExecutablePath]);
