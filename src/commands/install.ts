@@ -197,7 +197,8 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                 await createAlias('default', foundVersion);
                 console.log(colors.cyan(`✓ Bun ${foundVersion} is now your default version.`));
             } else {
-                console.log(colors.cyan(`✓ Bun ${foundVersion} installed. Run 'bvm use ${foundVersion}' to set it as default.`));
+                console.log(colors.cyan(`✓ Bun ${foundVersion} installed and is active for this session.`));
+                console.log(colors.dim(`  To make it the default for new shells, run: bvm default ${foundVersion}`));
             }
         }
       },
