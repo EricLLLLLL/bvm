@@ -10,14 +10,14 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: 技术调研与包结构分析' (Protocol in workflow.md)
 
 ## Phase 2: 基准测试与数据采集 (Benchmarking)
-- [ ] Task: 开发自动化基准测试脚本 `scripts/benchmark-download.ts`。
-    - [ ] 实现针对 GitHub Releases 的下载测速逻辑。
-    - [ ] 实现针对 NPM Registry 的下载测速逻辑。
-    - [ ] 实现针对 `npmmirror.com` 的下载测速逻辑。
-    - [ ] 脚本应支持指定 Bun 版本进行多轮测试以取平均值。
-- [ ] Task: 运行测试并收集数据。
-    - [ ] 在当前网络环境下执行脚本。
-    - [ ] 整理测速结果（下载耗时、成功率、稳定性）。
+- [x] Task: 开发自动化基准测试脚本 `scripts/benchmark-download.ts`。 c7e7706
+    - [x] 实现针对 GitHub Releases 的下载测速逻辑。
+    - [x] 实现针对 NPM Registry 的下载测速逻辑。
+    - [x] 实现针对 `npmmirror.com` 的下载测速逻辑。
+    - [x] 脚本应支持指定 Bun 版本进行多轮测试以取平均值。
+- [x] Task: 运行测试并收集数据。
+    - [x] 在当前网络环境下执行脚本。
+    - [x] 整理测速结果（下载耗时、成功率、稳定性）。
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: 基准测试与数据采集' (Protocol in workflow.md)
 
 ## Phase 3: 汇总报告与决策支持 (Reporting & Decision)
