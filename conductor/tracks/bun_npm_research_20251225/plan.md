@@ -9,7 +9,7 @@
     - [x] 手动尝试下载并解压，验证二进制文件的位置（例如是在 `package/bin/bun` 还是其他路径）。
 - [x] Task: Conductor - User Manual Verification 'Phase 1: 技术调研与包结构分析' (Protocol in workflow.md)
 
-## Phase 2: 基准测试与数据采集 (Benchmarking)
+## Phase 2: 基准测试与数据采集 (Benchmarking) [checkpoint: 91424af]
 - [x] Task: 开发自动化基准测试脚本 `scripts/benchmark-download.ts`。 c7e7706
     - [x] 实现针对 GitHub Releases 的下载测速逻辑。
     - [x] 实现针对 NPM Registry 的下载测速逻辑。
@@ -18,7 +18,7 @@
 - [x] Task: 运行测试并收集数据。
     - [x] 在当前网络环境下执行脚本。
     - [x] 整理测速结果（下载耗时、成功率、稳定性）。
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: 基准测试与数据采集' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: 基准测试与数据采集' (Protocol in workflow.md)
 
 ## Phase 3: 汇总报告与决策支持 (Reporting & Decision)
 - [ ] Task: 编写最终调研报告。
