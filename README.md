@@ -25,6 +25,19 @@ We benchmarked BVM against the industry standards. The results are clear: BVM el
 
 > *Benchmark Environment: MacBook Pro M1, macOS 14. Tested via `scripts/vs-competitors.ts`.*
 
+## 🧩 Feature Matrix
+
+BVM isn't just fast; it's a unified, cross-platform solution.
+
+| Feature | **BVM** | **nvm** | **fnm / bum** |
+| :--- | :--- | :--- | :--- |
+| **Windows Support** | ✅ **Native (PowerShell)** | ❌ (Requires `nvm-windows`) | ✅ |
+| **Shell Agnostic** | ✅ **Universal Shim** | ❌ (Mainly Bash/Zsh) | ✅ |
+| **Dependency** | **None** (Auto-bootstraps Bun) | POSIX Shell | Binary / Rust Toolchain |
+| **Atomic Isolation** | ✅ **`BUN_INSTALL` Injection** | ❌ | ❌ (Usually just PATH) |
+| **Self-Healing** | ✅ **Bunker Architecture** | ❌ | ❌ |
+| **Auto-Mirror (CN)**| ✅ **Built-in** | ❌ Manual Config | ❌ Manual Config |
+
 ---
 
 ## 🏛️ Deep Dive: Why BVM?
@@ -37,7 +50,7 @@ We benchmarked BVM against the industry standards. The results are clear: BVM el
 **The Problem**: Most modern managers (fnm, voltan, bum) use a "Binary Proxy" approach. When you run `node`, you are actually running a Rust/Go binary that calculates which version to use, then spawns the real process.
 **The BVM Solution**: BVM uses **Hybrid Routing**.
 *   **Global Mode**: We use **OS-level Symlinks**. When you run `bun`, the kernel points directly to the executable. **0 CPU cycles** are spent on "routing".
-*   **Project Mode**: Only when a `.bvmrc` is present do we engage our high-performance Shell Shim (<10ms).
+*   **Project Mode**: Only when a `.bvmrc` is present do we engage our high-performance Shell Shim (<10ms), ensuring a seamless "cd-and-switch" experience.
 
 ### 3. Environment-Level Atomic Isolation
 **The Problem**: Switching versions often leaves global packages (`bun install -g`) in a mess. Packages from v1.0.0 might accidentally be accessible in v1.1.0, causing "Ghost Conflicts".
