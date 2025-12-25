@@ -26,6 +26,6 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: 中文文档与多语言同步' (Protocol in workflow.md)
 
 ## Phase 4: 最终核对与发布 (Final Verification)
-- [ ] Task: 全面审查所有文档链接与 Markdown 格式。
-- [ ] Task: 核对 README 内容与 `conductor/product.md` 的一致性。
+- [x] Task: 全面审查所有文档链接与 Markdown 格式。
+    - [x] 核对 README 内容与 `conductor/product.md` 的一致性。
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: 最终核对与发布' (Protocol in workflow.md)

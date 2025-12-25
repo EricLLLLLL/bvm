@@ -12,43 +12,36 @@
 
 ---
 
-## ⚡ Why BVM?
+## ⚡ Performance Duel (Benchmark)
 
-BVM was engineered to eliminate shell startup lag and environment pollution.
+We benchmarked BVM against the industry standards. The results are clear: BVM eliminates the "Shell Tax" imposed by legacy tools.
 
-### Competitor Comparison
+| Metric | **BVM (v1.x)** | **bum** (Rust) | **nvm** (Node) | **Analysis** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Shell Startup Lag** | **0ms** | 0ms | **497ms** | NVM requires sourcing a massive shell script on every new terminal. BVM and Bum use Shims/PATH, resulting in zero lag. |
+| **Runtime Overhead** | **0ms** (Global) | <1ms | 0ms | **BVM Global Mode uses physical symlinks.** The OS executes `bun` directly. Bum uses a binary proxy, which introduces a negligible but non-zero overhead. |
+| **CLI Response** | ~27ms | **~7ms** | ~500ms | Rust binaries (Bum) are faster for CLI commands (`ls`, `install`). BVM runs on the Bun runtime, which is incredibly fast but has a tiny boot cost. |
+| **Install Size** | **~45KB** | ~5MB | ~100KB | BVM leverages the existing Bun runtime, keeping the core logic microscopic. |
 
-| Dimension | **BVM (v1.x)** | **nvm** (Node) | **fnm / asdf / proto** |
-| :--- | :--- | :--- | :--- |
-| **Language** | **TypeScript (Bun)** | Bash / POSIX | Rust / Go / C++ |
-| **Shell Startup Lag** | **0ms** (Instant) | **500ms+** (Sourcing) | **0ms** |
-| **Resolution Speed** | **~7ms** | ~50ms+ | <5ms |
-| **Survivability** | ✅ **Atomic (Bunker)** | ❌ Script-dependent | ❌ Binary-dependent |
-| **Global Package Isolation**| ✅ **Full (`BUN_INSTALL`)**| ❌ Shared PATH | ❌ Often Shared |
-| **China Friendly** | ✅ **Native NPM Mirror** | ❌ Manual Config | ❌ Manual Config |
+> *Benchmark Environment: MacBook Pro M1, macOS 14. Tested via `scripts/vs-competitors.ts`.*
 
 ---
 
-## 🏛️ Core Pillars of Architecture
+## 🏛️ Deep Dive: Why BVM?
 
 ### 1. The "Bunker" Architecture (Private Runtime)
-BVM is "unbreakable". It maintains its own minimal Bun environment in `~/.bvm/runtime`.
-*   **Decoupled Lifecycle**: BVM's operation is independent of the managed versions. Even if you wipe all user-installed Bun versions, BVM remains functional.
-*   **Zero Dependency**: No need for system Node.js, Python, or Rust. One `curl` gets you everything.
+**The Problem**: Many version managers (like `pip`, `npm`, `gem`) depend on the very runtime they manage. If you break your system Node/Python, you break your version manager.
+**The BVM Solution**: BVM maintains a **private, atomic Bun runtime** (`~/.bvm/runtime`). It is completely decoupled from your user-installed versions. You can `rm -rf` every installed version, and BVM will still work perfectly to repair them.
 
-### 2. Hybrid Path Routing (0ms Overhead)
-We refuse to compromise between speed and flexibility:
-*   **Global Mode**: Uses physical OS symlinks (`~/.bvm/current`). Execution speed hits the **physical limit of the OS** with zero proxy overhead.
-*   **Project Mode**: A high-performance Shim script detects `.bvmrc` with negligible overhead, providing a seamless "cd-and-switch" experience.
+### 2. Physical Symlinks vs Binary Proxies
+**The Problem**: Most modern managers (fnm, voltan, bum) use a "Binary Proxy" approach. When you run `node`, you are actually running a Rust/Go binary that calculates which version to use, then spawns the real process.
+**The BVM Solution**: BVM uses **Hybrid Routing**.
+*   **Global Mode**: We use **OS-level Symlinks**. When you run `bun`, the kernel points directly to the executable. **0 CPU cycles** are spent on "routing".
+*   **Project Mode**: Only when a `.bvmrc` is present do we engage our high-performance Shell Shim (<10ms).
 
-### 3. Atomic Environment Isolation
-BVM explicitly manages the `BUN_INSTALL` variable for every execution chain.
-*   **Physical Isolation**: Global packages (`bun install -g`) are stored in directories unique to each Bun version. No more "Ghost Conflicts" or polluted global scopes.
-
-### 4. Global High-Speed Distribution (NPM-First)
-BVM implements a sophisticated NPM-first download strategy:
-*   **Global Access**: Uses `registry.npmjs.org` via Cloudflare CDN for reliable global access.
-*   **China Acceleration**: Automatically detects and switches to `registry.npmmirror.com` (Aliyun CDN) for domestic users. No more GitHub download timeouts.
+### 3. Environment-Level Atomic Isolation
+**The Problem**: Switching versions often leaves global packages (`bun install -g`) in a mess. Packages from v1.0.0 might accidentally be accessible in v1.1.0, causing "Ghost Conflicts".
+**The BVM Solution**: BVM injects `BUN_INSTALL` into the execution environment. Each version has a strictly isolated global store.
 
 ---
 
