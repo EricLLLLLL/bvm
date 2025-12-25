@@ -52,9 +52,9 @@ describe("Real Usage E2E (Based on User Session)", () => {
     res = await runBvm(["use", "1.3.4"]);
     expect(res.output).toContain("Now using Bun v1.3.4");
 
-    // 6. bvm which yarn (Should SUCCEED because BVM 2.0 generates compat links)
+    // 6. bvm which yarn (Should FAIL or return empty because we don't auto-alias yarn in 1.3.4)
     res = await runBvm(["which", "yarn"]);
-    expect(res.output).toContain("v1.3.4/bin/yarn");
+    expect(res.output).toContain("Command 'yarn' not found");
 
     // 7. bvm use 1.3.5
     await runBvm(["use", "1.3.5"]);

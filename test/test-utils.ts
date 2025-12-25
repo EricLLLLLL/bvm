@@ -1,9 +1,11 @@
 import { join, dirname } from "path";
 import { rmSync, mkdirSync } from "fs";
+import { EXECUTABLE_NAME } from "../src/constants";
 
 export const TEST_HOME = join(process.cwd(), "test_home_shared");
 export const TEST_BVM_DIR = join(TEST_HOME, ".bvm");
 export const CURRENT_BUN_EXECUTABLE = process.execPath;
+export { EXECUTABLE_NAME };
 
 export async function resetTestHome() {
   await rmSync(TEST_HOME, { recursive: true, force: true });

@@ -26,6 +26,7 @@ describe("Install Flow (Mocked)", () => {
     afterAll(async () => {
         await removeDir(join(BVM_VERSIONS_DIR, `v${TEST_VERSION}`));
         await removeDir(MOCK_CACHE_FILE);
+        mock.restore(); // Restore all mocks
     });
 
     it("should install from local cache correctly flattening package/bin", async () => {
