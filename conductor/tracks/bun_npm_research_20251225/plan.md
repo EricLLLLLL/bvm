@@ -41,11 +41,11 @@
     - [x] 确保安装后的目录结构与旧版一致。
 - [x] Task: Conductor - User Manual Verification 'Phase 4: 核心逻辑实现' (Protocol in workflow.md)
 
-## Phase 5: 验证与清理 (Verification & Cleanup)
+## Phase 5: 验证与清理 (Verification & Cleanup) [checkpoint: fa9dc7f]
 - [x] Task: 运行集成测试。
     - [x] 验证在国内/国外模拟环境下的下载成功率。
     - [x] 验证安装后的 `bun --version` 可用性。
 - [x] Task: 清理。
     - [x] 移除旧的 GitHub 下载相关代码 (或标记为 Deprecated)。
     - [x] 删除临时的基准测试脚本。
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: 验证与清理' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 5: 验证与清理' (Protocol in workflow.md)
