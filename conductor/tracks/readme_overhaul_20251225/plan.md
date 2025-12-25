@@ -19,10 +19,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: 英文 README 重构' (Protocol in workflow.md)
 
 ## Phase 3: 中文文档与多语言同步 (Chinese Localization)
-- [ ] Task: 创建并编写 `README.zh-CN.md`。
-    - [ ] 确保翻译风格符合中文开发者的阅读习惯，非生硬机翻。
-    - [ ] 在主 README 中添加中文版跳转链接。
-- [ ] Task: 同步所有链接与示例代码。
+- [x] Task: 创建并编写 `README.zh-CN.md`。
+    - [x] 确保翻译风格符合中文开发者的阅读习惯，非生硬机翻。
+    - [x] 在主 README 中添加中文版跳转链接。
+- [x] Task: 同步所有链接与示例代码。
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: 中文文档与多语言同步' (Protocol in workflow.md)
 
 ## Phase 4: 最终核对与发布 (Final Verification)
