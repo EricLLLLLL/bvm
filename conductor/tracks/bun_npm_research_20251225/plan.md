@@ -21,10 +21,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: 基准测试与数据采集' (Protocol in workflow.md)
 
 ## Phase 3: 汇总报告与决策支持 (Reporting & Decision)
-- [ ] Task: 编写最终调研报告。
-    - [ ] 包含包名映射表。
-    - [ ] 包含详尽的测速对比图表。
-    - [ ] 评估 NPM 源的维护成本与风险。
+- [x] Task: 编写最终调研报告。 c7e7706
+    - [x] 包含包名映射表。
+    - [x] 包含详尽的测速对比图表。
+    - [x] 评估 NPM 源的维护成本与风险。
 - [ ] Task: 向用户提交报告并获取最终决策。
     - [ ] 讨论是否将此功能集成进 `bvm` 以及采用何种交互方式。
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: 汇总报告与决策支持' (Protocol in workflow.md)
