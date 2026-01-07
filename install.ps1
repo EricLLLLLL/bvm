@@ -186,9 +186,13 @@ Set-Content -Path $WrapperPath -Value $WrapperContent -Encoding Ascii
 & "$BVM_RUNTIME_DIR\v$REQUIRED_BUN_VERSION\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
 
 # --- 7. Final Message ---
+# Attempt to refresh PATH in current session
+$env:PATH = "$BVM_BIN_DIR;" + $env:PATH
+
 Write-Host ""
 Write-Color "🎉 BVM installed successfully!" Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor White
-Write-Host "  1. Restart your terminal or run '. `$PROFILE' to activate BVM." -ForegroundColor Yellow
-Write-Host "  2. Run 'bvm --help' to get started." -ForegroundColor Cyan
+Write-Host "  1. Run 'bvm --help' to get started." -ForegroundColor Cyan
+Write-Host "  2. If 'bvm' is not found, restart your terminal." -ForegroundColor Yellow
+
