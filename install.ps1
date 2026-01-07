@@ -145,8 +145,26 @@ if (-not (Test-Path $BUN_EXE)) {
 }
 
 # --- 5. Install BVM Source ---
-$BVM_SRC_VERSION = "main"
-if ($env:BVM_INSTALL_VERSION) { $BVM_SRC_VERSION = $env:BVM_INSTALL_VERSION }
+$BVM_SRC_VERSION = $null
+if ($env:BVM_INSTALL_VERSION) { 
+    $BVM_SRC_VERSION = $env:BVM_INSTALL_VERSION 
+} else {
+    Write-Host "🔍 Resolving latest BVM version..." -NoNewline -ForegroundColor Gray
+    try {
+        $LatestInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/EricLLLLLL/bvm/releases/latest" -ErrorAction Stop
+        if ($LatestInfo -and $LatestInfo.tag_name) {
+            $BVM_SRC_VERSION = $LatestInfo.tag_name
+            Write-Color " $BVM_SRC_VERSION" Blue
+        }
+    } catch {
+        # Fallback (silent fail to main)
+    }
+    
+    if (-not $BVM_SRC_VERSION) {
+        $BVM_SRC_VERSION = "main"
+        Write-Color " main (fallback)" Yellow
+    }
+}
 
 $SOURCE_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_SRC_VERSION/dist/index.js"
 if ($env:BVM_SOURCE_URL) { $SOURCE_URL = $env:BVM_SOURCE_URL }

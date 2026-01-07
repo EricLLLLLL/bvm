@@ -169,8 +169,23 @@ else
     printf "${BLUE}⬇️  Downloading BVM source...${NC}"
     
     # Determine BVM Version to download
-    # Default to 'main' branch for latest updates, or use specific tag if provided
-    BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-main}"
+    if [ -n "$BVM_INSTALL_VERSION" ]; then
+        BVM_SRC_VERSION="$BVM_INSTALL_VERSION"
+    else
+        # Default to 'main' is BAD because dist/index.js only exists on Release Tags.
+        # We must resolve the latest release tag dynamically.
+        printf "${GRAY}🔍 Resolving latest BVM version...${NC}"
+        # Try fetching from GitHub API (fastest/reliable)
+        LATEST_TAG=$(curl -s https://api.github.com/repos/EricLLLLLL/bvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        
+        if [ -z "$LATEST_TAG" ]; then
+             echo -e " ${YELLOW}Failed to resolve latest version, falling back to 'main' (might fail if dist is missing).${NC}"
+             BVM_SRC_VERSION="main"
+        else
+             BVM_SRC_VERSION="$LATEST_TAG"
+             echo -e " ${BLUE}${BVM_SRC_VERSION}${NC}"
+        fi
+    fi
     
     # Use jsDelivr CDN for better global speed
     # Format: https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@<version>/dist/index.js
