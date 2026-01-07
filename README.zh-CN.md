@@ -138,12 +138,12 @@ bvm install latest
 
 **切换到指定版本**
 ```bash
-bvm use 1.1.20
+bvm use 1.0.1
 ```
 
 **安装特定版本**
 ```bash
-bvm install 1.0.0
+bvm install 1.0.1
 ```
 
 **列出所有版本**
@@ -154,7 +154,7 @@ bvm ls-remote   # 远程可用
 
 **设置默认版本 (新窗口生效)**
 ```bash
-bvm default 1.1.20
+bvm default 1.0.1
 ```
 
 **升级 BVM 自身**
@@ -171,9 +171,8 @@ BVM 支持针对每个项目自动切换版本，这是团队协作的必备功�
 1.  **创建配置文件**:
     在你的项目根目录下创建 `.bvmrc` 文件：
     ```bash
-    echo "1.1.20" > .bvmrc
+    echo "1.0.1" > .bvmrc
     ```
-
 2.  **直接运行 Bun**:
     当你在该目录下运行任何 `bun` 命令时，BVM 会自动检测并使用配置的版本。
     ```bash

@@ -123,12 +123,12 @@ bvm install latest
 
 **Switch to a specific version**
 ```bash
-bvm use 1.1.20
+bvm use 1.0.1
 ```
 
 **Install a specific version**
 ```bash
-bvm install 1.0.0
+bvm install 1.0.1
 ```
 
 **List all versions**
@@ -139,7 +139,7 @@ bvm ls-remote   # Available online
 
 **Set a default for new terminals**
 ```bash
-bvm default 1.1.20
+bvm default 1.0.1
 ```
 
 **Upgrade BVM itself**
@@ -155,15 +155,14 @@ BVM supports automatic version switching per project, making it ideal for team c
 
 1.  **Create a config file** in your project root:
     ```bash
-    echo "1.1.20" > .bvmrc
+    echo "1.0.1" > .bvmrc
     ```
-
 2.  **Just run Bun**:
     BVM automatically detects the `.bvmrc` file when you run any `bun` command inside that directory.
     ```bash
     cd my-project
     bun -v
-    # 1.1.20 (Automatically resolved from .bvmrc)
+    # 1.0.1 (Automatically resolved from .bvmrc)
     ```
 
     *No manual `bvm use` required.*
