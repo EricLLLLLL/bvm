@@ -90,3 +90,11 @@ jobs:
             install.ps1
           generate_release_notes: true
           latest: true
+
+      - name: Purge jsDelivr Cache
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          echo "🧹 Purging jsDelivr cache for @main..."
+          curl -X POST https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.sh || true
+          curl -X POST https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.ps1 || true
+          echo "Done."
