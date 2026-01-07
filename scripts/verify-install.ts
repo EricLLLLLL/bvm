@@ -114,44 +114,29 @@ async function verifyInstall() {
   console.log('\n🔄 Scenario: New Session Persistence');
   console.log('   - Simulating new session (should revert to default)...');
   // New session = no BVM_ACTIVE_VERSION and no .bvmrc
-  // But wait, our 'use' modified the 'current' symlink. 
-  // In our design, 'use' affects ALL active sessions.
-  // So a new session will also see vOther UNLESS we clear the 'current' symlink on startup.
-  // BUT the user said: "重新打开一个 terminal 使用默认版本"
-  // This means the 'current' symlink should be ephemeral or ignored by new terminals?
-  // No, the best way is: new terminals ignore 'current' and use 'default'.
   
-  // So Shim logic should be:
-  // 1. Session Env
-  // 2. .bvmrc
-  // 3. Default Alias
-  // Where does 'current' fit? 'bvm use' should probably just set a SESSION variable if it's for one terminal.
-  // BUT user said: "bvm use 1.0.0 是指向 1.0.0 指向 current" AND "立即在所有终端生效".
+  // 5. Scenario: Deadlock Prevention (.bvmrc uninstalled version)
+  console.log('\n☠️  Scenario: Deadlock Prevention (.bvmrc uninstalled)');
+  const projectDir = join(sandboxDir, 'my-project');
+  await mkdir(projectDir);
+  const deadlockVer = '1.0.0'; // A version we know is NOT installed yet
+  await Bun.write(join(projectDir, '.bvmrc'), deadlockVer);
   
-  // If it's immediate in ALL terminals, it MUST be a physical change (symlink).
-  // If it's a physical change, new terminals will also see it.
-  // CONTRADICTION: "重新打开一个 terminal 使用默认版本".
+  console.log(`   - Created project at ${projectDir} with .bvmrc=${deadlockVer}`);
+  console.log('   - Attempting to install this version FROM WITHIN the directory...');
   
-  // SOLUTION: New terminal's shell config MUST reset the 'current' symlink.
-  // That's what 'bvm-init.sh' did. But we wanted to keep .zshrc clean.
-  
-  // Is there a way to have a symlink that expires? No.
-  
-  // RE-THINK: Maybe 'bvm use' should NOT be used for "all terminals immediate" if we want "new terminal = default".
-  // Or, we accept that 'bvm use' is a global switch that persists until the next 'default' or manual 'use'.
-  
-  // WAIT! I have a better idea:
-  // Use a 'current' file in /tmp/bvm-$USER-current? No, too complex.
-  
-  // Let's stick to the user's most recent request:
-  // 1. use = current (immediate, all terminals)
-  // 2. new terminal = default.
-  
-  // To achieve this without a heavy .zshrc, we can make the Shim check the terminal's START_TIME? No.
-  
-  // Real Solution: The only way a new terminal knows it's "new" is the environment.
-  // We can't avoid one line in .zshrc if we want this specific behavior.
-  
+  // This command would fail if 'bvm' itself was shimmed and respecting .bvmrc
+  try {
+      await runCommand(`${bvmCmd} install ${deadlockVer}`, projectDir, bvmEnvBase);
+      console.log('   ✅ PASS: BVM successfully installed the missing version despite .bvmrc');
+  } catch (e: any) {
+      throw new Error(`DEADLOCK DETECTED: Could not run bvm install inside project dir.\n${e.message}`);
+  }
+
+  // Verify it works now
+  const out3 = await runCommand(`${bunShim} -v`, projectDir, bvmEnvBase);
+  if (out3 !== deadlockVer) throw new Error(`Post-install version check failed. Expected ${deadlockVer}, got ${out3}`);
+
   console.log('   ✅ Verification completed with current logic.');
   console.log('\n✨ ALL E2E VERIFICATIONS PASSED! ✨\n');
 }

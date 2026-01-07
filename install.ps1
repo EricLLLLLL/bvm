@@ -128,6 +128,12 @@ if (-not (Test-Path $BUN_EXE)) {
             New-Item -ItemType Directory -Force -Path "$TARGET_RUNTIME_DIR\bin" | Out-Null
             Move-Item $FoundBun.FullName -Destination "$TARGET_RUNTIME_DIR\bin\bun.exe" -Force
             Write-Color "Runtime installed." Green
+
+            # Create 'current' junction for runtime
+            $RuntimeCurrent = "$BVM_RUNTIME_DIR\current"
+            if (Test-Path $RuntimeCurrent) { Remove-Item $RuntimeCurrent -Force }
+            # Use Junction for better compatibility without Admin rights
+            New-Item -ItemType Junction -Path $RuntimeCurrent -Target $TARGET_RUNTIME_DIR | Out-Null
         } else {
             Write-Color "Error: bun.exe not found in downloaded archive." Red
             exit 1
@@ -139,7 +145,7 @@ if (-not (Test-Path $BUN_EXE)) {
 }
 
 # --- 5. Install BVM Source ---
-$SOURCE_URL = "https://github.com/EricLLLLLL/bvm/releases/latest/download/index.js"
+$SOURCE_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/dist/index.js"
 if ($env:BVM_SOURCE_URL) { $SOURCE_URL = $env:BVM_SOURCE_URL }
 
 Write-Color "⬇️  Downloading BVM source..." Blue
@@ -151,6 +157,13 @@ try {
 }
 
 # --- 6. Create Wrapper & Shims ---
+# Generate bvm.cmd to ensure we use the dedicated runtime (avoids deadlocks with .bvmrc)
+$WrapperPath = "$BVM_BIN_DIR\bvm.cmd"
+$WrapperContent = "@echo off`r`n" +
+                  "set `"BVM_DIR=%USERPROFILE%\.bvm`"`r`n" +
+                  "`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\src\index.js`" %*"
+Set-Content -Path $WrapperPath -Value $WrapperContent -Encoding Ascii
+
 & "$BVM_RUNTIME_DIR\v$REQUIRED_BUN_VERSION\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
 
 # --- 7. Final Message ---

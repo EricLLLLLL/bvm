@@ -1,101 +1,191 @@
-# BVM · Bun Version Manager (中文版)
+<div align="center">
+  <h1>BVM</h1>
+  <h3>Bun 原生版本管理器</h3>
+  <p>
+    0ms 极速启动 · 原子级隔离 · 全球 CDN 加速
+  </p>
 
-> **为 Bun 而生的原生、原子化、高性能版本管理器。**
-> 使用 Bun 开发，专为 Bun 优化。为全球开发者提供极致速度体验。
+  [![Version](https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest)](https://github.com/EricLLLLLL/bvm/releases)
+  [![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-blue)](#)
+  [![Size](https://img.shields.io/badge/size-45kb-green)](#)
+  [![License](https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange)](#)
+  <br/>
+  <a href="./README.md">🇺🇸 English Docs</a>
+</div>
 
-[![Release](https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest)](https://github.com/EricLLLLLL/bvm/releases)
-[![Size](https://img.shields.io/badge/size-45kb-green)](#)
-[![Bun](https://img.shields.io/badge/Native-Bun-000?logo=bun)](#)
-[![English](https://img.shields.io/badge/Document-English-blue.svg)](./README.md)
+<details>
+  <summary><strong>文档目录 (Table of Contents)</strong></summary>
 
-**BVM** (Bun Version Manager) 是下一代环境编排工具。不同于仅修改环境变量的传统管理器，BVM 提供了一个**原子化、自愈且零开销**的生态系统，旨在触达性能的物理极限。
+- [为什么选择 BVM?](#-为什么选择-bvm)
+- [工作原理](#-工作原理)
+- [性能跑分](#-性能跑分-benchmark)
+- [安装指南](#-安装指南)
+- [快速开始](#-快速开始)
+- [项目级配置 (.bvmrc)](#-项目级配置-bvmrc)
+- [迁移指南](#-从-nvm--fnm-迁移)
+- [开源协议](#-license)
+
+</details>
+
+<br/>
+
+**BVM** 是专为 Bun 打造的下一代版本管理器。**你可以把它看作是 Bun 生态中的 `nvm` 或 `fnm`，但速度更快、更智能。**
+
+它利用 Bun 运行时自身的优势，提供了突破物理极限的安装与管理体验。不同于那些会拖慢终端启动速度或依赖笨重代理的旧时代工具，BVM 采用原生 OS 机制，实现了 **0ms 的 Shell 启动延迟**。
 
 ---
 
-## ⚡ 性能决斗 (基准测试)
+## 🧩 工作原理
 
-我们将 BVM 与行业标准进行了对比测试。结果显示：BVM 彻底消除了传统工具带来的“Shell 税”。
+BVM 采用 **软链接与 Shim 混合架构 (Symlink-Shim Hybrid)**，在保持完美隔离的同时实现了零延迟。
 
-| 指标 | **BVM (v1.x)** | **bum** (Rust) | **nvm** (Node) | **深度解析** |
-| :--- | :--- | :--- | :--- | :--- |
-| **Shell 启动延迟** | **0ms** | 0ms | **497ms** | NVM 需要在每次打开终端时 `source` 巨大的脚本。BVM 和 Bum 使用 Shim/PATH 机制，零延迟。 |
-| **运行时开销** | **0ms** (全局) | <1ms | 0ms | **BVM 全局模式使用物理软链接。** 操作系统直接执行 `bun`。Bum 使用二进制代理，虽快但仍有微小开销。 |
-| **CLI 响应速度** | ~27ms | **~7ms** | ~500ms | Rust 二进制 (Bum) 在执行管理命令 (`ls`) 时更快。BVM 运行在 Bun 运行时之上，速度极快但有极小的启动成本。 |
-| **安装体积** | **~45KB** | ~5MB | ~100KB | BVM 复用现有的 Bun 运行时，核心逻辑体积微乎其微。 |
+```mermaid
+graph LR
+    A[终端 Terminal] -->|执行 bun| B(BVM Shim)
+    B -->|检查 .bvmrc| C{存在项目配置?}
+    C -->|是| D[使用指定版本]
+    C -->|否| E[使用全局 Current]
+    E -->|物理软链| F[~/.bvm/versions/v1.x]
+    D -->|直接执行| G[~/.bvm/versions/v1.y]
+```
 
-> *测试环境: MacBook Pro M1, macOS 14. 数据来源: `scripts/vs-competitors.ts`.*
+1.  **全局软链**: `bvm use` 更新 `~/.bvm/current` 物理软链接。你的 Shell `PATH` 直接指向此处，因此启动速度等同于原生。
+2.  **智能 Shim**: 当你执行 `bun` 命令时，BVM 的轻量级 Shim 仅在**必要时**（如检测到 `.bvmrc`）介入，否则直接透传给底层二进制文件。
+3.  **依赖注入**: BVM 动态注入 `BUN_INSTALL` 环境变量，确保 v1.0 安装的全局包绝对不会泄漏到 v1.1 环境中。
 
-## 🧩 功能矩阵
+---
 
-BVM 不仅快，更是一个统一的、跨平台的解决方案。
+## 🌟 为什么选择 BVM？
 
-| 特性 | **BVM** | **nvm** | **fnm / bum** |
+### 🚀 0ms 极速启动 (Zero-Latency)
+告别终端卡顿。BVM 采用 **Shim 架构** 配合 **物理软链接**。无论你是在打开新标签页还是切换项目，`bun` 命令都是瞬间可用的，没有像 `nvm` 那样的"Shell 初始化税"。
+
+### ⚡ 全球极速下载 (自带镜像)
+我们不依赖不稳定的 GitHub Releases。BVM 的所有资源都通过高性能 CDN 交付。
+*   **源码交付**: 通过 **jsDelivr** (全球边缘网络) 秒级分发。
+*   **Bun 二进制**: 直接从 **NPM** (Fastly/Cloudflare) 下载。
+*   **智能镜像切换**: Bun 二进制文件直接从 **NPM** 官方分发路径下载。BVM 会根据你的网络环境自动选择最快镜像源（如 `npmmirror`），无需任何手动配置，全球范围内皆可实现极速下载。
+
+### 🛡️ "地堡" 架构 (Bunker Architecture)
+BVM 是**坚不可摧**的。它维护着一个私有、隔离的 Bun 运行时 (`~/.bvm/runtime`)。即使你删除了所有安装的 Bun 版本，或者搞乱了系统路径，BVM 依然能自我修复并正常工作。
+
+### 📦 环境级原子隔离
+切换版本不应导致全局工具崩溃。BVM 为每个版本注入独立的 `BUN_INSTALL` 路径。
+*   Bun `v1.0.0` 的全局包只存在于 `v1.0.0` 中。
+*   Bun `v1.1.0` 的全局包与之完全隔离。
+*   彻底杜绝 "幽灵冲突" 和 CLI 报错。
+
+### 🪟 原生 Windows 支持
+Windows 用户不再是二等公民。BVM 专为 PowerShell 原生构建，提供与 macOS/Linux 完全一致的功能集和极速体验。
+
+---
+
+## ⚡ 性能跑分 (Benchmark)
+
+基于 `scripts/benchmark-ultimate.ts` 实测数据 (M1 Pro, macOS)。
+
+| 指标 | **BVM** (Bun) | **fnm / bum** (Rust) | **nvm** (Legacy) |
 | :--- | :--- | :--- | :--- |
-| **Windows 支持** | ✅ **原生支持 (PowerShell)** | ❌ (需 `nvm-windows`) | ✅ |
-| **Shell 兼容性** | ✅ **通用 Shim** | ❌ (主要是 Bash/Zsh) | ✅ |
-| **环境依赖** | **无** (自动引导安装 Bun) | POSIX Shell | 二进制 / Rust 工具链 |
-| **原子隔离** | ✅ **`BUN_INSTALL` 注入** | ❌ | ❌ (通常仅修改 PATH) |
-| **自愈能力** | ✅ **Bunker 架构** | ❌ | ❌ |
-| **国内镜像** | ✅ **内置自动切换** | ❌ 需手动配置 | ❌ 需手动配置 |
+| **命令执行 (bun -v)** | **~19ms** ⚡️ | ~28ms | >200ms |
+| **Shell 启动延迟** | **0ms** 🟢 | 0ms | ~500ms 🔴 |
+| **架构机制** | **OS 原生软链** / 高性能 Shim | 二进制代理 | Shell 脚本 |
+| **自身体积** | **~45KB** | ~5MB | ~100KB |
+| **下载机制** | **NPM + 智能镜像** | GitHub Releases | 慢 / 手动配置 |
+
+> **物理极限**: BVM 利用操作系统内核的软链接直接指向二进制文件（或通过极简 Shim 解析）。**它的速度等同于你直接运行 Bun，没有任何中间层开销。** 即使在解析 `.bvmrc` 的项目模式下，额外开销也仅为 ~8ms。
 
 ---
 
-## 🏛️ 深度解析：为什么选择 BVM?
+## 📥 安装指南
 
-### 1. "Bunker" 架构 (私有运行时)
-**痛点**: 许多版本管理器 (如 `pip`, `npm`, `gem`) 依赖于它们管理的对象。如果你弄坏了系统的 Node/Python，你的版本管理器也就挂了。
-**BVM 方案**: BVM 维护一个**私有、原子化的 Bun 运行时** (`~/.bvm/runtime`)。它与用户安装的版本完全解耦。即使你 `rm -rf` 删光了所有安装的版本，BVM 依然坚如磐石，随时准备修复环境。
-
-### 2. 物理软链 vs 二进制代理
-**痛点**: 现代管理器 (fnm, voltan, bum) 多采用“二进制代理”模式。当你运行 `node` 时，实际上运行的是一个 Rust/Go 编写的中间人程序，由它计算并转发请求。
-**BVM 方案**: 我们采用 **混合路由 (Hybrid Routing)**。
-*   **全局模式**: 我们使用 **操作系统级软链接**。当你运行 `bun` 时，内核直接指向可执行文件。**0 CPU 周期** 被浪费在路由上。
-*   **项目模式**: 仅当检测到 `.bvmrc` 时，才会激活高性能 Shim 脚本 (<10ms)，确保无感切换。
-
-### 3. 环境级原子隔离
-**痛点**: 切换版本后，全局包 (`bun install -g`) 往往会变得混乱。v1.0.0 的包可能会意外地被 v1.1.0 读取到，导致难以排查的“幽灵冲突”。
-**BVM 方案**: BVM 将 `BUN_INSTALL` 注入到执行环境中。每个版本的全局包存储在物理隔离的目录中。
-
-### 4. 全球化高速分发 (NPM 优先)
-BVM 实现了复杂的 NPM 优先下载策略：
-*   **全球访问**: 默认使用 `registry.npmjs.org` (Cloudflare CDN)，确保全球稳定访问。
-*   **国内加速**: 自动检测并为国内用户切换至 `registry.npmmirror.com` (阿里云 CDN)。彻底告别 GitHub 下载超时。
-
----
-
-## 🚀 快速开始
-
-### macOS / Linux / WSL (推荐)
+### macOS / Linux / WSL
+脚本会自动检测系统与架构。
 
 ```bash
 curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
+**无需**管理员权限。
 
 ```powershell
-irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
 ---
 
-## 📖 命令参考
+## 🔄 从 nvm / fnm 迁移？
 
-| 命令 | 描述 |
-| :--- | :--- |
-| `bvm i latest` | 安装最新的稳定版 Bun |
-| `bvm use 1.1.34` | 切换全局版本（立即生效） |
-| `bvm ls` | 列出已安装的版本和别名 |
-| `bvm current` | 显示当前版本来源 (.bvmrc / 环境变量 / 别名) |
-| `bvm default 1.1.20`| 设置新终端的默认版本 |
-| `bvm upgrade` | 通过 JSDelivr/GitHub 更新 BVM 自身 |
+如果你习惯使用 Node Version Manager (nvm)，你会感到非常亲切。BVM 支持同样的核心工作流，但速度有了质的飞跃。
+
+且不同于 `nvm` 经常需要手动配置镜像环境变量 (`NVM_NODEJS_ORG_MIRROR`) 才能在国内正常使用，BVM **开箱即用**，自动为你选择最快的源。
+
+| 任务 | **nvm** (Node) | **BVM** (Bun) |
+| :--- | :--- | :--- |
+| 安装版本 | `nvm install 20` | `bvm install latest` |
+| 切换版本 | `nvm use 20` | `bvm use latest` |
+| 设为默认 | `nvm alias default 20` | `bvm default latest` |
+| 列出版本 | `nvm ls` | `bvm ls` |
 
 ---
 
-## 📄 开源协议
+## 🎮 快速开始
+
+**安装最新版**
+```bash
+bvm install latest
+```
+
+**切换到指定版本**
+```bash
+bvm use 1.1.20
+```
+
+**安装特定版本**
+```bash
+bvm install 1.0.0
+```
+
+**列出所有版本**
+```bash
+bvm ls          # 本地已安装
+bvm ls-remote   # 远程可用
+```
+
+**设置默认版本 (新窗口生效)**
+```bash
+bvm default 1.1.20
+```
+
+**升级 BVM 自身**
+```bash
+bvm upgrade
+```
+
+---
+
+## 📁 项目级配置 (.bvmrc)
+
+BVM 支持针对每个项目自动切换版本，这是团队协作的必备功能。
+
+1.  **创建配置文件**:
+    在你的项目根目录下创建 `.bvmrc` 文件：
+    ```bash
+    echo "1.1.20" > .bvmrc
+    ```
+
+2.  **直接运行 Bun**:
+    当你在该目录下运行任何 `bun` 命令时，BVM 会自动检测并使用配置的版本。
+    ```bash
+    cd my-project
+    bun -v
+    # 1.1.20 (自动解析自 .bvmrc)
+    ```
+
+    *无需手动执行 `bvm use`，一切自动发生。*
+
+---
+
+
 
 MIT © [EricLLLLLL](https://github.com/EricLLLLLL)
-
----
-
-**BVM - Built with Bun, for the fastest developers on earth.**

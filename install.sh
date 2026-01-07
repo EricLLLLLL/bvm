@@ -167,7 +167,8 @@ if [ -f "dist/index.js" ]; then
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
     printf "${BLUE}⬇️  Downloading BVM source...${NC}"
-    curl -sL "https://github.com/EricLLLLLL/bvm/releases/latest/download/index.js" -o "${BVM_SRC_DIR}/index.js" &
+    # Use jsDelivr CDN for better global speed
+    curl -sL "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/dist/index.js" -o "${BVM_SRC_DIR}/index.js" &
     spinner $!
     echo -e " ${GREEN}Done.${NC}"
 fi
@@ -177,7 +178,7 @@ WRAPPER_PATH="${BVM_BIN_DIR}/bvm"
 cat > "$WRAPPER_PATH" <<EOF
 #!/bin/bash
 export BVM_DIR="$BVM_DIR"
-exec "${BVM_SHIMS_DIR}/bun" "$BVM_SRC_DIR/index.js" "\$@"
+exec "${BVM_RUNTIME_DIR}/current/bin/bun" "$BVM_SRC_DIR/index.js" "\$@"
 EOF
 chmod +x "$WRAPPER_PATH"
 

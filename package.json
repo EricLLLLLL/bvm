@@ -23,7 +23,13 @@
     "bun",
     "version-manager",
     "cli",
-    "bvm"
+    "bvm",
+    "nvm",
+    "nvm-windows",
+    "fnm",
+    "nodenv",
+    "bun-nvm",
+    "version-switching"
   ],
   "files": [
     "dist/index.js",
