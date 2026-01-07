@@ -95,6 +95,6 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           echo "🧹 Purging jsDelivr cache for @main..."
-          curl -X POST https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.sh || true
-          curl -X POST https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.ps1 || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.sh || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.ps1 || true
           echo "Done."
