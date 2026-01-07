@@ -2,10 +2,15 @@
 
 import { spawnSync } from 'bun';
 
-// Helper to run commands
-const run = (cmd: string, args: string[], opts: { ignoreError?: boolean } = {}) => {
-  console.log(`\n> ${cmd} ${args.join(' ')}`);
-  const result = spawnSync({ cmd: [cmd, ...args], stdout: 'inherit', stderr: 'inherit', stdin: 'inherit' });
+// --- Helpers ---
+const run = (cmd: string, args: string[], opts: { ignoreError?: boolean, capture?: boolean } = {}) => {
+  console.log(`> ${cmd} ${args.join(' ')}`);
+  const result = spawnSync({ 
+    cmd: [cmd, ...args], 
+    stdout: opts.capture ? 'pipe' : 'inherit', 
+    stderr: 'inherit', 
+    stdin: 'inherit' 
+  });
   if (result.exitCode !== 0 && !opts.ignoreError) {
     console.error(`❌ Command failed: ${cmd} ${args.join(' ')}`);
     process.exit(1);
@@ -13,70 +18,41 @@ const run = (cmd: string, args: string[], opts: { ignoreError?: boolean } = {}) 
   return result;
 };
 
-// Helper to check git status
-const isGitClean = () => {
-  const result = spawnSync({ cmd: ['git', 'status', '--porcelain'], stdout: 'pipe' });
-  return result.stdout.toString().trim().length === 0;
-};
+const git = (...args: string[]) => run('git', args, { capture: true }).stdout.toString().trim();
+const runGit = (...args: string[]) => run('git', args);
 
-// Helper for user input
-async function prompt(question: string): Promise<string> {
-  process.stdout.write(question);
-  const reader =  console.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  // Bun doesn't have a built-in prompt yet for simple scripts, doing manual stdin read
-  // Using a simple workaround since console.createInterface might not be available in minimal envs,
-  // but let's try reading one line from stdin.
-  for await (const line of console) {
-      return line.trim();
-  }
-  return '';
-}
-
+// --- Main Script ---
 (async function main() {
   try {
-    console.log('🚀 Starting Release Process...');
+    console.log('🚀 Starting Local Release Trigger...');
 
-    // 1. Ensure Git is clean
-    if (!isGitClean()) {
+    // 1. Safety Checks
+    if (git('status', '--porcelain')) {
       console.error('❌ Git working tree is dirty. Please commit or stash changes before releasing.');
       process.exit(1);
     }
-
-    // 2. Sync Runtime & Dependencies
-    console.log('\n🔄 Syncing Bun Runtime...');
-    run('bun', ['run', 'scripts/sync-runtime.ts']);
-
-    // 3. Commit Runtime Updates (if any)
-    if (!isGitClean()) {
-      console.log('\n📦 Runtime dependencies updated. Committing...');
-      run('git', ['add', '.']);
-      run('git', ['commit', '-m', 'chore: update bun runtime dependencies']);
-    } else {
-      console.log('\n✓ Runtime is already up to date.');
+    const currentBranch = git('rev-parse', '--abbrev-ref', 'HEAD');
+    if (currentBranch !== 'main') {
+      console.warn(`⚠️  You are on branch "${currentBranch}", not "main". This might not trigger the Release Action.`);
     }
 
-    // 4. Run Tests
-    console.log('\n🧪 Running Tests...');
+    // 2. Sync & Test (Ensure we don't push broken code)
+    console.log('\n🔄 Syncing Runtime & Running Tests...');
+    run('bun', ['run', 'scripts/sync-runtime.ts']);
+    if (git('status', '--porcelain')) {
+      runGit('add', '.');
+      runGit('commit', '-m', 'chore: update runtime dependencies');
+    }
     run('bun', ['test']);
 
-    // 5. Run E2E Verification (New Step)
-    console.log('\n🕵️‍♂️ Running End-to-End Installation Verification...');
-    run('bun', ['run', 'scripts/verify-install.ts']);
-
-    // 6. Bump Version
-    console.log('\n📈 Version Bump');
-    console.log('Select release type:');
-    console.log('1) patch (0.0.x)');
-    console.log('2) minor (0.x.0)');
-    console.log('3) major (x.0.0)');
+    // 3. Select Version Bump
+    console.log('\n📈 Version Bump Selection');
+    console.log('1) patch');
+    console.log('2) minor');
+    console.log('3) major');
     console.log('4) cancel');
+    process.stdout.write('Enter choice: ');
     
-    process.stdout.write('Enter choice [1-4]: ');
-    
-    // Simple stdin reader
     const reader = Bun.stdin.stream().getReader();
     const { value } = await reader.read();
     const input = new TextDecoder().decode(value).trim();
@@ -86,26 +62,35 @@ async function prompt(question: string): Promise<string> {
       case '1': bumpType = 'patch'; break;
       case '2': bumpType = 'minor'; break;
       case '3': bumpType = 'major'; break;
-      case '4': 
-        console.log('Cancelled.');
-        process.exit(0);
-        break;
-      default:
-        console.error('Invalid choice.');
-        process.exit(1);
+      default: console.log('Cancelled.'); process.exit(0);
     }
 
-    if (bumpType) {
-      console.log(`\n🔖 Bumping version (${bumpType})...`);
-      // npm version creates the commit and tag
-      run('npm', ['version', bumpType]);
-      
-      console.log('\n✅ Release prepared successfully!');
-      console.log('👉 Now run: git push && git push --tags');
-    }
+    // 4. Bump Version & Push
+    console.log(`\n🔖 Bumping version (${bumpType})...`);
+    
+    // npm version updates package.json AND creates a commit, but we suppress the tag
+    // We want the Action to create the tag AFTER building dist
+    run('npm', ['version', bumpType, '--no-git-tag-version']);
+    
+    const newVersion = require('../package.json').version;
+    const tagName = `v${newVersion}`;
+
+    // Commit
+    runGit('add', 'package.json', 'package-lock.json');
+    runGit('commit', '-m', `chore: release ${tagName}`);
+
+    console.log(`\n⬆️  Pushing to main to trigger GitHub Action...`);
+    runGit('push', 'origin', currentBranch);
+
+    console.log(`\n✅ Triggered! GitHub Action will now:`);
+    console.log(`   1. Build the project`);
+    console.log(`   2. Create a tag '${tagName}' containing 'dist/'`);
+    console.log(`   3. Publish to GitHub Releases`);
+    console.log(`\n👀 Watch progress at: https://github.com/EricLLLLLL/bvm/actions`);
 
   } catch (error) {
     console.error('\n❌ Release failed:', (error as Error).message);
     process.exit(1);
   }
 })();
+

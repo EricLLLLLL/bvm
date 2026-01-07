@@ -167,10 +167,25 @@ if [ -f "dist/index.js" ]; then
     cp "dist/index.js" "${BVM_SRC_DIR}/index.js"
 else
     printf "${BLUE}⬇️  Downloading BVM source...${NC}"
+    
+    # Determine BVM Version to download
+    # Default to 'main' branch for latest updates, or use specific tag if provided
+    BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-main}"
+    
     # Use jsDelivr CDN for better global speed
-    curl -sL "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/dist/index.js" -o "${BVM_SRC_DIR}/index.js" &
-    spinner $!
-    echo -e " ${GREEN}Done.${NC}"
+    # Format: https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@<version>/dist/index.js
+    SRC_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/index.js"
+    
+    # Debug info (only if something goes wrong, or user wants verbose)
+    # echo "Downloading from: $SRC_URL"
+    
+    if curl -sL "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"; then
+        echo -e " ${GREEN}Done.${NC}"
+    else
+        echo -e " ${RED}Failed to download BVM source from CDN.${NC}"
+        echo -e " ${YELLOW}URL: ${SRC_URL}${NC}"
+        exit 1
+    fi
 fi
 
 # 5. Create Wrapper

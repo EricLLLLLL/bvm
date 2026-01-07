@@ -145,14 +145,19 @@ if (-not (Test-Path $BUN_EXE)) {
 }
 
 # --- 5. Install BVM Source ---
-$SOURCE_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/dist/index.js"
+$BVM_SRC_VERSION = "main"
+if ($env:BVM_INSTALL_VERSION) { $BVM_SRC_VERSION = $env:BVM_INSTALL_VERSION }
+
+$SOURCE_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_SRC_VERSION/dist/index.js"
 if ($env:BVM_SOURCE_URL) { $SOURCE_URL = $env:BVM_SOURCE_URL }
 
 Write-Color "⬇️  Downloading BVM source..." Blue
 try {
+    # Write-Host "DEBUG: Downloading from $SOURCE_URL"
     Invoke-WebRequest -Uri $SOURCE_URL -OutFile "$BVM_SRC_DIR\index.js" -ErrorAction Stop
 } catch {
     Write-Color "Failed to download BVM source." Red
+    Write-Color "URL: $SOURCE_URL" Yellow
     if (-not (Test-Path "$BVM_SRC_DIR\index.js")) { exit 1 }
 }
 
