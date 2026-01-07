@@ -201,7 +201,7 @@ else
     # Debug info (only if something goes wrong, or user wants verbose)
     # echo "Downloading from: $SRC_URL"
     
-    if curl -sL "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"; then
+    if curl -sL --fail "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"; then
         echo -e " ${GREEN}Done.${NC}"
     else
         echo -e " ${RED}Failed to download BVM source from CDN.${NC}"
