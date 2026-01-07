@@ -4,6 +4,9 @@ $ErrorActionPreference = "Stop"
 # Placeholder for build-time injection.
 $BvmEmbeddedVersion = ""
 
+# Current Stable Version on Main Branch (Updated by release script)
+$DefaultBvmVersion = "v1.0.3"
+
 # --- Configuration ---
 $BVM_DIR = "$HOME\.bvm"
 $BVM_SRC_DIR = "$BVM_DIR\src"
@@ -154,22 +157,10 @@ if ($env:BVM_INSTALL_VERSION) {
 } elseif ($BvmEmbeddedVersion) {
     $BVM_SRC_VERSION = $BvmEmbeddedVersion
 } else {
-    Write-Host "🔍 Resolving latest BVM version..." -NoNewline -ForegroundColor Gray
-    try {
-        $LatestInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/EricLLLLLL/bvm/releases/latest" -ErrorAction Stop
-        if ($LatestInfo -and $LatestInfo.tag_name) {
-            $BVM_SRC_VERSION = $LatestInfo.tag_name
-            Write-Color " $BVM_SRC_VERSION" Blue
-        }
-    } catch {
-        # Fallback (silent fail to main)
-    }
-    
-    if (-not $BVM_SRC_VERSION) {
-        $BVM_SRC_VERSION = "v1.0.2"
-        Write-Color " $BVM_SRC_VERSION (fallback)" Yellow
-    }
+    $BVM_SRC_VERSION = $DefaultBvmVersion
 }
+
+Write-Color " Version: $BVM_SRC_VERSION" Blue
 
 $SOURCE_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_SRC_VERSION/dist/index.js"
 if ($env:BVM_SOURCE_URL) { $SOURCE_URL = $env:BVM_SOURCE_URL }

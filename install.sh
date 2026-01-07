@@ -35,9 +35,12 @@ spinner() {
     printf "    \b\b\b\b"
 }
 
-# Placeholder for build-time injection. 
+# Placeholder for build-time injection (Used in Release Tags)
 # GitHub Actions will replace this line with the actual release tag.
 BVM_EMBEDDED_VERSION=""
+
+# Current Stable Version on Main Branch (Updated by release script)
+DEFAULT_BVM_VERSION="v1.0.3"
 
 # Version Resolution
 if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
@@ -176,25 +179,14 @@ else
     if [ -n "$BVM_INSTALL_VERSION" ]; then
         BVM_SRC_VERSION="$BVM_INSTALL_VERSION"
     elif [ -n "$BVM_EMBEDDED_VERSION" ]; then
-        # Use the hardcoded version from the release tag
+        # Case 1: Release Tag (injected by CI)
         BVM_SRC_VERSION="$BVM_EMBEDDED_VERSION"
     else
-        # Default to 'main' is BAD because dist/index.js only exists on Release Tags.
-        # We must resolve the latest release tag dynamically.
-        printf "${GRAY}🔍 Resolving latest BVM version...${NC}"
-        # Try fetching from GitHub API (fastest/reliable)
-        LATEST_TAG=$(curl -s https://api.github.com/repos/EricLLLLLL/bvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        
-        if [ -z "$LATEST_TAG" ]; then
-             # Fallback to a hardcoded stable version if API fails (main branch has no dist)
-             FALLBACK_VER="v1.0.2"
-             echo -e " ${YELLOW}Failed to resolve latest version via API, falling back to '${FALLBACK_VER}'.${NC}"
-             BVM_SRC_VERSION="$FALLBACK_VER"
-        else
-             BVM_SRC_VERSION="$LATEST_TAG"
-             echo -e " ${BLUE}${BVM_SRC_VERSION}${NC}"
-        fi
+        # Case 2: Main Branch (hardcoded by release script)
+        BVM_SRC_VERSION="$DEFAULT_BVM_VERSION"
     fi
+    
+    echo -e " ${BLUE}Version: ${BVM_SRC_VERSION}${NC}"
     
     # Use jsDelivr CDN for better global speed
     # Format: https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@<version>/dist/index.js

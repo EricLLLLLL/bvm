@@ -75,8 +75,23 @@ const runGit = (...args: string[]) => run('git', args);
     const newVersion = require('../package.json').version;
     const tagName = `v${newVersion}`;
 
+    // --- NEW: Update hardcoded default version in install scripts (Cross-platform) ---
+    console.log(`\n📝 Updating hardcoded default version to ${tagName}...`);
+    
+    // Update install.sh
+    const installShPath = 'install.sh';
+    let installShContent = await Bun.file(installShPath).text();
+    installShContent = installShContent.replace(/DEFAULT_BVM_VERSION="v[^"]*"/, `DEFAULT_BVM_VERSION="${tagName}"`);
+    await Bun.write(installShPath, installShContent);
+
+    // Update install.ps1
+    const installPs1Path = 'install.ps1';
+    let installPs1Content = await Bun.file(installPs1Path).text();
+    installPs1Content = installPs1Content.replace(/\$DefaultBvmVersion = "v[^"]*"/, `$DefaultBvmVersion = "${tagName}"`);
+    await Bun.write(installPs1Path, installPs1Content);
+
     // Commit
-    runGit('add', 'package.json', 'package-lock.json');
+    runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1');
     runGit('commit', '-m', `chore: release ${tagName}`);
 
     console.log(`\n⬆️  Pushing to main to trigger GitHub Action...`);
