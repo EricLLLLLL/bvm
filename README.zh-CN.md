@@ -112,6 +112,17 @@ curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
+### 安装特定版本的 BVM
+你可以在安装时通过环境变量指定 BVM 自身的版本：
+
+```bash
+# macOS / Linux / WSL
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | BVM_INSTALL_VERSION=v1.0.0 bash
+
+# Windows (PowerShell)
+$env:BVM_INSTALL_VERSION="v1.0.0"; irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+```
+
 ---
 
 ## 🔄 从 nvm / fnm 迁移？

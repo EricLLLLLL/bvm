@@ -112,6 +112,17 @@ Run as Administrator is **not** required.
 irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
+### Install Specific BVM Version
+You can specify a version of BVM itself during installation:
+
+```bash
+# macOS / Linux
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | BVM_INSTALL_VERSION=v1.0.0 bash
+
+# Windows (PowerShell)
+$env:BVM_INSTALL_VERSION="v1.0.0"; irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+```
+
 ---
 
 ## 🎮 Quick Start
