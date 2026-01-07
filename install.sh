@@ -35,6 +35,10 @@ spinner() {
     printf "    \b\b\b\b"
 }
 
+# Placeholder for build-time injection. 
+# GitHub Actions will replace this line with the actual release tag.
+BVM_EMBEDDED_VERSION=""
+
 # Version Resolution
 if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
     REQUIRED_BUN_VERSION="$BVM_INSTALL_BUN_VERSION"
@@ -171,6 +175,9 @@ else
     # Determine BVM Version to download
     if [ -n "$BVM_INSTALL_VERSION" ]; then
         BVM_SRC_VERSION="$BVM_INSTALL_VERSION"
+    elif [ -n "$BVM_EMBEDDED_VERSION" ]; then
+        # Use the hardcoded version from the release tag
+        BVM_SRC_VERSION="$BVM_EMBEDDED_VERSION"
     else
         # Default to 'main' is BAD because dist/index.js only exists on Release Tags.
         # We must resolve the latest release tag dynamically.

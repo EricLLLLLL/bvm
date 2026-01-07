@@ -113,14 +113,14 @@ irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
 ### Install Specific BVM Version
-You can specify a version of BVM itself during installation:
+You can install a specific version of BVM by pointing to its Git tag:
 
 ```bash
-# macOS / Linux
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | BVM_INSTALL_VERSION=v1.0.0 bash
+# macOS / Linux / WSL
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.1/install.sh | bash
 
 # Windows (PowerShell)
-$env:BVM_INSTALL_VERSION="v1.0.0"; irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.1/install.ps1 | iex
 ```
 
 ---

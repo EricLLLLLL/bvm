@@ -48,14 +48,27 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         run: bun run build
 
+      - name: Inject Version into Install Scripts
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          # Inject version into install.sh (Unix)
+          # Replaces: BVM_EMBEDDED_VERSION=""
+          sed -i "s/BVM_EMBEDDED_VERSION=\"\"/BVM_EMBEDDED_VERSION=\"${{ env.TAG_NAME }}\"/" install.sh
+          
+          # Inject version into install.ps1 (Windows)
+          # Replaces: $BvmEmbeddedVersion = ""
+          sed -i "s/\$BvmEmbeddedVersion = \"\"/\$BvmEmbeddedVersion = \"${{ env.TAG_NAME }}\"/" install.ps1
+          
+          echo "✅ Version ${{ env.TAG_NAME }} injected into install scripts."
+
       - name: Create Release Commit & Tag
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Force add the ignored dist file
-          git add -f dist/index.js
+          # Force add the ignored dist file AND the modified install scripts
+          git add -f dist/index.js install.sh install.ps1
           
           # Create a detached commit for the release
           git commit -m "build: release artifacts for ${{ env.TAG_NAME }}"

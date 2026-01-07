@@ -1,6 +1,9 @@
 # BVM Installer for Windows (PowerShell)
 $ErrorActionPreference = "Stop"
 
+# Placeholder for build-time injection.
+$BvmEmbeddedVersion = ""
+
 # --- Configuration ---
 $BVM_DIR = "$HOME\.bvm"
 $BVM_SRC_DIR = "$BVM_DIR\src"
@@ -148,6 +151,8 @@ if (-not (Test-Path $BUN_EXE)) {
 $BVM_SRC_VERSION = $null
 if ($env:BVM_INSTALL_VERSION) { 
     $BVM_SRC_VERSION = $env:BVM_INSTALL_VERSION 
+} elseif ($BvmEmbeddedVersion) {
+    $BVM_SRC_VERSION = $BvmEmbeddedVersion
 } else {
     Write-Host "🔍 Resolving latest BVM version..." -NoNewline -ForegroundColor Gray
     try {

@@ -113,14 +113,14 @@ irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
 ### 安装特定版本的 BVM
-你可以在安装时通过环境变量指定 BVM 自身的版本：
+你可以通过指定 Git Tag 来安装特定版本的 BVM：
 
 ```bash
 # macOS / Linux / WSL
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | BVM_INSTALL_VERSION=v1.0.0 bash
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.1/install.sh | bash
 
 # Windows (PowerShell)
-$env:BVM_INSTALL_VERSION="v1.0.0"; irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.1/install.ps1 | iex
 ```
 
 ---
