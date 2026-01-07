@@ -134,26 +134,25 @@ end
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     await checkConflicts();
 
-    // PowerShell Profile logic
-    const documentsDir = join(homedir(), 'Documents');
-    const psCoreDir = join(documentsDir, 'PowerShell');
-    const psWinDir = join(documentsDir, 'WindowsPowerShell');
-    
+    // 1. Get the real Profile path from PowerShell itself
     let profilePath = '';
-    
-    if (await pathExists(psCoreDir)) {
-        profilePath = join(psCoreDir, 'Microsoft.PowerShell_profile.ps1');
-    } else {
-        profilePath = join(psWinDir, 'Microsoft.PowerShell_profile.ps1');
+    try {
+        const proc = Bun.spawnSync({
+            cmd: ['powershell', '-NoProfile', '-Command', 'echo $PROFILE.CurrentUserAllHosts'],
+            stdout: 'pipe'
+        });
+        profilePath = proc.stdout.toString().trim();
+    } catch (e) {
+        // Fallback to manual path if powershell fails
+        profilePath = join(homedir(), 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1');
     }
 
+    if (!profilePath) return;
+
+    // 2. Ensure the directory exists
     await ensureDir(dirname(profilePath));
 
-    if (!(await pathExists(profilePath))) {
-        await Bun.write(profilePath, '');
-    }
-
-    const content = await readFile(profilePath, 'utf8');
+    // 3. Prepare the config string (Strictly ASCII to avoid encoding drama)
     const psStr = `
 # BVM Configuration
 $env:BVM_DIR = "${BVM_DIR}"
@@ -164,19 +163,28 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
 }
 `;
 
-    if (content.includes('$env:BVM_DIR')) {
-        return;
-    }
-
-    if (displayPrompt) {
-        console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
-    }
-
     try {
-        await appendFile(profilePath, psStr);
+        let existingContent = '';
+        if (await pathExists(profilePath)) {
+            existingContent = await readFile(profilePath, 'utf8');
+        } else {
+            await writeFile(profilePath, '');
+        }
+
+        if (existingContent.includes('$env:BVM_DIR')) {
+            return;
+        }
+
+        if (displayPrompt) {
+            console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
+        }
+
+        // Use appendFile but ensure we're adding a newline
+        await appendFile(profilePath, `\r\n${psStr}`);
+        
         if (displayPrompt) {
             console.log(colors.green(`✓ Successfully configured BVM path in ${profilePath}`));
-            console.log(colors.yellow(`Please restart your terminal or run ". $PROFILE" to apply changes.`));
+            console.log(colors.yellow(`Please restart your terminal to apply changes.`));
         }
     } catch (error: any) {
         console.error(colors.red(`Failed to write to ${profilePath}: ${error.message}`));

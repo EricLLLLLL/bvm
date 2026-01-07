@@ -117,10 +117,10 @@ You can install a specific version of BVM by pointing to its Git tag:
 
 ```bash
 # macOS / Linux / WSL
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.3/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.4/install.sh | bash
 
 # Windows (PowerShell)
-irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.3/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.4/install.ps1 | iex
 ```
 
 ---
@@ -134,12 +134,12 @@ bvm install latest
 
 **Switch to a specific version**
 ```bash
-bvm use 1.0.3
+bvm use 1.0.4
 ```
 
 **Install a specific version**
 ```bash
-bvm install 1.0.3
+bvm install 1.0.4
 ```
 
 **List all versions**
@@ -150,7 +150,7 @@ bvm ls-remote   # Available online
 
 **Set a default for new terminals**
 ```bash
-bvm default 1.0.3
+bvm default 1.0.4
 ```
 
 **Upgrade BVM itself**
@@ -166,14 +166,14 @@ BVM supports automatic version switching per project, making it ideal for team c
 
 1.  **Create a config file** in your project root:
     ```bash
-    echo "1.0.3" > .bvmrc
+    echo "1.0.4" > .bvmrc
     ```
 2.  **Just run Bun**:
     BVM automatically detects the `.bvmrc` file when you run any `bun` command inside that directory.
     ```bash
     cd my-project
     bun -v
-    # 1.0.3 (Automatically resolved from .bvmrc)
+    # 1.0.4 (Automatically resolved from .bvmrc)
     ```
 
     *No manual `bvm use` required.*

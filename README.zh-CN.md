@@ -117,10 +117,10 @@ irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 
 ```bash
 # macOS / Linux / WSL
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.3/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.4/install.sh | bash
 
 # Windows (PowerShell)
-irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.3/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.4/install.ps1 | iex
 ```
 
 ---
@@ -149,12 +149,12 @@ bvm install latest
 
 **切换到指定版本**
 ```bash
-bvm use1.0.3
+bvm use1.0.4
 ```
 
 **安装特定版本**
 ```bash
-bvm install1.0.3
+bvm install1.0.4
 ```
 
 **列出所有版本**
@@ -165,7 +165,7 @@ bvm ls-remote   # 远程可用
 
 **设置默认版本 (新窗口生效)**
 ```bash
-bvm default1.0.3
+bvm default1.0.4
 ```
 
 **升级 BVM 自身**
@@ -189,7 +189,7 @@ BVM 支持针对每个项目自动切换版本，这是团队协作的必备功�
     ```bash
     cd my-project
     bun -v
-    #1.0.3 (自动解析自 .bvmrc)
+    #1.0.4 (自动解析自 .bvmrc)
     ```
 
     *无需手动执行 `bvm use`，一切自动发生。*

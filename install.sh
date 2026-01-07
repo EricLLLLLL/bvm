@@ -40,7 +40,7 @@ spinner() {
 BVM_EMBEDDED_VERSION=""
 
 # Current Stable Version on Main Branch (Updated by release script)
-DEFAULT_BVM_VERSION="v1.0.3"
+DEFAULT_BVM_VERSION="v1.0.4"
 
 # Version Resolution
 if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
