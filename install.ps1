@@ -166,8 +166,8 @@ if ($env:BVM_INSTALL_VERSION) {
     }
     
     if (-not $BVM_SRC_VERSION) {
-        $BVM_SRC_VERSION = "main"
-        Write-Color " main (fallback)" Yellow
+        $BVM_SRC_VERSION = "v1.0.2"
+        Write-Color " $BVM_SRC_VERSION (fallback)" Yellow
     }
 }
 

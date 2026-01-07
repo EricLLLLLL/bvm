@@ -186,8 +186,10 @@ else
         LATEST_TAG=$(curl -s https://api.github.com/repos/EricLLLLLL/bvm/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         
         if [ -z "$LATEST_TAG" ]; then
-             echo -e " ${YELLOW}Failed to resolve latest version, falling back to 'main' (might fail if dist is missing).${NC}"
-             BVM_SRC_VERSION="main"
+             # Fallback to a hardcoded stable version if API fails (main branch has no dist)
+             FALLBACK_VER="v1.0.2"
+             echo -e " ${YELLOW}Failed to resolve latest version via API, falling back to '${FALLBACK_VER}'.${NC}"
+             BVM_SRC_VERSION="$FALLBACK_VER"
         else
              BVM_SRC_VERSION="$LATEST_TAG"
              echo -e " ${BLUE}${BVM_SRC_VERSION}${NC}"
