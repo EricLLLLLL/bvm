@@ -10,4 +10,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
+---
 
+## [~] Track: 创建一个更强大的、更接近真实世界的 E2E 验证脚本 (verify-e2e.ts)。
+
+*Link: [./conductor/tracks/ultimate_e2e_verification_20251225/](./conductor/tracks/ultimate_e2e_verification_20251225/)*

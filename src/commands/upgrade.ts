@@ -34,12 +34,12 @@ export async function upgradeBvm(): Promise<void> {
     }
 
     spinner.text = `Updating BVM to v${latestVersion}...`;
-    if (IS_TEST_MODE) {
+    if (IS_TEST_MODE && !process.env.BVM_TEST_REAL_UPGRADE) {
       spinner.succeed(colors.green('BVM updated successfully (test mode).'));
       return;
     }
 
-    const installScriptUrl = 'https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh';
+    const installScriptUrl = process.env.BVM_INSTALL_SCRIPT_URL || 'https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh';
     const response = await fetch(installScriptUrl);
     if (!response.ok) {
       throw new Error(`Failed to download install script: ${response.statusText} (${response.status})`);
