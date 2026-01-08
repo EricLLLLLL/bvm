@@ -82,11 +82,20 @@ class App {
     });
 
     const commandName = positionals[0];
+    const isSilent = !!(values.silent || values.s);
+    const isVersionOrHelp = !!(values.version || values.v || values.help || values.h);
+
     if (!commandName) {
         if (values.version || values.v) { console.log(this.versionStr); process.exit(0); }
         if (values.help || values.h) { this.showHelp(); process.exit(0); }
         this.showHelp(); process.exit(1);
     }
+    
+    // Notify update only for interactive commands, not for --version, --help, or silent runs
+    if (!isVersionOrHelp && !isSilent && !['rehash', 'completion'].includes(commandName)) {
+        await notifyUpdate();
+    }
+
     if (values.help || values.h) { this.showHelp(); process.exit(0); }
 
     const command = this.commands[commandName];
@@ -126,7 +135,6 @@ class App {
 // --- Main Execution ---
 
 async function main() {
-  await notifyUpdate();
   const app = new App('bvm');
 
   app.command('rehash', 'Regenerate shims for all installed binaries')
