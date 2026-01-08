@@ -87,7 +87,7 @@ const runGit = (...args: string[]) => run('git', args);
     // Update install.ps1
     const installPs1Path = 'install.ps1';
     let installPs1Content = await Bun.file(installPs1Path).text();
-    installPs1Content = installPs1Content.replace(/\$DefaultBvmVersion = "v[^"]*"/, `$DefaultBvmVersion = "${tagName}"`);
+    installPs1Content = installPs1Content.replace(/\$BVM_VER = "v[^"]*"/, `$BVM_VER = "${tagName}"`);
     await Bun.write(installPs1Path, installPs1Content);
 
     // Commit

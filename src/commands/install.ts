@@ -193,12 +193,22 @@ export async function installBunVersion(targetVersion?: string, options: { globa
         if (installedVersion) {
             const currentlyInstalledVersions = await getInstalledVersions();
             const activeInfo = await getActiveVersion();
+            
+            // If this is the first/only version, make it default
             if (!activeInfo.version && currentlyInstalledVersions.length === 1) {
                 await createAlias('default', foundVersion);
                 console.log(colors.cyan(`✓ Bun ${foundVersion} is now your default version.`));
-            } else {
-                console.log(colors.cyan(`✓ Bun ${foundVersion} installed and is active for this session.`));
-                console.log(colors.dim(`  To make it the default for new shells, run: bvm default ${foundVersion}`));
+            }
+
+            // Automatically use the installed version
+            try {
+                await useBunVersion(foundVersion, { silent: true });
+                console.log(colors.cyan(`✓ Bun ${foundVersion} installed and active.`));
+                console.log(colors.dim(`  To make it the default, run: bvm default ${foundVersion}`));
+            } catch (e) {
+                // Fallback if use fails for some reason
+                 console.log(colors.cyan(`✓ Bun ${foundVersion} installed.`));
+                 console.log(colors.yellow(`  To use it now, run: bvm use ${foundVersion}`));
             }
         }
       },

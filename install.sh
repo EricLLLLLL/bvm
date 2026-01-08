@@ -1,93 +1,249 @@
 #!/bin/bash
 set -e
 
+# --- Configuration ---
+DEFAULT_BVM_VERSION="v1.0.6"
+FALLBACK_BUN_VERSION="1.3.5"
+BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
+
+# --- Colors (Matches src/utils/ui.ts) ---
+if [ -t 1 ]; then
+  RED="\033[1;31m"
+  GREEN="\033[1;32m"
+  YELLOW="\033[1;33m"
+  BLUE="\033[1;34m"
+  CYAN="\033[1;36m"
+  GRAY="\033[90m"
+  BOLD="\033[1m"
+  DIM="\033[2m"
+  RESET="\033[0m"
+else
+  RED="" GREEN="" YELLOW="" BLUE="" CYAN="" GRAY="" BOLD="" DIM="" RESET=""
+fi
+
+# --- Directories ---
 BVM_DIR="${HOME}/.bvm"
 BVM_SRC_DIR="${BVM_DIR}/src"
 BVM_RUNTIME_DIR="${BVM_DIR}/runtime"
 BVM_BIN_DIR="${BVM_DIR}/bin"
 BVM_SHIMS_DIR="${BVM_DIR}/shims"
 BVM_ALIAS_DIR="${BVM_DIR}/aliases"
+TEMP_DIR=""
 
-# Professional Bar Style (Minimalist)
-show_bar() {
-    local p=$1
-    local w=40
-    local f=$(( p * w / 100 ))
-    local e=$(( w - f ))
-    printf "\r\033[1;36m"
-    for ((i=0; i<f; i++)); do printf "█"; done
-    printf "\033[0;90m"
-    for ((i=0; i<e; i++)); do printf "░"; done
-    printf "\033[0m %3d%%" "$p"
+# --- Helpers ---
+cleanup() {
+  # Restore cursor just in case
+  printf "\033[?25h"
+  if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+    rm -rf "$TEMP_DIR"
+  fi
+}
+trap cleanup EXIT
+
+info() { echo -e "${BLUE}ℹ${RESET} $1"; }
+success() { echo -e "${GREEN}✓${RESET} $1"; }
+warn() { echo -e "${YELLOW}?${RESET} $1"; }
+error() { echo -e "${RED}✖${RESET} $1"; exit 1; }
+
+# Usage: download_file <url> <dest> <description>
+download_file() {
+    local url="$1"
+    local dest="$2"
+    local desc="$3"
+    
+    # Print description without newline
+    echo -n -e "${BLUE}ℹ${RESET} $desc "
+    
+    # Start download in background (Silent but show errors, fail on error)
+    curl -L -s -S -f "$url" -o "$dest" &
+    local pid=$!
+    
+    local delay=0.1
+    local spinstr='|/-\'
+    
+    # Hide cursor
+    printf "\033[?25l"
+    
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf "${CYAN}%c${RESET}" "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b"
+    done
+    
+    # Restore cursor
+    printf "\033[?25h"
+    
+    wait "$pid"
+    local ret=$?
+    
+    if [ $ret -eq 0 ]; then
+        echo -e "${GREEN}Done${RESET}"
+    else
+        echo -e "${RED}Failed${RESET}"
+        return 1
+    fi
 }
 
-DEFAULT_BVM_VERSION="v1.0.6"
-BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
+detect_shell() {
+  # 1. Try environment variable SHELL first as it usually points to the user's preferred login shell
+  if [ -n "$SHELL" ]; then
+    echo "${SHELL##*/}"
+    return
+  fi
+  
+  # 2. Fallback to process detection
+  local shell_path
+  shell_path=$(ps -p $$ -o comm= 2>/dev/null || echo "unknown")
+  echo "${shell_path##*/}"
+}
+
+# --- Main Script ---
+
+echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_SRC_VERSION})${RESET}"
 
 # 1. Resolve Bun Version
-FALLBACK_BUN_VERSION="1.3.5"
-LATEST_COMPATIBLE_VERSION=$(curl -s https://registry.npmjs.org/bun | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+":' | tr -d '"': | grep -E '^1\.' | sort -V | tail -n 1)
-BUN_VER="${LATEST_COMPATIBLE_VERSION:-$FALLBACK_BUN_VERSION}"
+# Using spinner for resolution too since it can take a moment
+echo -n -e "${BLUE}ℹ${RESET} Resolving Bun version... "
+LATEST_BUN_VER=$(curl -s https://registry.npmjs.org/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
+echo -e "${GREEN}Done${RESET}"
 
-# 2. Setup Runtime
-mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR"
-TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${BUN_VER}"
-
-if [ ! -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
-    echo "Downloading BVM Runtime (bun@${BUN_VER})"
-    OS="$(uname -s | tr -d '"')"
-    ARCH="$(uname -m | tr -d '"')"
-    case "$OS" in Linux) P="linux" ;; Darwin) P="darwin" ;; *) exit 1 ;; esac
-    case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) exit 1 ;; esac
-    if [ "$P" == "darwin" ]; then PKG="@oven/bun-darwin-$A"; else PKG="@oven/bun-linux-$A"; fi
-    URL="https://registry.npmjs.org/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
-    TEMP_TGZ="${BVM_DIR}/bun-runtime.tgz"
-    
-    # Capture curl progress
-    curl -L -# "$URL" -o "$TEMP_TGZ" 2>&1 | tr '\r' '\n' | sed -u 's/^[[:space:]]*//' | grep --line-buffered -oE '[0-9]+(\.[0-9]+)?' | while read -r p; do
-        show_bar "${p%.*}"
-    done
-    echo -e "\n"
-
-    T_EXT="${BVM_DIR}/temp_extract"
-    mkdir -p "$T_EXT"
-    tar -xzf "$TEMP_TGZ" -C "$T_EXT"
-    mkdir -p "${TARGET_RUNTIME_DIR}/bin"
-    mv "$(find "$T_EXT" -type f -name \"bun\" | head -n 1)" "${TARGET_RUNTIME_DIR}/bin/bun"
-    chmod +x "${TARGET_RUNTIME_DIR}/bin/bun"
-    rm -rf "$T_EXT" "$TEMP_TGZ"
+if [ -z "$LATEST_BUN_VER" ]; then
+  warn "Could not fetch latest Bun version. Using fallback."
+  BUN_VER="$FALLBACK_BUN_VERSION"
+else
+  BUN_VER="$LATEST_BUN_VER"
 fi
+echo -e "   Detected Bun: ${GREEN}v${BUN_VER}${RESET}"
+
+# 2. Setup Directories
+mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR"
+
+# 3. Download Runtime (if needed)
+TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${BUN_VER}"
+if [ -d "${TARGET_RUNTIME_DIR}/bin" ] && [ -x "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
+  success "Runtime (bun@${BUN_VER}) already installed."
+else
+  OS="$(uname -s | tr -d '"')"
+  ARCH="$(uname -m | tr -d '"')"
+  case "$OS" in 
+    Linux) P="linux" ;; 
+    Darwin) P="darwin" ;; 
+    *) error "Unsupported OS: $OS" ;; 
+  esac
+  case "$ARCH" in 
+    x86_64) A="x64" ;; 
+    arm64|aarch64) A="aarch64" ;; 
+    *) error "Unsupported Arch: $ARCH" ;; 
+  esac
+  
+  if [ "$P" == "darwin" ]; then PKG="@oven/bun-darwin-$A"; else PKG="@oven/bun-linux-$A"; fi
+  URL="https://registry.npmjs.org/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
+  
+  TEMP_DIR="$(mktemp -d)"
+  TEMP_TGZ="${TEMP_DIR}/bun-runtime.tgz"
+  
+  download_file "$URL" "$TEMP_TGZ" "Downloading Runtime (bun@${BUN_VER})..."
+  
+  # Check if download succeeded
+  if [ ! -f "$TEMP_TGZ" ] || [ ! -s "$TEMP_TGZ" ]; then
+      error "Download failed or empty file."
+  fi
+
+  # Extract
+  tar -xzf "$TEMP_TGZ" -C "$TEMP_DIR"
+  
+  # Move
+  mkdir -p "${TARGET_RUNTIME_DIR}/bin"
+  FOUND_BIN="$(find "$TEMP_DIR" -type f -name "bun" | head -n 1)"
+  if [ -z "$FOUND_BIN" ]; then
+    error "Could not find 'bun' binary in downloaded archive."
+  fi
+  
+  mv "$FOUND_BIN" "${TARGET_RUNTIME_DIR}/bin/bun"
+  chmod +x "${TARGET_RUNTIME_DIR}/bin/bun"
+  success "Runtime installed."
+fi
+
+# Link current runtime
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
-# 3. Download BVM Source
-echo "Downloading BVM: ${BVM_SRC_VERSION}"
+# 4. Download BVM Source
 SRC_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/index.js"
-show_bar 0
-curl -sL "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"
-show_bar 100
-echo -e "\n"
+download_file "$SRC_URL" "${BVM_SRC_DIR}/index.js" "Downloading BVM Source (${BVM_SRC_VERSION})..."
 
-# 4. Finalize
-printf "Configuring shell... "
+if [ ! -f "${BVM_SRC_DIR}/index.js" ]; then
+    error "Failed to download BVM source."
+fi
+
+# 5. Create Wrapper
 WRAPPER="${BVM_BIN_DIR}/bvm"
 cat > "$WRAPPER" <<EOF
 #!/bin/bash
 export BVM_DIR="$BVM_DIR"
+# Ensure we use the bundled runtime
 exec "${BVM_RUNTIME_DIR}/current/bin/bun" "$BVM_SRC_DIR/index.js" "\$@"
 EOF
 chmod +x "$WRAPPER"
 
+# 6. Initialize
 if [ ! -f "${BVM_ALIAS_DIR}/default" ]; then
     mkdir -p "${BVM_DIR}/versions/v${BUN_VER}/bin"
     ln -sf "${TARGET_RUNTIME_DIR}/bin/bun" "${BVM_DIR}/versions/v${BUN_VER}/bin/bun"
     echo "v${BUN_VER}" > "${BVM_ALIAS_DIR}/default"
 fi
 
-"$WRAPPER" setup --silent >/dev/null 2>&1
-"$WRAPPER" rehash --silent >/dev/null 2>&1
-echo "Done."
+# Run setup/rehash
+# We capture the exit code to know if setup succeeded
+if "$WRAPPER" setup --silent >/dev/null 2>&1; then
+    SETUP_SUCCESS=true
+else
+    SETUP_SUCCESS=false
+fi
+"$WRAPPER" rehash --silent >/dev/null 2>&1 || true
 
-echo -e "\n\033[1;32m🎉 BVM ${BVM_SRC_VERSION} installed successfully!\033[0m"
-echo -e "\nNext steps:"
-echo -e "  1. Run: \033[1msource ~/.zshrc\033[0m (or your shell config)"
-echo -e "  2. Run 'bvm --help' to get started.
+# 7. Final Instructions
+echo ""
+echo -e "${GREEN}${BOLD}🎉 BVM Installed Successfully!${RESET}"
+echo ""
+
+CURRENT_SHELL=$(detect_shell)
+DISPLAY_PROFILE=""
+
+case "$CURRENT_SHELL" in
+  zsh) DISPLAY_PROFILE="$HOME/.zshrc" ;; 
+  bash) 
+    if [ -f "$HOME/.bash_profile" ]; then 
+      DISPLAY_PROFILE="$HOME/.bash_profile"
+    else 
+      DISPLAY_PROFILE="$HOME/.bashrc"
+    fi 
+    ;; 
+  fish) DISPLAY_PROFILE="$HOME/.config/fish/config.fish" ;; 
+  *) DISPLAY_PROFILE="$HOME/.profile" ;; 
+esac
+
+echo "To start using bvm:"
+echo ""
+
+if [ "$SETUP_SUCCESS" = true ]; then
+    # If setup succeeded, we don't need to show the long echo command
+    echo -e "  ${YELLOW}1. Refresh your shell:${RESET}"
+    echo "     source $DISPLAY_PROFILE"
+    
+    echo ""
+    echo -e "  ${YELLOW}2. Verify:${RESET}"
+    echo -e "     bvm --version"
+else
+    # If setup failed for some reason, we fallback to manual instructions
+    echo -e "  ${YELLOW}1. Add to config:${RESET}"
+    echo "     echo 'export PATH=\"\$HOME/.bvm/bin:\$PATH\"' >> $DISPLAY_PROFILE"
+    echo ""
+    echo -e "  ${YELLOW}2. Refresh your shell:${RESET}"
+    echo "     source $DISPLAY_PROFILE"
+    
+    echo ""
+    echo -e "  ${YELLOW}3. Verify:${RESET}"
+    echo -e "     bvm --version"
+fi
