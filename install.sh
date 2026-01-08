@@ -99,6 +99,12 @@ detect_shell() {
 
 # --- Main Script ---
 
+# 0. Smart Registry Selection
+REGISTRY="registry.npmjs.org"
+if curl -s -m 2 https://registry.npmmirror.com > /dev/null; then
+    REGISTRY="registry.npmmirror.com"
+fi
+
 echo -e "${CYAN}"
 echo -e "__________              "
 echo -e "\\______   \\__  _______  "
@@ -112,9 +118,8 @@ echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_SRC_VERSION})${RESET}"
 echo -e ""
 
 # 1. Resolve Bun Version
-# Using spinner for resolution too since it can take a moment
 echo -n -e "${BLUE}ℹ${RESET} Resolving Bun version... "
-LATEST_BUN_VER=$(curl -s https://registry.npmjs.org/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
+LATEST_BUN_VER=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
 echo -e "${GREEN}Done${RESET}"
 
 if [ -z "$LATEST_BUN_VER" ]; then
@@ -158,7 +163,7 @@ else
     EXE="bun"
   fi
   
-  URL="https://registry.npmjs.org/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
+  URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
   
   TEMP_DIR="$(mktemp -d)"
   TEMP_TGZ="${TEMP_DIR}/bun-runtime.tgz"
