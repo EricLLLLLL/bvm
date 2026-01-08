@@ -42,22 +42,20 @@ if [ ! -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
     case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) exit 1 ;; esac
     if [ "$P" == "darwin" ]; then PKG="@oven/bun-darwin-$A"; else PKG="@oven/bun-linux-$A"; fi
     URL="https://registry.npmjs.org/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
-    
     TEMP_TGZ="${BVM_DIR}/bun-runtime.tgz"
     
-    # 使用 curl -# (progress-bar) 并将其输出重定向到解析逻辑
-    # 我们将 curl 的 stderr 转换，实时调用 show_bar
-    curl -L -# "$URL" -o "$TEMP_TGZ" 2>&1 | stdbuf -oL tr '\r' '\n' | sed -u 's/^[[:space:]]*//' | grep --line-buffered -oE '[0-9]+(\.[0-9]+)?' | while read -r p; do
-        # 这里的 p 是百分比
+    # 兼容性更强的解析逻辑：捕获 curl -# 的输出并实时转换为 show_bar
+    # 在 macOS/Linux 上通过 python3 (通常自带) 或简易逻辑处理
+    curl -L -# "$URL" -o "$TEMP_TGZ" 2>&1 | tr '\r' '\n' | sed -u 's/^[[:space:]]*//' | grep --line-buffered -oE '[0-9]+(\.[0-9]+)?' | while read -r p; do
         show_bar "${p%.*}" "Downloading Runtime"
     done
-    echo "" # 换行
+    echo ""
 
     T_EXT="${BVM_DIR}/temp_extract"
     mkdir -p "$T_EXT"
     tar -xzf "$TEMP_TGZ" -C "$T_EXT"
     mkdir -p "${TARGET_RUNTIME_DIR}/bin"
-    mv "$(find "$T_EXT" -type f -name "bun" | head -n 1)" "${TARGET_RUNTIME_DIR}/bin/bun"
+    mv "$(find "$T_EXT" -type f -name \"bun\" | head -n 1)" "${TARGET_RUNTIME_DIR}/bin/bun"
     chmod +x "${TARGET_RUNTIME_DIR}/bin/bun"
     rm -rf "$T_EXT" "$TEMP_TGZ"
 fi
@@ -66,7 +64,6 @@ ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 # 3. Download BVM Source
 echo -e "Downloading BVM: ${BVM_SRC_VERSION}"
 SRC_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/index.js"
-# Source 较小，直接显示 0 到 100
 show_bar 0 "Fetching Core"
 curl -sL "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"
 show_bar 100 "Fetching Core"
@@ -94,5 +91,5 @@ echo "Done."
 
 echo -e "\n\033[1;32m🎉 BVM ${BVM_SRC_VERSION} installed successfully!\033[0m"
 echo -e "\nNext steps:"
-echo -e "  1. Run: \033[1msource ~/.zshrc\033[0m"
+echo -e "  1. Run: \033[1msource ~/.zshrc\033[0m (or your config file)"
 echo -e "  2. Run 'bvm --help'"
