@@ -105,22 +105,33 @@ The script automatically detects your OS and architecture.
 curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 ```
 
-### Windows (PowerShell)
-Run as Administrator is **not** required.
+### Windows (Recommended: Git Bash)
+Due to PowerShell's strict execution policies, we **strongly recommend** using [Git Bash](https://git-scm.com/download/win) for a seamless experience.
 
-```powershell
-irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+```bash
+# Open Git Bash and run:
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 ```
+
+> **Note**: After installation, restart Git Bash or run `source ~/.bashrc` to apply changes.
+
+<details>
+  <summary>Windows (PowerShell - Experimental)</summary>
+
+  If you prefer PowerShell, ensure your execution policy allows scripts:
+  `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
+  ```powershell
+  irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+  ```
+</details>
 
 ### Install Specific BVM Version
 You can install a specific version of BVM by pointing to its Git tag:
 
 ```bash
-# macOS / Linux / WSL
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.4/install.sh | bash
-
-# Windows (PowerShell)
-irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.4/install.ps1 | iex
+# macOS / Linux / Git Bash
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.8/install.sh | bash
 ```
 
 ---
