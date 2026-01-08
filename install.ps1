@@ -30,7 +30,7 @@ function Show-Bar($p) {
 
 # 1. Resolve
 $BUN_VER = "1.3.5"
-$BVM_VER = "v1.0.9"
+$BVM_VER = "v1.1.0"
 
 # 2. Setup Runtime
 $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR, $BVM_ALIAS_DIR)

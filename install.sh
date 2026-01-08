@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.0.9"
+DEFAULT_BVM_VERSION="v1.1.0"
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
 
@@ -51,37 +51,16 @@ download_file() {
     local dest="$2"
     local desc="$3"
     
-    # Print description without newline
-    echo -n -e "${BLUE}ℹ${RESET} $desc "
+    echo -e "${BLUE}ℹ${RESET} $desc"
     
-    # Start download in background (Silent but show errors, fail on error)
-    curl -L -s -S -f "$url" -o "$dest" &
-    local pid=$!
+    # Use curl's built-in progress bar (#)
+    curl -L -# -f "$url" -o "$dest"
     
-    local delay=0.1
-    local spinstr='|/-\'
-    
-    # Hide cursor
-    printf "\033[?25l"
-    
-    while kill -0 "$pid" 2>/dev/null; do
-        local temp=${spinstr#?}
-        printf "${CYAN}%c${RESET}" "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b"
-    done
-    
-    # Restore cursor
-    printf "\033[?25h"
-    
-    wait "$pid"
-    local ret=$?
-    
-    if [ $ret -eq 0 ]; then
-        echo -e "${GREEN}Done${RESET}"
+    if [ $? -eq 0 ]; then
+        # Use ANSI escape to move up one line and clear it, then print success
+        echo -e "\033[1A\033[2K${GREEN}✓${RESET} $desc ${GREEN}Done${RESET}"
     else
-        echo -e "${RED}Failed${RESET}"
+        echo -e "${RED}✖${RESET} $desc ${RED}Failed${RESET}"
         return 1
     fi
 }
@@ -120,7 +99,15 @@ detect_shell() {
 
 # --- Main Script ---
 
+echo -e "${CYAN}"
+echo -e "    ${BOLD}____ _   ____  ___${RESET}"
+echo -e "   ${CYAN}/ __ )| | / /  |/  /${RESET}"
+echo -e "  ${CYAN}/ __  || |/ / /|_/ / ${RESET}"
+echo -e " ${CYAN}/ /_/ / |   / /  / /  ${RESET}"
+echo -e "${CYAN}/____/  |__/ /__/ /   ${RESET}"
+echo -e ""
 echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_SRC_VERSION})${RESET}"
+echo -e ""
 
 # 1. Resolve Bun Version
 # Using spinner for resolution too since it can take a moment
