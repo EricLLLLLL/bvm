@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $BvmEmbeddedVersion = ""
 
 # Current Stable Version on Main Branch (Updated by release script)
-$DefaultBvmVersion = "v1.0.4"
+$DefaultBvmVersion = "v1.0.5"
 
 # --- Configuration ---
 $BVM_DIR = "$HOME\.bvm"
