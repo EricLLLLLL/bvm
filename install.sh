@@ -51,16 +51,37 @@ download_file() {
     local dest="$2"
     local desc="$3"
     
-    echo -e "${BLUE}ℹ${RESET} $desc"
+    # Print description without newline
+    echo -n -e "${BLUE}ℹ${RESET} $desc "
     
-    # Use curl's built-in progress bar (#)
-    curl -L -# -f "$url" -o "$dest"
+    # Start download in background (Silent but show errors, fail on error)
+    curl -L -s -S -f "$url" -o "$dest" &
+    local pid=$!
     
-    if [ $? -eq 0 ]; then
-        # Use ANSI escape to move up one line and clear it, then print success
-        echo -e "\033[1A\033[2K${GREEN}✓${RESET} $desc ${GREEN}Done${RESET}"
+    local delay=0.1
+    local spinstr='|/-\'
+    
+    # Hide cursor
+    printf "\033[?25l"
+    
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf "${CYAN}%c${RESET}" "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b"
+    done
+    
+    # Restore cursor
+    printf "\033[?25h"
+    
+    wait "$pid"
+    local ret=$?
+    
+    if [ $ret -eq 0 ]; then
+        echo -e "${GREEN}Done${RESET}"
     else
-        echo -e "${RED}✖${RESET} $desc ${RED}Failed${RESET}"
+        echo -e "${RED}Failed${RESET}"
         return 1
     fi
 }
