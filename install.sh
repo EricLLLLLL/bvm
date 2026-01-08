@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.1.0"
+DEFAULT_BVM_VERSION="v1.0.0"
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
 
@@ -100,11 +100,13 @@ detect_shell() {
 # --- Main Script ---
 
 echo -e "${CYAN}"
-echo -e "    ${BOLD}____ _   ____  ___${RESET}"
-echo -e "   ${CYAN}/ __ )| | / /  |/  /${RESET}"
-echo -e "  ${CYAN}/ __  || |/ / /|_/ / ${RESET}"
-echo -e " ${CYAN}/ /_/ / |   / /  / /  ${RESET}"
-echo -e "${CYAN}/____/  |__/ /__/ /   ${RESET}"
+echo -e "__________              "
+echo -e "\\______   \\__  _______  "
+echo -e " |    |  _|  \\/ /     \\ "
+echo -e " |    |   \\\\   /  Y Y  \\ "
+echo -e " |______  / \\_/|__|_|  / "
+echo -e "        \\/           \\/ "
+echo -e "${RESET}"
 echo -e ""
 echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_SRC_VERSION})${RESET}"
 echo -e ""
