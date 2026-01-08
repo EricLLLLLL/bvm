@@ -2,17 +2,14 @@ name: Auto Release
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  auto-tag-and-release:
-    if: "!contains(github.event.head_commit.message, 'skip-release')"
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,50 +24,12 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Extract Version
-        id: version
-        run: |
-          VERSION=$(bun -e 'console.log(require("./package.json").version)')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "TAG_NAME=v$VERSION" >> $GITHUB_ENV
-
-      - name: Check if Tag Exists
-        id: check_tag
-        run: |
-          if git rev-parse "refs/tags/${{ env.TAG_NAME }}" >/dev/null 2>&1; then
-            echo "Tag ${{ env.TAG_NAME }} already exists. Skipping release."
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Build Project
-        if: steps.check_tag.outputs.exists == 'false'
         run: bun run build
 
-      - name: Create Release Commit & Tag
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Force add the ignored dist file
-          git add -f dist/index.js
-          
-          # Create a detached commit for the release
-          git commit -m "build: release artifacts for ${{ env.TAG_NAME }}"
-          
-          # Tag this commit
-          git tag ${{ env.TAG_NAME }}
-          
-          # Push the tag
-          git push origin ${{ env.TAG_NAME }}
-
       - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.TAG_NAME }}
           files: |
             dist/index.js
             install.sh
@@ -78,9 +37,8 @@ jobs:
           generate_release_notes: true
 
       - name: Purge jsDelivr Cache
-        if: steps.check_tag.outputs.exists == 'false'
         run: |
-          echo "🧹 Purging jsDelivr cache for @main..."
-          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.sh || true
-          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@main/install.ps1 || true
+          echo "🧹 Purging jsDelivr cache..."
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/dist/index.js || true
           echo "Done."
