@@ -18,6 +18,7 @@ $BVM_ALIAS_DIR = "$BVM_DIR\aliases"
 
 # UI Helper
 function Show-Bar($p) {
+    $ESC = [char]27
     $w = 40
     $f = [Math]::Floor($p * $w / 100)
     if ($f -lt 0) { $f = 0 }
@@ -25,7 +26,7 @@ function Show-Bar($p) {
     $e = $w - $f
     $filled = "█" * $f
     $empty = "░" * $e
-    Write-Host -NoNewline "`r `e[1;36m$filled`e[0;90m$empty`e[0m $([Math]::Floor($p))%"
+    Write-Host -NoNewline "`r $ESC[1;36m$filled$ESC[0;90m$empty$ESC[0m $([Math]::Floor($p))%"
 }
 
 # 1. Resolve
@@ -35,6 +36,12 @@ $BVM_VER = "v1.0.0"
 # 2. Setup Runtime
 $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR, $BVM_ALIAS_DIR)
 foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null } }
+
+# CLEANUP LEGACY SHIMS (Crucial for migration from .ps1 to .cmd/.js shims)
+if (Test-Path "$BVM_SHIMS_DIR\*.ps1") {
+    Write-Host "Cleaning up legacy PowerShell shims..."
+    Remove-Item "$BVM_SHIMS_DIR\*.ps1" -Force -ErrorAction SilentlyContinue
+}
 
 $TARGET_DIR = "$BVM_RUNTIME_DIR\v$BUN_VER"
 # Check both path variants to be safe

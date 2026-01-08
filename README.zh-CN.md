@@ -99,39 +99,32 @@ Windows 用户不再是二等公民。BVM 专为 PowerShell 原生构建，提�
 ## 📥 安装指南
 
 ### macOS / Linux / WSL
-脚本会自动检测系统与架构。
-
 ```bash
 curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 ```
 
-### Windows (推荐使用 Git Bash)
-由于 PowerShell 存在严格的执行策略限制，我们**强烈建议**使用 [Git Bash](https://git-scm.com/download/win) 以获得最佳体验。
+### Windows
+BVM 原生支持 Windows 上的 PowerShell 和 Git Bash。
 
-```bash
-# 打开 Git Bash 并运行：
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
+**PowerShell (推荐原生方式):**
+```powershell
+irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
-> **注意**: 安装完成后，请重启 Git Bash 或运行 `source ~/.bashrc` 以生效。
-
-<details>
-  <summary>Windows (PowerShell - 实验性)</summary>
-
-  如果您坚持使用 PowerShell，请先确保已允许脚本运行：
-  `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-
-  ```powershell
-  irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
-  ```
-</details>
+**Git Bash:**
+```bash
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
+```
 
 ### 安装特定版本的 BVM
 你可以通过指定 Git Tag 来安装特定版本的 BVM：
 
 ```bash
 # macOS / Linux / Git Bash
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.8/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@v1.0.0/install.sh | bash
+
+# Windows (PowerShell)
+$BVM_INSTALL_VERSION="v1.0.0"; irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 
 ---
