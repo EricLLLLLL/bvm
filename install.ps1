@@ -30,11 +30,12 @@ ______________   _________
 Write-Color "🚀 Installing BVM (Bun Version Manager)..." Cyan
 
 # --- 1. Platform Detection ---
-# Windows is usually x64 or arm64
+# Windows is usually x64 or arm64. Handle 32-bit Powershell on 64-bit OS.
 $ARCH = $env:PROCESSOR_ARCHITECTURE
+$ARCH64 = $env:PROCESSOR_ARCHITEW6432
 $NPM_PKG = ""
 
-if ($ARCH -eq "AMD64") {
+if ($ARCH -eq "AMD64" -or $ARCH64 -eq "AMD64") {
     $NPM_PKG = "@oven/bun-windows-x64"
     $BUN_ARCH = "x64"
 } elseif ($ARCH -eq "ARM64") {
@@ -96,17 +97,49 @@ if (-not (Test-Path $BUN_EXE)) {
     $URL_MIRROR = "https://registry.npmmirror.com/$NPM_PKG/-/$TarballName"
     
     $TEMP_TGZ = "$BVM_DIR\bun-runtime.tgz"
-    $DownloadSuccess = $false
+    
+    function Download-WithProgress ($Url, $OutFile) {
+        $WebClient = New-Object System.Net.WebClient
+        $TotalBytes = -1
+        
+        # Get content length first (Head request)
+        try {
+            $Req = [System.Net.WebRequest]::Create($Url)
+            $Req.Method = "HEAD"
+            $Resp = $Req.GetResponse()
+            $TotalBytes = $Resp.ContentLength
+            $Resp.Close()
+        } catch {}
 
+        $DownloadAction = {
+            param($Sender, $E)
+            $Percent = $E.ProgressPercentage
+            $Received = "{0:N2} MB" -f ($E.BytesReceived / 1MB)
+            $Total = "{0:N2} MB" -f ($E.TotalBytesToReceive / 1MB)
+            Write-Progress -Activity "Downloading Bun Runtime" -Status "$Received / $Total" -PercentComplete $Percent
+        }
+        
+        Register-ObjectEvent -InputObject $WebClient -EventName DownloadProgressChanged -Action $DownloadAction | Out-Null
+        
+        try {
+            $WebClient.DownloadFileAsync($Url, $OutFile)
+            while ($WebClient.IsBusy) { Start-Sleep -Milliseconds 100 }
+        } finally {
+            $WebClient.Dispose()
+            Write-Progress -Activity "Downloading Bun Runtime" -Completed
+        }
+    }
+
+    $DownloadSuccess = $false
     try {
         Write-Color "Downloading from NPM Registry..." Gray
-        Invoke-WebRequest -Uri $URL_NPM -OutFile $TEMP_TGZ -ErrorAction Stop
+        Download-WithProgress $URL_NPM $TEMP_TGZ
         $DownloadSuccess = $true
     } catch {
         Write-Color "NPM Registry failed, trying Mirror..." Yellow
         try {
             Write-Color "Downloading from NPM Mirror..." Gray
-            Invoke-WebRequest -Uri $URL_MIRROR -OutFile $TEMP_TGZ -ErrorAction Stop
+            Download-WithProgress $URL_MIRROR $TEMP_TGZ
             $DownloadSuccess = $true
         } catch {
             Write-Color "Failed to download Bun runtime." Red
@@ -138,7 +171,6 @@ if (-not (Test-Path $BUN_EXE)) {
             # Create 'current' junction for runtime
             $RuntimeCurrent = "$BVM_RUNTIME_DIR\current"
             if (Test-Path $RuntimeCurrent) { Remove-Item $RuntimeCurrent -Force }
-            # Use Junction for better compatibility without Admin rights
             New-Item -ItemType Junction -Path $RuntimeCurrent -Target $TARGET_RUNTIME_DIR | Out-Null
         } else {
             Write-Color "Error: bun.exe not found in downloaded archive." Red
@@ -185,14 +217,36 @@ Set-Content -Path $WrapperPath -Value $WrapperContent -Encoding Ascii
 
 & "$BVM_RUNTIME_DIR\v$REQUIRED_BUN_VERSION\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
 
-# --- 7. Final Message ---
-# Attempt to refresh PATH in current session
-$env:PATH = "$BVM_BIN_DIR;" + $env:PATH
+# --- 7. Setup Environment Variables (Persistence) ---
+Write-Color "🔧 Configuring Environment Variables..." Blue
+
+$UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+# Prefer Shims > Bin > Runtime. 
+# Shims handle .bvmrc/default versioning. Bin handles 'bvm' command.
+$NewPaths = @("$BVM_SHIMS_DIR", "$BVM_BIN_DIR")
+$PathChanged = $false
+
+foreach ($p in $NewPaths) {
+    if ($UserPath -notlike "*$p*") {
+        $UserPath = "$p;$UserPath"
+        $PathChanged = $true
+    }
+}
+
+if ($PathChanged) {
+    [Environment]::SetEnvironmentVariable("Path", $UserPath, "User")
+    Write-Color "✓ Added BVM Shims & Bin to User PATH." Green
+} else {
+    Write-Color "✓ PATH already configured." Green
+}
+
+# Refresh current session PATH roughly
+$env:PATH = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + $env:PATH
 
 Write-Host ""
 Write-Color "🎉 BVM installed successfully!" Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor White
-Write-Host "  1. Run 'bvm --help' to get started." -ForegroundColor Cyan
-Write-Host "  2. If 'bvm' is not found, restart your terminal." -ForegroundColor Yellow
+Write-Host "  1. Restart your terminal to load the new PATH." -ForegroundColor Cyan
+Write-Host "  2. Run 'bvm --help' to get started." -ForegroundColor Cyan
 

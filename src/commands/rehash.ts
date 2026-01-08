@@ -105,12 +105,13 @@ if ($env:BVM_ACTIVE_VERSION) {
 
     if (-not $Version) {
         $CurrentPath = Join-Path $BvmDir "current"
-    if (Test-Path $CurrentPath) {
-        $Target = (Get-Item $CurrentPath).Target
-        if ($Target) {
-            $VersionTmp = [System.IO.Path]::GetFileName($Target)
-            if (Test-Path (Join-Path $BvmDir "versions\$VersionTmp")) {
-                $Version = $VersionTmp
+        if (Test-Path $CurrentPath) {
+            $Target = (Get-Item $CurrentPath).Target
+            if ($Target) {
+                $VersionTmp = [System.IO.Path]::GetFileName($Target)
+                if (Test-Path (Join-Path $BvmDir "versions\$VersionTmp")) {
+                    $Version = $VersionTmp
+                }
             }
         }
     }
@@ -150,6 +151,11 @@ if (Test-Path $RealExecutable) {
     Write-Error "BVM Error: Command '$Command' not found in Bun $Version."
     exit 127
 }
+`;
+
+const SHIM_TEMPLATE_CMD = `@echo off
+set "BVM_DIR=%USERPROFILE%\\.bvm"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%BVM_DIR%\\shims\\%~n0.ps1" %*
 `;
 
 export async function rehash(): Promise<void> {
@@ -214,6 +220,12 @@ export async function rehash(): Promise<void> {
     const shimPath = join(BVM_SHIMS_DIR, exe + shimExtension);
     await Bun.write(shimPath, template);
     await chmod(shimPath, 0o755);
+
+    if (isWindows) {
+        const cmdPath = join(BVM_SHIMS_DIR, exe + '.cmd');
+        await Bun.write(cmdPath, SHIM_TEMPLATE_CMD);
+        await chmod(cmdPath, 0o755);
+    }
   }
 
   const existingShims = await readDir(BVM_SHIMS_DIR);

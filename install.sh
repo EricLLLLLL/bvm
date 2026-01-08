@@ -129,12 +129,12 @@ if [ ! -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
   TEMP_TGZ="${BVM_DIR}/bun-runtime.tgz"
   
   # Try NPM Registry first
-  if curl -sL --fail "$URL_NPM" -o "$TEMP_TGZ"; then
+  if curl -L --progress-bar --fail "$URL_NPM" -o "$TEMP_TGZ"; then
       echo -e " ${GREEN}Downloaded from NPM.${NC}"
   else
       echo -e " ${YELLOW}NPM failed, trying Mirror...${NC}"
       # Try Mirror
-      if curl -sL --fail "$URL_MIRROR" -o "$TEMP_TGZ"; then
+      if curl -L --progress-bar --fail "$URL_MIRROR" -o "$TEMP_TGZ"; then
           echo -e " ${GREEN}Downloaded from Mirror.${NC}"
       else
           echo -e " ${RED}Failed to download Bun runtime from both NPM and Mirror.${NC}"
@@ -195,7 +195,7 @@ else
     # Debug info (only if something goes wrong, or user wants verbose)
     # echo "Downloading from: $SRC_URL"
     
-    if curl -sL --fail "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"; then
+    if curl -L --progress-bar --fail "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"; then
         echo -e " ${GREEN}Done.${NC}"
     else
         echo -e " ${RED}Failed to download BVM source from CDN.${NC}"
