@@ -230,7 +230,7 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
   try {
     const response = await fetch(url, { headers });
     if (!response.ok) {
-      console.error(colors.red(`Failed to fetch latest BVM release info: ${response.statusText} (${response.status})`));
+      // Silently fail if release info cannot be fetched (e.g. rate limit or no releases yet)
       return null;
     }
     const release = await response.json();
@@ -242,7 +242,7 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
       downloadUrl: downloadUrl,
     };
   } catch (error: any) {
-    console.error(colors.red(`Error fetching BVM release info: ${error.message}`));
+    // Silently fail on network error
     return null;
   }
 }
