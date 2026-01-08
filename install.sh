@@ -18,7 +18,7 @@ show_bar() {
     for ((i=0; i<f; i++)); do printf "█"; done
     printf "\033[0;90m"
     for ((i=0; i<e; i++)); do printf "░"; done
-    printf "\033[0m %3d%%"
+    printf "\033[0m %3d%%" "$p"
 }
 
 DEFAULT_BVM_VERSION="v1.0.6"
