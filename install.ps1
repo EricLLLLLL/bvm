@@ -158,7 +158,7 @@ try {
 try {
     $Policy = Get-ExecutionPolicy -Scope CurrentUser
     if ($Policy -eq "Undefined" -or $Policy -eq "Restricted") {
-        Write-Host "`n`e[1;33m⚠️  Notice: Adjusting PowerShell Execution Policy...`e[0m"
+        Write-Host "`n`e[1;33m[!] Notice: Adjusting PowerShell Execution Policy...`e[0m"
         Write-Host "BVM requires scripts to be executable to load configuration."
         Write-Host "Setting 'RemoteSigned' for CurrentUser."
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
@@ -170,7 +170,7 @@ try {
 
 Write-Host "Done."
 
-Write-Host "`n`e[1;32m🎉 BVM $BVM_VER installed successfully!`e[0m"
+Write-Host "`n`e[1;32m[OK] BVM $BVM_VER installed successfully!`e[0m"
 Write-Host "`nTo start using bvm:"
 Write-Host "  1. Restart your terminal (Command Prompt or PowerShell)."
 Write-Host "  2. Verify:"
