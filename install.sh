@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.0.7"
+DEFAULT_BVM_VERSION="v1.0.8"
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
 
@@ -149,9 +149,7 @@ else
   case "$OS" in 
     Linux) P="linux" ;; 
     Darwin) P="darwin" ;; 
-    MINGW*|MSYS*|CYGWIN*) 
-      error "It looks like you are running on Windows (Git Bash/MinGW). Please use the PowerShell installer instead:\n\n   irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex\n"
-      ;;
+    MINGW*|MSYS*|CYGWIN*) P="windows" ;;
     *) error "Unsupported OS: $OS" ;; 
   esac
   case "$ARCH" in 
@@ -160,7 +158,17 @@ else
     *) error "Unsupported Arch: $ARCH" ;; 
   esac
   
-  if [ "$P" == "darwin" ]; then PKG="@oven/bun-darwin-$A"; else PKG="@oven/bun-linux-$A"; fi
+  if [ "$P" == "darwin" ]; then 
+    PKG="@oven/bun-darwin-$A"
+    EXE="bun"
+  elif [ "$P" == "windows" ]; then
+    PKG="@oven/bun-windows-$A"
+    EXE="bun.exe"
+  else 
+    PKG="@oven/bun-linux-$A"
+    EXE="bun"
+  fi
+  
   URL="https://registry.npmjs.org/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
   
   TEMP_DIR="$(mktemp -d)"
@@ -178,9 +186,9 @@ else
   
   # Move
   mkdir -p "${TARGET_RUNTIME_DIR}/bin"
-  FOUND_BIN="$(find "$TEMP_DIR" -type f -name "bun" | head -n 1)"
+  FOUND_BIN="$(find "$TEMP_DIR" -type f -name "$EXE" | head -n 1)"
   if [ -z "$FOUND_BIN" ]; then
-    error "Could not find 'bun' binary in downloaded archive."
+    error "Could not find '$EXE' binary in downloaded archive."
   fi
   
   mv "$FOUND_BIN" "${TARGET_RUNTIME_DIR}/bin/bun"

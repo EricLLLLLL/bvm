@@ -30,7 +30,7 @@ function Show-Bar($p) {
 
 # 1. Resolve
 $BUN_VER = "1.3.5"
-$BVM_VER = "v1.0.7"
+$BVM_VER = "v1.0.8"
 
 # 2. Setup Runtime
 $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR, $BVM_ALIAS_DIR)
@@ -152,6 +152,20 @@ try {
     & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" rehash --silent
 } catch {
     Write-Warning "Setup/Rehash step failed. You might need to run 'bvm setup' manually."
+}
+
+# --- Execution Policy Check ---
+try {
+    $Policy = Get-ExecutionPolicy -Scope CurrentUser
+    if ($Policy -eq "Undefined" -or $Policy -eq "Restricted") {
+        Write-Host "`n`e[1;33m⚠️  Notice: Adjusting PowerShell Execution Policy...`e[0m"
+        Write-Host "BVM requires scripts to be executable to load configuration."
+        Write-Host "Setting 'RemoteSigned' for CurrentUser."
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+    }
+} catch {
+    Write-Warning "Could not automatically set Execution Policy. If you see 'Running scripts is disabled', please run:"
+    Write-Warning "Set-ExecutionPolicy RemoteSigned -Scope CurrentUser"
 }
 
 Write-Host "Done."
