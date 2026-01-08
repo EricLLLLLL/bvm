@@ -8,10 +8,9 @@ BVM_BIN_DIR="${BVM_DIR}/bin"
 BVM_SHIMS_DIR="${BVM_DIR}/shims"
 BVM_ALIAS_DIR="${BVM_DIR}/aliases"
 
-# Professional Bar Style (Single line)
+# Professional Bar Style (Minimalist)
 show_bar() {
     local p=$1
-    local msg=$2
     local w=40
     local f=$(( p * w / 100 ))
     local e=$(( w - f ))
@@ -19,7 +18,7 @@ show_bar() {
     for ((i=0; i<f; i++)); do printf "█"; done
     printf "\033[0;90m"
     for ((i=0; i<e; i++)); do printf "░"; done
-    printf "\033[0m %3d%% | %s\033[K" "$p" "$msg"
+    printf "\033[0m %3d%%"
 }
 
 DEFAULT_BVM_VERSION="v1.0.6"
@@ -30,12 +29,12 @@ FALLBACK_BUN_VERSION="1.3.5"
 LATEST_COMPATIBLE_VERSION=$(curl -s https://registry.npmjs.org/bun | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+":' | tr -d '"': | grep -E '^1\.' | sort -V | tail -n 1)
 BUN_VER="${LATEST_COMPATIBLE_VERSION:-$FALLBACK_BUN_VERSION}"
 
-# 2. Setup
+# 2. Setup Runtime
 mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR"
 TARGET_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${BUN_VER}"
 
 if [ ! -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
-    echo -e "\nDownloading BVM Runtime (bun@${BUN_VER})"
+    echo "Downloading BVM Runtime (bun@${BUN_VER})"
     OS="$(uname -s | tr -d '"')"
     ARCH="$(uname -m | tr -d '"')"
     case "$OS" in Linux) P="linux" ;; Darwin) P="darwin" ;; *) exit 1 ;; esac
@@ -44,12 +43,11 @@ if [ ! -f "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
     URL="https://registry.npmjs.org/${PKG}/-/${PKG##*/}-${BUN_VER}.tgz"
     TEMP_TGZ="${BVM_DIR}/bun-runtime.tgz"
     
-    # 兼容性更强的解析逻辑：捕获 curl -# 的输出并实时转换为 show_bar
-    # 在 macOS/Linux 上通过 python3 (通常自带) 或简易逻辑处理
+    # Capture curl progress
     curl -L -# "$URL" -o "$TEMP_TGZ" 2>&1 | tr '\r' '\n' | sed -u 's/^[[:space:]]*//' | grep --line-buffered -oE '[0-9]+(\.[0-9]+)?' | while read -r p; do
-        show_bar "${p%.*}" "Downloading Runtime"
+        show_bar "${p%.*}"
     done
-    echo ""
+    echo -e "\n"
 
     T_EXT="${BVM_DIR}/temp_extract"
     mkdir -p "$T_EXT"
@@ -62,11 +60,11 @@ fi
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
 # 3. Download BVM Source
-echo -e "Downloading BVM: ${BVM_SRC_VERSION}"
+echo "Downloading BVM: ${BVM_SRC_VERSION}"
 SRC_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/index.js"
-show_bar 0 "Fetching Core"
+show_bar 0
 curl -sL "$SRC_URL" -o "${BVM_SRC_DIR}/index.js"
-show_bar 100 "Fetching Core"
+show_bar 100
 echo -e "\n"
 
 # 4. Finalize
@@ -91,5 +89,5 @@ echo "Done."
 
 echo -e "\n\033[1;32m🎉 BVM ${BVM_SRC_VERSION} installed successfully!\033[0m"
 echo -e "\nNext steps:"
-echo -e "  1. Run: \033[1msource ~/.zshrc\033[0m (or your config file)"
-echo -e "  2. Run 'bvm --help'"
+echo -e "  1. Run: \033[1msource ~/.zshrc\033[0m (or your shell config)"
+echo -e "  2. Run 'bvm --help' to get started.
