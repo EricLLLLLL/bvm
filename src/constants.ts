@@ -18,6 +18,7 @@ export function getBvmDir() {
 // The issue is when the module is loaded once and HOME changes later (which happens in tests).
 
 export const BVM_DIR = getBvmDir();
+export const BVM_SRC_DIR = join(BVM_DIR, 'src');
 export const BVM_VERSIONS_DIR = join(BVM_DIR, 'versions');
 export const BVM_BIN_DIR = join(BVM_DIR, 'bin');
 export const BVM_SHIMS_DIR = join(BVM_DIR, 'shims');
