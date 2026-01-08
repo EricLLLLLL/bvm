@@ -7,8 +7,7 @@ import { colors } from '../utils/ui';
 // The universal shim script template for Bash (Linux/macOS)
 const SHIM_TEMPLATE_BASH = `#!/bin/bash
 # Shim managed by BVM (Bun Version Manager)
-# This script dynamically routes commands to the correct Bun version.
-
+# ... (Bash script content remains same) ...
 BVM_DIR="\${BVM_DIR:-$HOME/.bvm}"
 COMMAND=$(basename "$0")
 
@@ -78,92 +77,120 @@ else
 fi
 `;
 
-// The universal shim script template for PowerShell (Windows)
-const SHIM_TEMPLATE_POWERSHELL = `# Shim managed by BVM (Bun Version Manager)
-# This script dynamically routes commands to the correct Bun version.
+// JS Shim Logic for Windows (Runs via Bun Runtime)
+const SHIM_TEMPLATE_JS = `
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
+const os = require('os');
 
-$BvmDir = "$HOME\.bvm"
-$Command = $MyInvocation.MyCommand.Name
+const BVM_DIR = process.env.BVM_DIR || path.join(os.homedir(), '.bvm');
+// Argv: [bun_exe, shim_js, command_name, ...args]
+const CMD = process.argv[2].replace(/\\.exe$/i, '').replace(/\\.cmd$/i, '');
+const ARGS = process.argv.slice(3);
 
-if ($Command -like "*.ps1") { $Command = $Command.Substring(0, $Command.Length - 4) }
+function resolveVersion() {
+  // 1. Env Override
+  if (process.env.BVM_ACTIVE_VERSION) return process.env.BVM_ACTIVE_VERSION;
 
-$Version = $null
-if ($env:BVM_ACTIVE_VERSION) {
-    $Version = $env:BVM_ACTIVE_VERSION
-} else {
-    $CurDir = (Get-Location).Path
-    while ($CurDir) {
-        $RcPath = Join-Path $CurDir ".bvmrc"
-        if (Test-Path $RcPath) {
-            $Version = "v" + (Get-Content $RcPath | Select-Object -First 1).Trim()
-            break
-        }
-        $Parent = Split-Path $CurDir -Parent
-        if ($Parent -eq $CurDir) { break }
-        $CurDir = $Parent
+  // 2. .bvmrc (Upward search)
+  let dir = process.cwd();
+  const root = path.parse(dir).root;
+  while (true) {
+    const rc = path.join(dir, '.bvmrc');
+    if (fs.existsSync(rc)) {
+      try {
+        let v = fs.readFileSync(rc, 'utf8').trim();
+        if (v) return v.startsWith('v') ? v : 'v' + v;
+      } catch (e) {}
     }
+    if (dir === root) break;
+    dir = path.dirname(dir);
+  }
 
-    if (-not $Version) {
-        $CurrentPath = Join-Path $BvmDir "current"
-        if (Test-Path $CurrentPath) {
-            $Target = (Get-Item $CurrentPath).Target
-            if ($Target) {
-                $VersionTmp = [System.IO.Path]::GetFileName($Target)
-                if (Test-Path (Join-Path $BvmDir "versions\$VersionTmp")) {
-                    $Version = $VersionTmp
-                }
-            }
-        }
-    }
+  // 3. Current Symlink (Junction)
+  const current = path.join(BVM_DIR, 'current');
+  if (fs.existsSync(current)) {
+    try {
+        // In Windows, readlink on a junction returns the target path
+        const target = fs.readlinkSync(current); 
+        const v = path.basename(target);
+        if (v.startsWith('v')) return v;
+    } catch(e) {}
+  }
+  
+  // 4. Default Alias
+  const def = path.join(BVM_DIR, 'aliases', 'default');
+  if (fs.existsSync(def)) {
+      try {
+        const v = fs.readFileSync(def, 'utf8').trim();
+        if (v) return v.startsWith('v') ? v : 'v' + v;
+      } catch(e) {}
+  }
 
-    if (-not $Version) {
-        $DefaultPath = Join-Path $BvmDir "aliases\default"
-        if (Test-Path $DefaultPath) {
-            $Version = Get-Content $DefaultPath | Select-Object -First 1
-        }
-    }
+  return '';
 }
 
-if (-not $Version) {
-    Write-Error "BVM Error: No Bun version is active or default is set."
-    exit 1
-}
-if ($Version -notmatch "^v") { $Version = "v" + $Version }
+const version = resolveVersion();
 
-$VersionDir = Join-Path $BvmDir "versions\$Version"
-if (-not (Test-Path $VersionDir)) {
-    Write-Error "BVM Error: Bun version $Version is not installed."
-    exit 1
+if (!version) {
+    console.error("BVM Error: No Bun version is active or default is set.");
+    process.exit(1);
 }
 
-$RealExecutable = Join-Path $VersionDir "bin\$Command.exe"
-
-if (Test-Path $RealExecutable) {
-    $env:BUN_INSTALL = $VersionDir
-    $env:PATH = "$(Join-Path $VersionDir 'bin');$env:PATH"
-    
-    if (($Command -eq "bun") -and ($args -match "-g") -and (($args -match "install") -or ($args -match "add") -or ($args -match "remove") -or ($args -match "uninstall"))) {
-        Start-Process -FilePath "$BvmDir\bin\bvm.cmd" -ArgumentList "rehash" -NoNewWindow
-    }
-    
-    & $RealExecutable $args
-} else {
-    Write-Error "BVM Error: Command '$Command' not found in Bun $Version."
-    exit 127
+const versionDir = path.join(BVM_DIR, 'versions', version);
+if (!fs.existsSync(versionDir)) {
+    console.error(\`BVM Error: Bun version \${version} is not installed.\`);
+    process.exit(1);
 }
+
+const binDir = path.join(versionDir, 'bin');
+const realExecutable = path.join(binDir, CMD + '.exe');
+
+if (!fs.existsSync(realExecutable)) {
+    console.error(\`BVM Error: Command '\${CMD}' not found in Bun \${version}.\`);
+    process.exit(127);
+}
+
+// Set Environment Variables
+process.env.BUN_INSTALL = versionDir;
+// Prepend to PATH
+process.env.PATH = binDir + path.delimiter + process.env.PATH;
+
+// Auto-rehash hook
+if (CMD === 'bun' && ARGS.some(a => a === '-g') && ARGS.some(a => ['install', 'add', 'remove', 'uninstall'].includes(a))) {
+    // Run rehash in background detached
+    try {
+        const bvmCmd = path.join(BVM_DIR, 'bin', 'bvm.cmd');
+        spawn(bvmCmd, ['rehash'], { detached: true, stdio: 'ignore' }).unref();
+    } catch(e) {}
+}
+
+const child = spawn(realExecutable, ARGS, { stdio: 'inherit' });
+child.on('exit', (code) => process.exit(code ?? 0));
 `;
 
+// Windows CMD Wrapper -> Calls JS Shim
 const SHIM_TEMPLATE_CMD = `@echo off
 set "BVM_DIR=%USERPROFILE%\\.bvm"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%BVM_DIR%\\shims\\%~n0.ps1" %*
+"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\shim.js" "%~n0" %*
 `;
 
 export async function rehash(): Promise<void> {
   await ensureDir(BVM_SHIMS_DIR);
 
   const isWindows = OS_PLATFORM === 'win32';
-  const shimExtension = isWindows ? '.ps1' : '';
-  const template = isWindows ? SHIM_TEMPLATE_POWERSHELL : SHIM_TEMPLATE_BASH;
+  // On Windows, we NO LONGER generate .ps1 shims to avoid ExecutionPolicy issues.
+  // We only generate .cmd shims that invoke the JS logic.
+  const shimExtension = isWindows ? '.cmd' : ''; 
+  const template = isWindows ? SHIM_TEMPLATE_CMD : SHIM_TEMPLATE_BASH;
+
+  // On Windows, write the JS logic to a central file
+  if (isWindows) {
+      const shimJsPath = join(BVM_DIR, 'bin', 'shim.js');
+      await ensureDir(join(BVM_DIR, 'bin'));
+      await Bun.write(shimJsPath, SHIM_TEMPLATE_JS);
+  }
 
   const executables = new Set<string>();
   executables.add('bun');
@@ -217,22 +244,38 @@ export async function rehash(): Promise<void> {
   }
 
   for (const exe of executables) {
-    const shimPath = join(BVM_SHIMS_DIR, exe + shimExtension);
-    await Bun.write(shimPath, template);
-    await chmod(shimPath, 0o755);
-
     if (isWindows) {
+        // Windows: Only .cmd
         const cmdPath = join(BVM_SHIMS_DIR, exe + '.cmd');
         await Bun.write(cmdPath, SHIM_TEMPLATE_CMD);
         await chmod(cmdPath, 0o755);
+    } else {
+        // Unix: Standard bash shim
+        const shimPath = join(BVM_SHIMS_DIR, exe);
+        await Bun.write(shimPath, SHIM_TEMPLATE_BASH);
+        await chmod(shimPath, 0o755);
     }
   }
 
+  // Cleanup old shims
   const existingShims = await readDir(BVM_SHIMS_DIR);
   for (const shim of existingShims) {
     const shimNameWithoutExt = shim.replace(/\.(ps1|cmd)$/i, '');
-    if (!executables.has(shimNameWithoutExt)) {
-      await unlink(join(BVM_SHIMS_DIR, shim));
+    
+    // Windows: Remove any .ps1 files (legacy) and ensure only active .cmd exist
+    if (isWindows) {
+        if (shim.endsWith('.ps1')) {
+            await unlink(join(BVM_SHIMS_DIR, shim));
+            continue;
+        }
+        if (shim.endsWith('.cmd') && !executables.has(shimNameWithoutExt)) {
+             await unlink(join(BVM_SHIMS_DIR, shim));
+        }
+    } else {
+        // Unix
+        if (!executables.has(shimNameWithoutExt)) {
+             await unlink(join(BVM_SHIMS_DIR, shim));
+        }
     }
   }
 }
