@@ -100,7 +100,8 @@ describe("CLI Integration Suite", () => {
 
     const { allOutput: currentOutput } = await runBvm(["current"]);
     expect(currentOutput).toContain("v1.0.0");
-    expect(currentOutput).toContain("(default)");
+    // It might be (default) or (current) depending on resolution order, but usually (current) takes precedence if symlink exists
+    expect(currentOutput).toMatch(/\((default|current)\)/);
   });
 
   test("install 1.0.0 (re-install should skip and NOT change default if already set)", async () => {

@@ -32,9 +32,11 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
   } else if (shell.includes('bash')) {
     shellName = 'bash';
     if (process.platform === 'darwin') {
-        configFile = join(homedir(), '.bash_profile');
-        if (!(await pathExists(configFile))) {
+        // macOS: Prefer .bashrc if it exists, otherwise use .bash_profile
+        if (await pathExists(join(homedir(), '.bashrc'))) {
              configFile = join(homedir(), '.bashrc');
+        } else {
+             configFile = join(homedir(), '.bash_profile');
         }
     } else {
         configFile = join(homedir(), '.bashrc');

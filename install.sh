@@ -87,16 +87,35 @@ download_file() {
 }
 
 detect_shell() {
-  # 1. Try environment variable SHELL first as it usually points to the user's preferred login shell
-  if [ -n "$SHELL" ]; then
-    echo "${SHELL##*/}"
-    return
+  local shell_name=""
+  
+  # 1. Try to detect from parent process (PPID)
+  # Check if ps supports -p and -o (POSIX-ish)
+  if command -v ps >/dev/null 2>&1; then
+     # Try standard POSIX syntax first
+     local proc_name
+     proc_name=$(ps -p "$PPID" -o comm= 2>/dev/null)
+     if [ -n "$proc_name" ]; then
+       shell_name="${proc_name##*/}"
+     fi
   fi
   
-  # 2. Fallback to process detection
-  local shell_path
-  shell_path=$(ps -p $$ -o comm= 2>/dev/null || echo "unknown")
-  echo "${shell_path##*/}"
+  # Clean up shell name (remove leading hyphen for login shells)
+  shell_name="${shell_name#-}"
+  
+  case "$shell_name" in
+    *zsh) echo "zsh" ;;
+    *bash) echo "bash" ;;
+    *fish) echo "fish" ;;
+    *)
+      # 2. Fallback to SHELL environment variable
+      if [ -n "$SHELL" ]; then
+        echo "${SHELL##*/}"
+      else
+        echo "unknown"
+      fi
+      ;;
+  esac
 }
 
 # --- Main Script ---
@@ -130,6 +149,9 @@ else
   case "$OS" in 
     Linux) P="linux" ;; 
     Darwin) P="darwin" ;; 
+    MINGW*|MSYS*|CYGWIN*) 
+      error "It looks like you are running on Windows (Git Bash/MinGW). Please use the PowerShell installer instead:\n\n   irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex\n"
+      ;;
     *) error "Unsupported OS: $OS" ;; 
   esac
   case "$ARCH" in 
@@ -214,7 +236,10 @@ DISPLAY_PROFILE=""
 case "$CURRENT_SHELL" in
   zsh) DISPLAY_PROFILE="$HOME/.zshrc" ;; 
   bash) 
-    if [ -f "$HOME/.bash_profile" ]; then 
+    # Prefer .bashrc if it exists (common for users who manually set up their environment)
+    if [ -f "$HOME/.bashrc" ]; then
+      DISPLAY_PROFILE="$HOME/.bashrc"
+    elif [ -f "$HOME/.bash_profile" ]; then 
       DISPLAY_PROFILE="$HOME/.bash_profile"
     else 
       DISPLAY_PROFILE="$HOME/.bashrc"

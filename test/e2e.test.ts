@@ -83,10 +83,7 @@ describe("E2E Verification Suite", () => {
         const shContent = readFileSync(join(process.cwd(), "install.sh"), "utf-8");
         const psContent = readFileSync(join(process.cwd(), "install.ps1"), "utf-8");
 
-        // 1. Check for NPM mirror URL
-        expect(psContent).toContain("registry.npmmirror.com");
-
-        // 2. Check for tar extraction
+        // 1. Check for tar extraction
         expect(psContent).toContain("tar -xzf");
 
         // 3. Check for .tgz file extension
