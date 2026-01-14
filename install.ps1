@@ -40,13 +40,22 @@ $BUN_MAJOR = "1"    # Expected Bun Major Version for Runtime
 
 try {
     Write-Host -NoNewline "Resolving latest BVM version... "
-    # Get latest BVM version from GitHub main branch via jsDelivr
-    $PkgJson = (Invoke-RestMethod -Uri "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/package.json" -TimeoutSec 5)
-    if ($PkgJson -and $PkgJson.version) {
-        $BVM_VER = "v$($PkgJson.version)"
-        Write-Host "$BVM_VER" -ForegroundColor Green
+    
+    if ($env:BVM_INSTALL_VERSION) {
+        $BVM_VER = $env:BVM_INSTALL_VERSION
+        Write-Host "$BVM_VER (User Specified)" -ForegroundColor Green
+    } elseif ($BVM_INSTALL_VERSION) {
+        $BVM_VER = $BVM_INSTALL_VERSION
+        Write-Host "$BVM_VER (User Specified)" -ForegroundColor Green
     } else {
-        Write-Host "Using fallback $BVM_VER" -ForegroundColor Yellow
+        # Get latest BVM version from GitHub main branch via jsDelivr
+        $PkgJson = (Invoke-RestMethod -Uri "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/package.json" -TimeoutSec 5)
+        if ($PkgJson -and $PkgJson.version) {
+            $BVM_VER = "v$($PkgJson.version)"
+            Write-Host "$BVM_VER" -ForegroundColor Green
+        } else {
+            Write-Host "Using fallback $BVM_VER" -ForegroundColor Yellow
+        }
     }
 
     Write-Host -NoNewline "Resolving latest Bun $BUN_MAJOR.x runtime... "
@@ -221,6 +230,11 @@ New-Item -ItemType Junction -Path $CURRENT_LINK -Target "$BVM_RUNTIME_DIR\v$BUN_
 
 # Run Setup and Rehash
 try {
+    # Clean up legacy .ps1 shims explicitly before rehash
+    if (Test-Path "$BVM_SHIMS_DIR\*.ps1") {
+        Remove-Item "$BVM_SHIMS_DIR\*.ps1" -Force -ErrorAction SilentlyContinue
+    }
+
     & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
     & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" rehash --silent
 } catch {
