@@ -40,10 +40,10 @@ $BUN_MAJOR = "1"    # Expected Bun Major Version for Runtime
 
 try {
     Write-Host -NoNewline "Resolving latest BVM version... "
-    # Get latest BVM version from NPM registry for the installer to download
-    $BvmLatest = (Invoke-RestMethod -Uri "https://registry.npmjs.org/-/package/@bvm-cli/core/dist-tags" -TimeoutSec 5).latest
-    if ($BvmLatest) {
-        $BVM_VER = "v$BvmLatest"
+    # Get latest BVM version from GitHub main branch via jsDelivr
+    $PkgJson = (Invoke-RestMethod -Uri "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/package.json" -TimeoutSec 5)
+    if ($PkgJson -and $PkgJson.version) {
+        $BVM_VER = "v$($PkgJson.version)"
         Write-Host "$BVM_VER" -ForegroundColor Green
     } else {
         Write-Host "Using fallback $BVM_VER" -ForegroundColor Yellow

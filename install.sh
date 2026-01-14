@@ -142,9 +142,9 @@ echo -e ""
 echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
 
 # Resolve latest BVM version
-BVM_LATEST=$(curl -s https://registry.npmjs.org/-/package/@bvm-cli/core/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
-if [ -n "$BVM_LATEST" ]; then
-    BVM_SRC_VERSION="v${BVM_LATEST#v}"
+BVM_LATEST_VER=$(curl -s https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/package.json | grep -oE '"version":\s*"[^"]+"' | cut -d'"' -f4 || echo "")
+if [ -n "$BVM_LATEST_VER" ]; then
+    BVM_SRC_VERSION="v${BVM_LATEST_VER}"
 fi
 
 # Resolve latest Bun 1.x runtime
