@@ -24,8 +24,13 @@ export async function createSymlink(target: string, path: string): Promise<void>
     await unlink(path);
   } catch (error) {
     // Ignore if path doesn't exist
+    // On Windows, unlink might fail for directory symlinks/junctions, try rm
+    try {
+        await rm(path, { recursive: true, force: true });
+    } catch (e) {}
   }
-  await symlink(target, path);
+  const type = process.platform === 'win32' ? 'junction' : 'dir';
+  await symlink(target, path, type);
 }
 
 export async function getSymlinkTarget(path: string): Promise<string | null> {

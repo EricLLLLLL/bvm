@@ -1,6 +1,5 @@
 import { join, dirname } from 'path';
 import { pathExists } from './utils';
-import { readFile } from 'fs/promises';
 
 /**
  * Looks for a .bvmrc file starting from the current directory and moving up.
@@ -13,7 +12,7 @@ export async function getRcVersion(): Promise<string | null> {
     const rcPath = join(currentDir, '.bvmrc');
     if (await pathExists(rcPath)) {
       try {
-        const content = await readFile(rcPath, 'utf8');
+        const content = await Bun.file(rcPath).text();
         return content.trim();
       } catch (error) {
         // Ignore read errors, proceed or return null

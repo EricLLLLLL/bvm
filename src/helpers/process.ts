@@ -27,7 +27,8 @@ export async function runCommand(
   const env: Record<string, string | undefined> = { ...process.env, ...extraEnv };
   if (prependPath) {
     const currentPath = env.PATH || '';
-    env.PATH = `${prependPath}:${currentPath}`;
+    const separator = process.platform === 'win32' ? ';' : ':';
+    env.PATH = `${prependPath}${separator}${currentPath}`;
   }
 
   const subprocess = Bun.spawn({

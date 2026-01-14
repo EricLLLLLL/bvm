@@ -12,7 +12,7 @@ export function clean(version: string): string | null {
     return v ? v.replace(/^v/, '') : null;
 }
 
-function parse(version: string) {
+export function parse(version: string) {
   if (!version) return null;
   const v = version.replace(/^v/, '');
   const core = v.split(/[-+]/)[0];
@@ -21,12 +21,11 @@ function parse(version: string) {
   if (parts.length === 0 || parts.some(p => isNaN(p))) return null;
 
   const prerelease = v.includes('-') ? v.split('-')[1].split('+')[0] : undefined;
+  
   return { major: parts[0], minor: parts[1], patch: parts[2], pre: prerelease };
 }
 
-export function compare(v1: string, v2: string): number {
-  const p1 = parse(v1);
-  const p2 = parse(v2);
+export function compareParsed(p1: any, p2: any): number {
   if (!p1 || !p2) return 0;
 
   if (p1.major !== p2.major) return p1.major - p2.major;
@@ -39,6 +38,12 @@ export function compare(v1: string, v2: string): number {
   if (p1.pre && p2.pre) return p1.pre.localeCompare(p2.pre);
   
   return 0;
+}
+
+export function compare(v1: string, v2: string): number {
+  const p1 = parse(v1);
+  const p2 = parse(v2);
+  return compareParsed(p1, p2);
 }
 
 export function rcompare(v1: string, v2: string): number {

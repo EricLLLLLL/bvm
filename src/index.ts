@@ -135,6 +135,9 @@ class App {
 // --- Main Execution ---
 
 async function main() {
+  // Start update check in background immediately (parallel with command execution)
+  // checkUpdateBackground();
+
   const app = new App('bvm');
 
   app.command('rehash', 'Regenerate shims for all installed binaries')
@@ -217,9 +220,20 @@ async function main() {
 
   app.command('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
     .action(async (args) => { if (!args[0]) throw new Error('Shell name is required'); printCompletion(args[0]); });
+    await app.run();
+    // Force exit to prevent lingering background tasks (like update checks) from hanging the process
+  
+    process.exit(0);
+  }
 
-  await app.run();
-  await checkUpdateBackground();
-}
+  main().catch(err => {
 
-main();
+      console.error(colors.red("\n[FATAL ERROR] Unexpected Crash:"));
+
+      console.error(err);
+
+      process.exit(1);
+
+  });
+
+  

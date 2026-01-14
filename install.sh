@@ -138,17 +138,26 @@ echo -e ""
 echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_SRC_VERSION})${RESET}"
 echo -e ""
 
-# 1. Resolve Bun Version
-echo -n -e "${BLUE}ℹ${RESET} Resolving Bun version... "
-LATEST_BUN_VER=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
-echo -e "${GREEN}Done${RESET}"
+# 1. Resolve BVM and Bun Versions
+echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
 
-if [ -z "$LATEST_BUN_VER" ]; then
-  warn "Could not fetch latest Bun version. Using fallback."
-  BUN_VER="$FALLBACK_BUN_VERSION"
-else
-  BUN_VER="$LATEST_BUN_VER"
+# Resolve latest BVM version
+BVM_LATEST=$(curl -s https://registry.npmjs.org/-/package/@bvm-cli/core/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
+if [ -n "$BVM_LATEST" ]; then
+    BVM_SRC_VERSION="v${BVM_LATEST#v}"
 fi
+
+# Resolve latest Bun 1.x runtime
+BUN_MAJOR="1"
+BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
+if [[ "$BUN_LATEST" == "$BUN_MAJOR."* ]]; then
+    BUN_VER="$BUN_LATEST"
+else
+    BUN_VER="$FALLBACK_BUN_VERSION"
+fi
+
+echo -e "${GREEN}Done${RESET}"
+echo -e "   Detected BVM: ${CYAN}${BVM_SRC_VERSION}${RESET}"
 echo -e "   Detected Bun: ${GREEN}v${BUN_VER}${RESET}"
 
 # 2. Setup Directories

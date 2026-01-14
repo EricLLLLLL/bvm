@@ -45,17 +45,27 @@ export async function checkUpdateBackground(): Promise<void> {
 }
 
 async function refreshUpdateInfo(cacheFile: string) {
+    let latestVersion = '';
     try {
         const latestRelease = await fetchLatestBvmReleaseInfo();
         if (latestRelease) {
-            const version = latestRelease.tagName.replace(/^v/, '');
-            const newInfo: UpdateInfo = {
-                lastChecked: Date.now(),
-                latestVersion: version
-            };
-            await ensureDir(BVM_CACHE_DIR);
-            await writeTextFile(cacheFile, JSON.stringify(newInfo));
+            latestVersion = latestRelease.tagName.replace(/^v/, '');
         }
+    } catch (e) {}
+
+    // Always update timestamp to prevent blocking every run if network is down
+    try {
+        await ensureDir(BVM_CACHE_DIR);
+        let existing: UpdateInfo = { lastChecked: 0, latestVersion: '' };
+        if (await pathExists(cacheFile)) {
+             try { existing = JSON.parse(await readTextFile(cacheFile)); } catch {}
+        }
+        
+        const newInfo: UpdateInfo = {
+            lastChecked: Date.now(),
+            latestVersion: latestVersion || existing.latestVersion
+        };
+        await writeTextFile(cacheFile, JSON.stringify(newInfo));
     } catch (e) {}
 }
 function printUpdateBox(current: string, latest: string) {

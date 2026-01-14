@@ -104,10 +104,11 @@ curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 ```
 
 ### Windows
-BVM 原生支持 Windows 上的 PowerShell 和 Git Bash。
+BVM 原生支持 Windows，提供强大的 PowerShell 安装程序，并针对 Windows 环境优化了 JS Shim 以确保最大兼容性。
 
 **PowerShell (推荐原生方式):**
 ```powershell
+# 该命令会自动检测最快镜像并配置环境变量
 irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 

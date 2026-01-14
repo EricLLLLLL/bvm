@@ -3,7 +3,7 @@ import { homedir } from 'os';
 import { pathExists, ensureDir, removeDir } from '../utils';
 import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME } from '../constants';
 import { colors, confirm } from '../utils/ui';
-import { readFile, appendFile, chmod, writeFile } from 'fs/promises';
+import { chmod } from 'fs/promises';
 import { BVM_INIT_SH_TEMPLATE, BVM_INIT_FISH_TEMPLATE } from '../templates/init-scripts';
 
 /**
@@ -64,10 +64,10 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
 
   let content = '';
   try {
-    content = await readFile(configFile, 'utf8');
+    content = await Bun.file(configFile).text();
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      await writeFile(configFile, '');
+      await Bun.write(configFile, '');
       content = '';
     } else {
       throw error;
@@ -117,7 +117,7 @@ end
     }
 
     if (newContent !== content) {
-      await writeFile(configFile, newContent);
+      await Bun.write(configFile, newContent);
       if (displayPrompt) {
         console.log(colors.green(`✓ Successfully updated BVM configuration in ${configFile}`));
       }
@@ -168,9 +168,9 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
     try {
         let existingContent = '';
         if (await pathExists(profilePath)) {
-            existingContent = await readFile(profilePath, 'utf8');
+            existingContent = await Bun.file(profilePath).text();
         } else {
-            await writeFile(profilePath, '');
+            await Bun.write(profilePath, '');
         }
 
         if (existingContent.includes('$env:BVM_DIR')) {
@@ -181,8 +181,19 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
             console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
         }
 
-        // Use appendFile but ensure we're adding a newline
-        await appendFile(profilePath, `\r\n${psStr}`);
+        // Use Bun.write directly to append (read content + new content)
+        // Note: Bun doesn't have a direct 'appendFile', but for text config files, read+write is fine.
+        // Or we can use Bun.file(path).writer() but that's more complex for a simple append.
+        // Actually, Bun.write(file, content) overwrites.
+        // To append efficiently in Bun:
+        const file = Bun.file(profilePath);
+        const writer = file.writer();
+        // Since we want to append, we probably need to seek to end? 
+        // Bun writer starts at 0 by default and overwrites?
+        // Wait, the simplest way for text files is just read string + write string.
+        // Since we already read 'existingContent', let's just use that.
+        
+        await Bun.write(profilePath, existingContent + `\r\n${psStr}`);
         
         if (displayPrompt) {
             console.log(colors.green(`✓ Successfully configured BVM path in ${profilePath}`));

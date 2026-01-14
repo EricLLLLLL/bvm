@@ -79,7 +79,6 @@ fi
 
 // JS Shim Logic for Windows (Runs via Bun Runtime)
 const SHIM_TEMPLATE_JS = `
-const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const os = require('os');
@@ -89,7 +88,20 @@ const BVM_DIR = process.env.BVM_DIR || path.join(os.homedir(), '.bvm');
 const CMD = process.argv[2].replace(/\\.exe$/i, '').replace(/\\.cmd$/i, '');
 const ARGS = process.argv.slice(3);
 
-function resolveVersion() {
+async function readFileSafe(filePath) {
+    try {
+        const file = Bun.file(filePath);
+        if (await file.exists()) {
+             const text = await file.text();
+             return text.trim();
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function resolveVersion() {
   // 1. Env Override
   if (process.env.BVM_ACTIVE_VERSION) return process.env.BVM_ACTIVE_VERSION;
 
@@ -98,11 +110,12 @@ function resolveVersion() {
   const root = path.parse(dir).root;
   while (true) {
     const rc = path.join(dir, '.bvmrc');
-    if (fs.existsSync(rc)) {
-      try {
-        let v = fs.readFileSync(rc, 'utf8').trim();
-        if (v) return v.startsWith('v') ? v : 'v' + v;
-      } catch (e) {}
+    // Note: Bun.file(path).exists() is async
+    const file = Bun.file(rc);
+    if (await file.exists()) {
+        const v = await file.text();
+        const trimmed = v.trim();
+        if (trimmed) return trimmed.startsWith('v') ? trimmed : 'v' + trimmed;
     }
     if (dir === root) break;
     dir = path.dirname(dir);
@@ -110,10 +123,18 @@ function resolveVersion() {
 
   // 3. Current Symlink (Junction)
   const current = path.join(BVM_DIR, 'current');
+  // Check if it's a valid directory first (resolve junction)
+  // Bun doesn't have native readlink/realpath exposed as simply yet for this context, 
+  // so we might need to stick to node 'fs' for realpath or use Bun.file().name?
+  // Actually, for resolving the junction target to get the version name, 
+  // fs.realpathSync is the most reliable way in Node/Bun compatibility.
+  // So let's keep 'fs' imported JUST for this specific realpath operation to be safe,
+  // or use the assumption that 'current' is a dir.
+  
+  const fs = require('fs'); 
   if (fs.existsSync(current)) {
     try {
-        // In Windows, readlink on a junction returns the target path
-        const target = fs.readlinkSync(current); 
+        const target = fs.realpathSync(current); 
         const v = path.basename(target);
         if (v.startsWith('v')) return v;
     } catch(e) {}
@@ -121,53 +142,59 @@ function resolveVersion() {
   
   // 4. Default Alias
   const def = path.join(BVM_DIR, 'aliases', 'default');
-  if (fs.existsSync(def)) {
-      try {
-        const v = fs.readFileSync(def, 'utf8').trim();
-        if (v) return v.startsWith('v') ? v : 'v' + v;
-      } catch(e) {}
+  const defFile = Bun.file(def);
+  if (await defFile.exists()) {
+      const v = await defFile.text();
+      const trimmed = v.trim();
+      if (trimmed) return trimmed.startsWith('v') ? trimmed : 'v' + trimmed;
   }
 
   return '';
 }
 
-const version = resolveVersion();
+// Wrap in IIFE for async/await
+(async () => {
+    const version = await resolveVersion();
 
-if (!version) {
-    console.error("BVM Error: No Bun version is active or default is set.");
-    process.exit(1);
-}
+    if (!version) {
+        console.error("BVM Error: No Bun version is active or default is set.");
+        process.exit(1);
+    }
 
-const versionDir = path.join(BVM_DIR, 'versions', version);
-if (!fs.existsSync(versionDir)) {
-    console.error(\`BVM Error: Bun version \${version} is not installed.\`);
-    process.exit(1);
-}
+    const versionDir = path.join(BVM_DIR, 'versions', version);
+    // Use fs.existsSync for directory check is still fast/standard
+    const fs = require('fs');
+    if (!fs.existsSync(versionDir)) {
+        console.error(\`BVM Error: Bun version \${version} is not installed.\`);
+        process.exit(1);
+    }
 
-const binDir = path.join(versionDir, 'bin');
-const realExecutable = path.join(binDir, CMD + '.exe');
+    const binDir = path.join(versionDir, 'bin');
+    const realExecutable = path.join(binDir, CMD + '.exe');
 
-if (!fs.existsSync(realExecutable)) {
-    console.error(\`BVM Error: Command '\${CMD}' not found in Bun \${version}.\`);
-    process.exit(127);
-}
+    if (!fs.existsSync(realExecutable)) {
+        console.error(\`BVM Error: Command '\${CMD}' not found in Bun \${version}.\`);
+        process.exit(127);
+    }
 
-// Set Environment Variables
-process.env.BUN_INSTALL = versionDir;
-// Prepend to PATH
-process.env.PATH = binDir + path.delimiter + process.env.PATH;
+    // Set Environment Variables
+    process.env.BUN_INSTALL = versionDir;
+    // Prepend to PATH
+    process.env.PATH = binDir + path.delimiter + process.env.PATH;
 
-// Auto-rehash hook
-if (CMD === 'bun' && ARGS.some(a => a === '-g') && ARGS.some(a => ['install', 'add', 'remove', 'uninstall'].includes(a))) {
-    // Run rehash in background detached
-    try {
-        const bvmCmd = path.join(BVM_DIR, 'bin', 'bvm.cmd');
-        spawn(bvmCmd, ['rehash'], { detached: true, stdio: 'ignore' }).unref();
-    } catch(e) {}
-}
+    // Auto-rehash hook
+    if (CMD === 'bun' && ARGS.some(a => a === '-g') && ARGS.some(a => ['install', 'add', 'remove', 'uninstall'].includes(a))) {
+        // Run rehash in background detached
+        try {
+            const bvmCmd = path.join(BVM_DIR, 'bin', 'bvm.cmd');
+            // Using Bun.spawn is better if available, but require('child_process').spawn is standard here
+            spawn(bvmCmd, ['rehash'], { detached: true, stdio: 'ignore' }).unref();
+        } catch(e) {}
+    }
 
-const child = spawn(realExecutable, ARGS, { stdio: 'inherit' });
-child.on('exit', (code) => process.exit(code ?? 0));
+    const child = spawn(realExecutable, ARGS, { stdio: 'inherit' });
+    child.on('exit', (code) => process.exit(code ?? 0));
+})();
 `;
 
 // Windows CMD Wrapper -> Calls JS Shim

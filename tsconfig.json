@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "lib": ["es2022", "dom"],
-    "module": "esnext",
+    "module": "commonjs",
     "target": "es2022",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
@@ -11,7 +11,8 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "resolveJsonModule": true,
-    "noEmit": true, // Bun handles compilation, we don't want tsc to emit
+    "outDir": "./dist",
+    "noEmit": false,
     "paths": {
       "~/*": ["./src/*"]
     }

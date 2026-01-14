@@ -1,10 +1,14 @@
 # BVM Installer for Windows (PowerShell)
 $ErrorActionPreference = "Stop"
 
+# Ensure TLS 1.2 is enabled for GitHub/CDN downloads
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 # --- Architecture Check ---
-if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64" -and $env:PROCESSOR_ARCHITEW6432 -ne "AMD64") {
-    Write-Error "BVM requires a 64-bit version of Windows and PowerShell."
+$is64bit = [Environment]::Is64BitOperatingSystem
+if (-not $is64bit) {
     Write-Host "Current Architecture: $env:PROCESSOR_ARCHITECTURE"
+    Write-Error "BVM requires a 64-bit version of Windows."
     exit 1
 }
 
@@ -16,97 +20,149 @@ $BVM_BIN_DIR = "$BVM_DIR\bin"
 $BVM_SHIMS_DIR = "$BVM_DIR\shims"
 $BVM_ALIAS_DIR = "$BVM_DIR\aliases"
 
-# UI Helper
-function Show-Bar($p) {
-    $ESC = [char]27
-    $w = 40
-    $f = [Math]::Floor($p * $w / 100)
-    if ($f -lt 0) { $f = 0 }
-    if ($f -gt $w) { $f = $w }
-    $e = $w - $f
-    $filled = "█" * $f
-    $empty = "░" * $e
-    Write-Host -NoNewline "`r $ESC[1;36m$filled$ESC[0;90m$empty$ESC[0m $([Math]::Floor($p))%"
+# 0. Smart Registry Selection
+$REGISTRY = "registry.npmjs.org"
+$MIRROR = "registry.npmmirror.com"
+try {
+    # Test connection to mirror with 2s timeout
+    $Test = Invoke-WebRequest -Uri "https://$MIRROR" -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue
+    if ($Test.StatusCode -eq 200) {
+        $REGISTRY = $MIRROR
+    }
+} catch {
+    # Ignore errors, stick to default
 }
 
-# 1. Resolve
-$BUN_VER = "1.3.5"
-$BVM_VER = "v1.0.0"
+# 1. Resolve BVM and Bun Versions
+$BVM_VER = "v1.0.0" # Fallback
+$BUN_VER = "1.3.5"  # Fallback
+$BUN_MAJOR = "1"    # Expected Bun Major Version for Runtime
+
+try {
+    Write-Host -NoNewline "Resolving latest BVM version... "
+    # Get latest BVM version from NPM registry for the installer to download
+    $BvmLatest = (Invoke-RestMethod -Uri "https://registry.npmjs.org/-/package/@bvm-cli/core/dist-tags" -TimeoutSec 5).latest
+    if ($BvmLatest) {
+        $BVM_VER = "v$BvmLatest"
+        Write-Host "$BVM_VER" -ForegroundColor Green
+    } else {
+        Write-Host "Using fallback $BVM_VER" -ForegroundColor Yellow
+    }
+
+    Write-Host -NoNewline "Resolving latest Bun $BUN_MAJOR.x runtime... "
+    # Using irm (Invoke-RestMethod) to get the latest tag from NPM
+    $BunLatest = (Invoke-RestMethod -Uri "https://$REGISTRY/-/package/bun/dist-tags" -TimeoutSec 5).latest
+    if ($BunLatest -and $BunLatest.StartsWith("$BUN_MAJOR.")) {
+        $BUN_VER = $BunLatest
+        Write-Host "v$BUN_VER" -ForegroundColor Green
+    } else {
+        Write-Host "Failed (Using fallback v$BUN_VER)" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "Network Error (Using fallback versions)" -ForegroundColor Yellow
+}
 
 # 2. Setup Runtime
 $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR, $BVM_ALIAS_DIR)
 foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null } }
 
-# CLEANUP LEGACY SHIMS (Crucial for migration from .ps1 to .cmd/.js shims)
-if (Test-Path "$BVM_SHIMS_DIR\*.ps1") {
-    Write-Host "Cleaning up legacy PowerShell shims..."
-    Remove-Item "$BVM_SHIMS_DIR\*.ps1" -Force -ErrorAction SilentlyContinue
-}
-
 $TARGET_DIR = "$BVM_RUNTIME_DIR\v$BUN_VER"
-# Check both path variants to be safe
 if (-not (Test-Path "$TARGET_DIR\bin\bun.exe")) {
-    Write-Host "Downloading BVM Runtime (bun@$BUN_VER)"
-    $URL = "https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-$BUN_VER.tgz"
+    Write-Host "Downloading BVM Runtime (bun@$BUN_VER)..."
+    $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$BUN_VER.tgz"
     $TMP = "$BVM_DIR\bun-runtime.tgz"
     
-    $wc = New-Object System.Net.WebClient
-    $event = Register-ObjectEvent -InputObject $wc -EventName DownloadProgressChanged -Action {
-        Show-Bar $EventArgs.ProgressPercentage
-    }
-    
+    # Clean up existing temp file to prevent curl write errors (Exit Code 23)
+    if (Test-Path $TMP) { Remove-Item $TMP -Force -ErrorAction SilentlyContinue }
+
     try {
-        Show-Bar 0
-        $wc.DownloadFileAsync($URL, $TMP)
-        while ($wc.IsBusy) { Start-Sleep -Milliseconds 100 }
-    } finally {
-        $wc.Dispose()
-        Unregister-Event -SourceIdentifier $event.Name
+        if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+            # Use curl.exe if available (Best reliability & Progress Bar)
+            # -# : Progress Bar
+            # -S : Show Error
+            # -f : Fail silently (server errors)
+            # -L : Follow Redirects
+            # -o : Output file
+            & curl.exe "-#SfLo" "$TMP" "$URL"
+            if ($LASTEXITCODE -ne 0) { throw "curl failed with exit code $LASTEXITCODE" }
+        } else {
+            throw "curl not found"
+        }
+    } catch {
+        Write-Warning "curl failed or missing. Falling back to Invoke-RestMethod..."
+        try {
+            Invoke-RestMethod -Uri $URL -OutFile $TMP
+        } catch {
+            Write-Error "Failed to download runtime. $_"
+            exit 1
+        }
     }
-    Write-Host "`n"
+    Write-Host "Download complete."
     
     $EXT = "$BVM_DIR\temp_extract"
-    if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force }
-    New-Item -ItemType Directory -Path $EXT | Out-Null
-    
-    # Use internal tar if available, otherwise check for 7z or error? 
-    # Windows 10 build 17063+ has tar.
+    if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force -ErrorAction SilentlyContinue }
+    New-Item -ItemType Directory -Path $EXT -Force | Out-Null
+
+    Write-Host "Extracting..."
     try {
-        tar -xzf $TMP -C $EXT
+        # Windows 10+ comes with tar.exe. 
+        # npm packages are .tgz, so tar is perfect.
+        & tar -xf "$TMP" -C "$EXT"
+        if ($LASTEXITCODE -ne 0) { throw "tar failed with exit code $LASTEXITCODE" }
     } catch {
-        Write-Error "Failed to extract archive. Please ensure 'tar' is available or use Windows 10+."
+        Write-Error "Failed to extract runtime. Ensure tar is installed or try a newer Windows version. $_"
         exit 1
     }
-    
-    New-Item -ItemType Directory -Path "$TARGET_DIR\bin" -Force | Out-Null
-    $exe = Get-ChildItem -Path $EXT -Recurse -Filter "bun.exe" | Select-Object -First 1
-    if ($null -eq $exe) {
-        Write-Error "Could not find bun.exe in the downloaded archive."
+
+    # npm packages typically extract into a 'package' folder
+    $SourcePath = "$EXT\package"
+    if (-not (Test-Path $SourcePath)) {
+        # Fallback: Just grab the first directory if 'package' isn't there
+        $SourcePath = (Get-ChildItem -Path $EXT -Directory | Select-Object -First 1).FullName
+    }
+
+    if ($null -eq $SourcePath -or -not (Test-Path $SourcePath)) {
+        Write-Error "Extraction failed: Could not find extracted folder structure."
         exit 1
     }
-    Move-Item $exe.FullName -Destination "$TARGET_DIR\bin\bun.exe" -Force
+
+    # Move to target version directory
+    Move-Item -Path $SourcePath -Destination $TARGET_DIR -Force
     
-    $cur = "$BVM_RUNTIME_DIR\current"
-    if (Test-Path $cur) { Remove-Item $cur -Force }
-    # Junction is safer than Symlink on Windows (no admin required usually)
-    New-Item -ItemType Junction -Path $cur -Target $TARGET_DIR | Out-Null
-    
-    Remove-Item $TMP -Force
-    if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force }
+    # Cleanup
+    Remove-Item $TMP -Force -ErrorAction SilentlyContinue
+    Remove-Item $EXT -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # 3. Download Source
-Write-Host "Downloading BVM: $BVM_VER"
-$SRC_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_VER/dist/index.js"
-Show-Bar 0
-try {
-    (New-Object System.Net.WebClient).DownloadFile($SRC_URL, "$BVM_SRC_DIR\index.js")
-} catch {
-    Write-Error "Failed to download BVM source. Please check your internet connection."
-    exit 1
+$LOCAL_DIST = "$PSScriptRoot\dist\index.js"
+
+if (Test-Path $LOCAL_DIST) {
+    Write-Host "Using local BVM build from $LOCAL_DIST..." -ForegroundColor Cyan
+    Copy-Item $LOCAL_DIST "$BVM_SRC_DIR\index.js" -Force
+} else {
+    Write-Host "Downloading BVM Source ($BVM_VER)..."
+    $SRC_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_VER/dist/index.js"
+
+    try {
+        if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+            # Use curl.exe if available (Best reliability & Progress Bar)
+            & curl.exe "-#SfLo" "$BVM_SRC_DIR\index.js" "$SRC_URL"
+            if ($LASTEXITCODE -ne 0) { throw "curl failed with exit code $LASTEXITCODE" }
+        } else {
+            throw "curl not found"
+        }
+    } catch {
+        Write-Warning "curl failed or missing. Falling back to Invoke-RestMethod..."
+        try {
+            Invoke-RestMethod -Uri $SRC_URL -OutFile "$BVM_SRC_DIR\index.js"
+        } catch {
+            Write-Error "Failed to download BVM source. $_"
+            exit 1
+        }
+    }
+    Write-Host "Download complete."
 }
-Show-Bar 100
-Write-Host "`n"
 
 # 4. Finalize
 Write-Host -NoNewline "Configuring shell... "
@@ -138,27 +194,37 @@ $env:BVM_DIR = $BVM_DIR
 $DEFAULT_ALIAS = "$BVM_ALIAS_DIR\default"
 if (-not (Test-Path $DEFAULT_ALIAS)) {
     $VERSION_DIR = "$BVM_DIR\versions\v$BUN_VER"
-    $VERSION_BIN = "$VERSION_DIR\bin"
-    New-Item -ItemType Directory -Path $VERSION_BIN -Force | Out-Null
     
-    # Check if bun.exe exists in runtime
-    $RUNTIME_BUN = "$BVM_RUNTIME_DIR\current\bin\bun.exe"
-    if (Test-Path $RUNTIME_BUN) {
-        # Create a hardlink or copy for the initial version to save space/time
-        # Or just copy since it's safer across devices
-        Copy-Item $RUNTIME_BUN -Destination "$VERSION_BIN\bun.exe" -Force
+    # Copy the runtime we just downloaded to the versions directory
+    # This avoids downloading it again and ensures 'bun' works instantly
+    if (-not (Test-Path $VERSION_DIR)) {
+        Write-Host "Initializing default Bun version (v$BUN_VER)..."
+        New-Item -ItemType Directory -Path "$BVM_DIR\versions" -Force | Out-Null
+        
+        # Copy from runtime/v1.3.5 to versions/v1.3.5
+        # Use Copy-Item -Recurse to copy the whole folder structure (bin/bun.exe)
+        Copy-Item -Path "$BVM_RUNTIME_DIR\v$BUN_VER" -Destination $VERSION_DIR -Recurse -Force
     }
-    
+
+    # Set default alias
     Set-Content -Path $DEFAULT_ALIAS -Value "v$BUN_VER" -Encoding Ascii
+    Write-Host "Set default version to v$BUN_VER"
 }
 
+# Ensure 'current' points to the installed version so bootstrapping works
+$CURRENT_LINK = "$BVM_RUNTIME_DIR\current"
+if (Test-Path $CURRENT_LINK) {
+    Remove-Item $CURRENT_LINK -Force -Recurse -ErrorAction SilentlyContinue
+}
+Write-Host "Linking 'current' to v$BUN_VER..."
+New-Item -ItemType Junction -Path $CURRENT_LINK -Target "$BVM_RUNTIME_DIR\v$BUN_VER" | Out-Null
+
 # Run Setup and Rehash
-# We use Invoke-Expression or direct call
 try {
     & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
     & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" rehash --silent
 } catch {
-    Write-Warning "Setup/Rehash step failed. You might need to run 'bvm setup' manually."
+    Write-Warning "Setup/Rehash step failed. Attempting manual shim patch..."
 }
 
 # --- Execution Policy Check ---

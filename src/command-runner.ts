@@ -11,21 +11,42 @@ interface SpinnerOptions {
  */
 export async function withSpinner<T>(
   message: string,
-  action: (spinner: Spinner) => Promise<T>,
+  action: (spinner: Spinner | any) => Promise<T>,
   options?: SpinnerOptions,
 ): Promise<T> {
+  const isWindows = process.platform === 'win32';
+
+  if (isWindows) {
+      console.log(colors.cyan(`> ${message}`));
+      // Mock spinner object for Windows to avoid ANSI cursor crashes
+      const mockSpinner = {
+          start: (msg?: string) => { if (msg) console.log(colors.cyan(`> ${msg}`)); },
+          stop: () => {},
+          succeed: (msg: string) => console.log(colors.green(`  ✓ ${msg}`)),
+          fail: (msg: string) => console.log(colors.red(`  ✖ ${msg}`)),
+          info: (msg: string) => console.log(colors.cyan(`  ℹ ${msg}`)),
+          update: (msg: string) => console.log(colors.dim(`  ... ${msg}`)),
+          isSpinning: false
+      };
+      
+      try {
+          return await action(mockSpinner);
+      } catch (error: any) {
+          const failureText = resolveFailMessage(error, options?.failMessage);
+          console.log(colors.red(`  ✖ ${failureText}`));
+          if (process.env.BVM_DEBUG || true) { // Always show detailed error for now during debugging
+              console.log(colors.dim(`    Details: ${error.message}`));
+              if (error.code) console.log(colors.dim(`    Code: ${error.code}`));
+          }
+          error.reported = true;
+          throw error;
+      }
+  }
+
   const spinner = new Spinner(message);
   spinner.start();
   try {
     const result = await action(spinner);
-    // Note: custom Spinner doesn't expose isSpinning, but stop() is safe to call multiple times or succeed() handles it.
-    // However, our custom implementation's stop() clears the line.
-    // If the action already called succeed/fail, we shouldn't call stop/fail again ideally,
-    // but the original logic relied on isSpinning.
-    // Let's assume action calls succeed/fail. If not, we stop it.
-    // Actually, our Spinner.stop() clears the line.
-    // If the action returned, we assume success? No, the caller usually calls spinner.succeed().
-    // If they didn't, we should probably stop it.
     spinner.stop(); 
     return result;
   } catch (error: any) {

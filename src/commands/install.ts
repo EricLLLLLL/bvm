@@ -1,7 +1,7 @@
 import { join, basename, dirname } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, IS_TEST_MODE } from '../constants';
+import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, IS_TEST_MODE, OS_PLATFORM } from '../constants';
 import { ensureDir, pathExists, removeDir, resolveVersion, normalizeVersion, readDir, getActiveVersion } from '../utils';
-import { findBunDownloadUrl, fetchBunVersions } from '../api';
+import { findBunDownloadUrl, fetchBunVersions, checkBunVersionExists, fetchBunDistTags } from '../api';
 import { colors, ProgressBar } from '../utils/ui';
 import { extractArchive } from '../utils/archive';
 import { chmod } from 'fs/promises';
@@ -13,6 +13,81 @@ import { withSpinner } from '../command-runner';
 import { runCommand } from '../helpers/process';
 import { useBunVersion } from './use';
 import { rehash } from './rehash';
+import { rename, rm } from 'fs/promises';
+
+async function safeRename(src: string, dest: string) {
+  try {
+    await rename(src, dest);
+  } catch (e) {
+    await Bun.write(Bun.file(dest), Bun.file(src));
+    await rm(src, { force: true });
+  }
+}
+
+async function downloadFileWithProgress(url: string, destPath: string, spinner: any, versionLabel: string) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Status ${response.status}`);
+    
+    const total = +(response.headers.get('Content-Length') || 0);
+    let loaded = 0;
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+    
+    const writer = Bun.file(destPath).writer();
+    const isWindows = OS_PLATFORM === 'win32';
+    
+    // Stop spinner to hand over to specific progress handler
+    spinner.stop();
+    
+    let bar: any = null;
+    let lastReportedPct = -1;
+
+    if (!isWindows) {
+        // Mac/Linux: Use fancy progress bar
+        bar = new ProgressBar(total || 40 * 1024 * 1024);
+        bar.start();
+    } else {
+        // Windows: Use ancient stable method (console.log)
+        console.log(`Downloading Bun ${versionLabel}...`);
+    }
+    
+    try {
+        const startTime = Date.now();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            writer.write(value);
+            loaded += value.length;
+            
+            if (!isWindows && bar) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const speed = elapsed > 0 ? (loaded / 1024 / elapsed).toFixed(0) : '0';
+                bar.update(loaded, { speed });
+            } else if (isWindows && total) {
+                const pct = Math.floor((loaded / total) * 10); // report every 10%
+                if (pct > lastReportedPct) {
+                    console.log(`  > ${pct * 10}%`);
+                    lastReportedPct = pct;
+                }
+            }
+        }
+        await writer.end();
+        
+        if (!isWindows && bar) {
+            bar.stop();
+        } else {
+            console.log(`  > 100% [Done]`);
+        }
+    } catch (e) {
+        try { writer.end(); } catch(e2) {} 
+        if (!isWindows && bar) bar.stop();
+        else console.log(`  > Download Failed`);
+        spinner.start(); 
+        throw e;
+    }
+    
+    spinner.start(); 
+}
 
 /**
  * Installs a specific Bun version.
@@ -36,12 +111,40 @@ export async function installBunVersion(targetVersion?: string, options: { globa
     await withSpinner(
       `Finding Bun ${versionToInstall} release...`,
       async (spinner) => {
-        const remoteVersions = await fetchBunVersions();
-        const filteredRemoteVersions = remoteVersions
-          .filter(v => !v.includes('canary'))
-          .map(v => normalizeVersion(v));
+        let resolvedVersion: string | null = null;
+        const normVersion = normalizeVersion(versionToInstall!);
 
-        const resolvedVersion = resolveVersion(versionToInstall!, filteredRemoteVersions);
+        // Strategy 0: Direct Lookup (Fastest, Crash-safe)
+        // If the user requests an exact version (e.g., "1.1.20"), check it directly.
+        if (/^v?\d+\.\d+\.\d+$/.test(versionToInstall!) && !versionToInstall!.includes('canary')) {
+             spinner.update(`Checking if Bun ${normVersion} exists...`);
+             if (await checkBunVersionExists(normVersion)) {
+                 resolvedVersion = normVersion;
+             } else {
+                 spinner.fail(colors.red(`Bun version ${normVersion} not found on registry.`));
+                 return;
+             }
+        }
+        
+        // Strategy 1: Handle 'latest' via dist-tags (Fast, Small JSON)
+        else if (versionToInstall === 'latest') {
+             spinner.update('Checking latest version...');
+             const tags = await fetchBunDistTags();
+             if (tags.latest) {
+                 resolvedVersion = normalizeVersion(tags.latest);
+             } else {
+                 throw new Error('Could not resolve "latest" version.');
+             }
+        }
+
+        // Strategy 2: Block Fuzzy Matching to prevent crashes
+        // We do NOT fetch the full list (1200+ items) automatically anymore.
+        else {
+            spinner.fail(colors.yellow(`Fuzzy matching (e.g. "1.1") is disabled for stability.`));
+            console.log(colors.dim(`  Please specify the exact version (e.g. "1.1.20") or "latest".`));
+            console.log(colors.dim(`  To see available versions, run: bvm ls-remote`));
+            return;
+        }
 
         if (!resolvedVersion) {
             spinner.fail(colors.red(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`));
@@ -86,74 +189,44 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                 installedVersion = foundVersion;
                 shouldConfigureShell = true;
             } else {
-                spinner.update(`Initiating download for Bun ${foundVersion}...`);
+                // Bun.write doesn't support progress events, so we update spinner text
+                spinner.update(`Downloading Bun ${foundVersion} to cache...`);
+                
                 await ensureDir(BVM_CACHE_DIR);
                 const cachedArchivePath = join(BVM_CACHE_DIR, `${foundVersion}-${basename(url)}`);
-        
+
                 if (await pathExists(cachedArchivePath)) {
                     spinner.succeed(colors.green(`Using cached Bun ${foundVersion} archive.`));
                 } else {
-                    spinner.stop();
-                    console.log(colors.cyan(`Downloading Bun ${foundVersion} to cache...`));
+                    const tempDownloadPath = `${cachedArchivePath}.${Date.now()}.tmp`;
                     
-                    let response: Response;
                     try {
-                        // Strategy 1: Direct Download with 10s timeout
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 10000);
+                        await downloadFileWithProgress(url, tempDownloadPath, spinner, foundVersion);
                         
-                        response = await fetch(url, { signal: controller.signal });
-                        clearTimeout(timeoutId);
-                        
-                        if (!response.ok) {
-                            throw new Error(`Direct download failed with status ${response.status}`);
-                        }
+                        // Rename .tmp to actual file
+                        await safeRename(tempDownloadPath, cachedArchivePath);
                     } catch (error: any) {
-                        // Strategy 2: Failover to Mirror if available
+                        try { await rm(tempDownloadPath, { force: true }); } catch {}
+                        
+                        spinner.update(`Download failed, trying mirror...`);
+                        console.log(colors.dim(`
+Debug: ${error.message}`)); // Visible if spinner fails
+
+                        // Strategy 2: Failover to Mirror
                         if (mirrorUrl) {
                             const mirrorHost = new URL(mirrorUrl).hostname;
-                            console.log(colors.yellow(`Direct download failed or timed out. Retrying via mirror ${mirrorHost}...`));
-                            response = await fetch(mirrorUrl);
-                            if (!response.ok) {
-                                throw new Error(`Mirror download failed too: ${response.statusText} (${response.status})`);
-                            }
+                            spinner.update(`Downloading from mirror (${mirrorHost})...`);
+                            await downloadFileWithProgress(mirrorUrl, tempDownloadPath, spinner, foundVersion);
+                            await safeRename(tempDownloadPath, cachedArchivePath);
                         } else {
                             throw error;
                         }
                     }
 
-                    if (!response.ok || !response.body) throw new Error(`Download failed: ${response.statusText}`);
-        
-                    const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);
-                    const progressBar = totalBytes > 0 ? new ProgressBar(totalBytes) : null;
-                    if (progressBar) progressBar.start();
-        
-                    const writer = Bun.file(cachedArchivePath).writer();
-                    const reader = response.body.getReader();
-                    let loaded = 0; let lastLoaded = 0; let lastTime = Date.now(); let lastRenderTime = 0;
-        
-                    try {
-                        while (true) {
-                            const { done, value } = await reader.read();
-                            if (done) break;
-                            writer.write(value);
-                            loaded += value.length;
-                            if (progressBar) {
-                                const now = Date.now();
-                                if (now - lastTime >= 500) {
-                                    const speed = (loaded - lastLoaded) / (now - lastTime) * 1000 / 1024;
-                                    progressBar.update(loaded, { speed: speed.toFixed(2) });
-                                    lastLoaded = loaded; lastTime = now; lastRenderTime = now;
-                                } else if (now - lastRenderTime >= 100) {
-                                    progressBar.update(loaded); lastRenderTime = now;
-                                }
-                            }
-                        }
-                    } finally { writer.end(); }
-                    if (progressBar) progressBar.stop();
+                    // Progress bar logic removed as Bun.write is atomic
                 }
-        
-                spinner.start(`Extracting Bun ${foundVersion}...`);
+
+                spinner.update(`Extracting Bun ${foundVersion}...`);
                 await ensureDir(installDir);
                 await extractArchive(cachedArchivePath, installDir);
         
@@ -179,7 +252,8 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                 // For simplicity and consistency with old BVM, let's move it to installBinDir and clean up.
                 await ensureDir(installBinDir);
                 if (foundSourceBunPath !== bunExecutablePath) {
-                    await runCommand(['mv', foundSourceBunPath, bunExecutablePath]);
+                    await safeRename(foundSourceBunPath, bunExecutablePath);
+                    
                     const pDir = dirname(foundSourceBunPath);
                     if (pDir !== installDir && pDir !== installBinDir) await removeDir(pDir);
                 }
@@ -187,28 +261,6 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                 spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
                 installedVersion = foundVersion;
                 shouldConfigureShell = true;
-            }
-        }
-
-        if (installedVersion) {
-            const currentlyInstalledVersions = await getInstalledVersions();
-            const activeInfo = await getActiveVersion();
-            
-            // If this is the first/only version, make it default
-            if (!activeInfo.version && currentlyInstalledVersions.length === 1) {
-                await createAlias('default', foundVersion);
-                console.log(colors.cyan(`✓ Bun ${foundVersion} is now your default version.`));
-            }
-
-            // Automatically use the installed version
-            try {
-                await useBunVersion(foundVersion, { silent: true });
-                console.log(colors.cyan(`✓ Bun ${foundVersion} installed and active.`));
-                console.log(colors.dim(`  To make it the default, run: bvm default ${foundVersion}`));
-            } catch (e) {
-                // Fallback if use fails for some reason
-                 console.log(colors.cyan(`✓ Bun ${foundVersion} installed.`));
-                 console.log(colors.yellow(`  To use it now, run: bvm use ${foundVersion}`));
             }
         }
       },
@@ -221,7 +273,23 @@ export async function installBunVersion(targetVersion?: string, options: { globa
   if (shouldConfigureShell) {
     await configureShell(false);
   }
+
+  // Auto-switch to the newly installed version (unless global/alias logic overrides in future)
+  if (installedVersion) {
+      try {
+          await useBunVersion(installedVersion, { silent: true });
+      } catch (e) {
+          // Ignore if switch fails (though unlikely if installed)
+      }
+  }
+
   await rehash();
+
+  // Final success messages (moved here to appear after Rehash log)
+  if (installedVersion) {
+      console.log(colors.cyan(`\n✓ Bun ${installedVersion} installed and active.`));
+      console.log(colors.dim(`  To verify, run: bun --version or bvm ls`));
+  }
 }
 
 async function writeTestBunBinary(targetPath: string, version: string): Promise<void> {

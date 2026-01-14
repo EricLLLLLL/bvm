@@ -104,10 +104,11 @@ curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
 ```
 
 ### Windows
-BVM natively supports both PowerShell and Git Bash on Windows.
+BVM natively supports Windows with a robust PowerShell installer and specialized JS shims for maximum compatibility.
 
 **PowerShell (Recommended Native):**
 ```powershell
+# This command automatically detects the fastest mirror and configures your environment.
 irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
 ```
 

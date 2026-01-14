@@ -1,8 +1,10 @@
-import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, IS_TEST_MODE, TEST_REMOTE_VERSIONS } from './constants';
+import { join } from 'path';
+import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, IS_TEST_MODE, TEST_REMOTE_VERSIONS, BVM_CACHE_DIR } from './constants';
 import { normalizeVersion } from './utils';
-import { valid, rcompare } from './utils/semver-lite';
+import { valid, rcompare, parse, compareParsed } from './utils/semver-lite';
 import { colors } from './utils/ui';
 import { getBunNpmPackage, getBunDownloadUrl } from './utils/npm-lookup';
+import { runCommand } from './helpers/process';
 
 /**
  * Detects if the user is likely in China based on timezone.
@@ -16,6 +18,9 @@ function isChina(): boolean {
   }
 }
 
+const VERSIONS_CACHE_FILE = 'bun-versions.json';
+const VERSIONS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
 /**
  * Fetches available Bun versions from the NPM registry.
  * Uses a failover strategy:
@@ -26,22 +31,30 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
   if (IS_TEST_MODE) {
     return [...TEST_REMOTE_VERSIONS];
   }
+
+  const cachePath = join(BVM_CACHE_DIR, VERSIONS_CACHE_FILE);
+  try {
+      if (await pathExists(cachePath)) {
+          const content = await readTextFile(cachePath);
+          const cache = JSON.parse(content);
+          if (Date.now() - cache.timestamp < VERSIONS_CACHE_TTL && Array.isArray(cache.versions)) {
+              return cache.versions;
+          }
+      }
+  } catch (e) {}
+
   const inChina = isChina();
   const registries = inChina 
     ? ['https://registry.npmmirror.com/bun', 'https://registry.npmjs.org/bun']
-    : ['https://registry.npmjs.org/bun', 'https://registry.npmjs.org/bun']; // npmmirror as fallback for global too, if desired
+    : ['https://registry.npmjs.org/bun', 'https://registry.npmmirror.com/bun'];
 
   let lastError: Error | null = null;
 
   for (const registry of registries) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout per registry
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
     try {
-      if (inChina && registry.includes('npmmirror')) {
-          // Optional: console.log(chalk.gray('Trying npmmirror...'));
-      }
-
       const response = await fetch(registry, {
         headers: {
           'User-Agent': USER_AGENT,
@@ -52,15 +65,26 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`Registry (${registry}) returned ${response.status}`);
+        throw new Error(`Status ${response.status}`);
       }
 
       const data = await response.json();
       if (!data.versions) {
-         throw new Error(`Invalid response from ${registry}`);
+         throw new Error(`Invalid response (no versions)`);
       }
 
-      return Object.keys(data.versions);
+      const keys = Object.keys(data.versions);
+      
+      // Save to cache
+      try {
+          await ensureDir(BVM_CACHE_DIR);
+          await writeTextFile(cachePath, JSON.stringify({
+              timestamp: Date.now(),
+              versions: keys
+          }));
+      } catch (e) {}
+
+      return keys;
     } catch (error: any) {
       clearTimeout(timeoutId);
       lastError = error;
@@ -125,8 +149,19 @@ export async function fetchBunVersions(): Promise<string[]> {
   // Strategy 1: NPM
   try {
     const versions = await fetchBunVersionsFromNpm();
-    const uniqueAndSortedVersions = Array.from(new Set(versions.filter(v => valid(v))));
-    return uniqueAndSortedVersions.sort(rcompare);
+    
+    // Optimization: Map-Sort-Map to avoid repeated parsing and GC issues
+    const mapped = versions
+        .filter(v => valid(v))
+        .map(v => ({ v, parsed: parse(v) }));
+        
+    // Reverse sort (newest first)
+    mapped.sort((a, b) => compareParsed(b.parsed, a.parsed));
+    
+    // De-duplicate (using Set on strings is faster after sort? Actually Set before is safer)
+    // But map-sort-map is easier on array.
+    // Let's just return mapped.map. Duplicates in NPM versions keys are unlikely (Object keys are unique).
+    return mapped.map(m => m.v);
   } catch (npmError: any) {
     // Strategy 2: Git
     try {
@@ -142,11 +177,69 @@ export async function fetchBunVersions(): Promise<string[]> {
 }
 
 /**
+ * Directly checks if a specific Bun version exists on the registry.
+ * This avoids fetching the entire version list for exact version installs.
+ */
+export async function checkBunVersionExists(version: string): Promise<boolean> {
+  if (IS_TEST_MODE) return true;
+  
+  const inChina = isChina();
+  const registry = inChina ? 'https://registry.npmmirror.com' : 'https://registry.npmjs.org';
+  // NPM Registry URL must not have the 'v' prefix
+  const plainVersion = version.replace(/^v/, '');
+  const url = `${registry}/bun/${plainVersion}`;
+
+  try {
+    // Use curl instead of fetch to avoid Bun runtime crashes on unstable Windows VMs
+    // -I: Header only
+    // -f: Fail silently (exit code 22) on server errors (404)
+    // -m 5: Max time 5 seconds
+    // -s: Silent
+    const curlCmd = OS_PLATFORM === 'win32' ? 'curl.exe' : 'curl';
+    await runCommand([curlCmd, '-I', '-f', '-m', '5', '-s', url], {
+        stdout: 'ignore',
+        stderr: 'ignore'
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Fetches distribution tags (latest, canary, etc.) from NPM.
+ * Used to resolve 'latest' without fetching the full version list.
+ */
+export async function fetchBunDistTags(): Promise<Record<string, string>> {
+  if (IS_TEST_MODE) return { latest: '1.1.20' };
+
+  const inChina = isChina();
+  const registry = inChina ? 'https://registry.npmmirror.com' : 'https://registry.npmjs.org';
+  const url = `${registry}/-/package/bun/dist-tags`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+        return await response.json();
+    }
+  } catch (e) {}
+  return {};
+}
+
+/**
  * Finds the download URL for a specific Bun version and platform.
  * @param version The target Bun version (e.g., "1.0.0", "latest").
  * @returns The download URL and the exact version found.
  */
-export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: string; foundVersion: string } | null> {
+export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: string; mirrorUrl?: string; foundVersion: string } | null> {
     const fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
 
     if (!valid(fullVersion)) {
@@ -195,14 +288,44 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
 export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; downloadUrl: string } | null> {
   const assetName = ASSET_NAME_FOR_BVM;
   
-  // Method 1: GitHub Redirect (No API Rate Limit)
+  // Method 1: jsDelivr (Fastest, CDN cached)
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    
+    const response = await fetch(`https://cdn.jsdelivr.net/gh/${REPO_FOR_BVM_CLI}@latest/package.json`, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+        const pkg = await response.json();
+        if (pkg && pkg.version) {
+            const tagName = `v${pkg.version}`; // convention: tag is vX.Y.Z
+            return {
+                tagName: tagName,
+                downloadUrl: `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tagName}/${assetName}`
+            };
+        }
+    }
+  } catch (e) {
+      // Fallback
+  }
+
+  // Method 2: GitHub Redirect (No API Rate Limit)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    
     const redirectUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/latest`;
     const response = await fetch(redirectUrl, { 
       method: 'HEAD',
       redirect: 'manual', // Don't follow automatically, we want the Location header
-      headers: { 'User-Agent': USER_AGENT }
+      headers: { 'User-Agent': USER_AGENT },
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     
     // GitHub returns 302 Found for /releases/latest -> /releases/tag/vX.Y.Z
     if (response.status === 302 || response.status === 301) {
@@ -223,12 +346,17 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
       // Ignore error and fall back to API
   }
 
-  // Method 2: GitHub API (Fallback)
+  // Method 3: GitHub API (Last Resort)
   const headers: HeadersInit = { 'User-Agent': USER_AGENT };
   const url = `https://api.github.com/repos/${REPO_FOR_BVM_CLI}/releases/latest`;
   
   try {
-    const response = await fetch(url, { headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+    const response = await fetch(url, { headers, signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       // Silently fail if release info cannot be fetched (e.g. rate limit or no releases yet)
       return null;

@@ -23,7 +23,9 @@ export const colors = {
 // --- Spinner ---
 export class Spinner {
   private timer: Timer | null = null;
-  private frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private frames = process.platform === 'win32' 
+    ? ['-', '\\', '|', '/'] 
+    : ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   private frameIndex = 0;
   private text: string;
 
@@ -35,7 +37,8 @@ export class Spinner {
     if (text) this.text = text;
     if (this.timer) return;
     this.timer = setInterval(() => {
-      process.stdout.write(`\r${colors.cyan(this.frames[this.frameIndex])} ${this.text}`);
+      // \r moves to start, \x1b[K clears the line
+      process.stdout.write(`\r\x1b[K${colors.cyan(this.frames[this.frameIndex])} ${this.text}`);
       this.frameIndex = (this.frameIndex + 1) % this.frames.length;
     }, 80);
   }
@@ -98,7 +101,13 @@ export class ProgressBar {
     const percentage = Math.min(1, this.current / this.total);
     const filled = Math.round(this.width * percentage);
     const empty = this.width - filled;
-    const bar = colors.green('█'.repeat(filled)) + colors.gray('░'.repeat(empty));
+    
+    // Use ASCII for Windows to avoid '?' or box characters in some environments
+    const isWindows = process.platform === 'win32';
+    const fillChar = isWindows ? '=' : '█';
+    const emptyChar = isWindows ? '-' : '░';
+
+    const bar = colors.green(fillChar.repeat(filled)) + colors.gray(emptyChar.repeat(empty));
     const percentStr = (percentage * 100).toFixed(0).padStart(3, ' ');
     
     const currentMB = (this.current / (1024 * 1024)).toFixed(1);
