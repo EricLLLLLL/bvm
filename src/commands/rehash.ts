@@ -107,36 +107,28 @@ async function resolveVersion() {
 
   // 2. .bvmrc (Upward search)
   let dir = process.cwd();
-  const root = path.parse(dir).root;
-  while (true) {
-    const rc = path.join(dir, '.bvmrc');
-    // Note: Bun.file(path).exists() is async
-    const file = Bun.file(rc);
-    if (await file.exists()) {
-        const v = await file.text();
-        const trimmed = v.trim();
-        if (trimmed) return trimmed.startsWith('v') ? trimmed : 'v' + trimmed;
+  try {
+    const { root } = path.parse(dir);
+    while (true) {
+        const rc = path.join(dir, '.bvmrc');
+        const file = Bun.file(rc);
+        if (await file.exists()) {
+            const v = (await file.text()).trim();
+            if (v) return v.startsWith('v') ? v : 'v' + v;
+        }
+        if (dir === root) break;
+        dir = path.dirname(dir);
     }
-    if (dir === root) break;
-    dir = path.dirname(dir);
-  }
+  } catch(e) {}
 
   // 3. Current Symlink (Junction)
   const current = path.join(BVM_DIR, 'current');
-  // Check if it's a valid directory first (resolve junction)
-  // Bun doesn't have native readlink/realpath exposed as simply yet for this context, 
-  // so we might need to stick to node 'fs' for realpath or use Bun.file().name?
-  // Actually, for resolving the junction target to get the version name, 
-  // fs.realpathSync is the most reliable way in Node/Bun compatibility.
-  // So let's keep 'fs' imported JUST for this specific realpath operation to be safe,
-  // or use the assumption that 'current' is a dir.
-  
   const fs = require('fs'); 
   if (fs.existsSync(current)) {
     try {
         const target = fs.realpathSync(current); 
         const v = path.basename(target);
-        if (v.startsWith('v')) return v;
+        if (v && v.startsWith('v')) return v;
     } catch(e) {}
   }
   
@@ -144,9 +136,8 @@ async function resolveVersion() {
   const def = path.join(BVM_DIR, 'aliases', 'default');
   const defFile = Bun.file(def);
   if (await defFile.exists()) {
-      const v = await defFile.text();
-      const trimmed = v.trim();
-      if (trimmed) return trimmed.startsWith('v') ? trimmed : 'v' + trimmed;
+      const v = (await defFile.text()).trim();
+      if (v) return v.startsWith('v') ? v : 'v' + v;
   }
 
   return '';
@@ -207,12 +198,9 @@ export async function rehash(): Promise<void> {
   await ensureDir(BVM_SHIMS_DIR);
 
   const isWindows = OS_PLATFORM === 'win32';
-  // On Windows, we NO LONGER generate .ps1 shims to avoid ExecutionPolicy issues.
-  // We only generate .cmd shims that invoke the JS logic.
-  const shimExtension = isWindows ? '.cmd' : ''; 
-  const template = isWindows ? SHIM_TEMPLATE_CMD : SHIM_TEMPLATE_BASH;
-
-  // On Windows, write the JS logic to a central file
+  
+  // On Windows, we generate a central shim.js and .cmd wrappers for each executable.
+  // We NO LONGER generate .ps1 shims to avoid ExecutionPolicy and syntax issues.
   if (isWindows) {
       const shimJsPath = join(BVM_DIR, 'bin', 'shim.js');
       await ensureDir(join(BVM_DIR, 'bin'));
@@ -230,59 +218,37 @@ export async function rehash(): Promise<void> {
       
       const binDir = join(BVM_VERSIONS_DIR, version, 'bin');
       if (await pathExists(binDir)) {
+        // Ensure essential binaries exist or create copies
         const bunPath = join(binDir, EXECUTABLE_NAME);
         if (await pathExists(bunPath)) {
-          // 1. Create essential aliases (bunx)
-          const compatLinks = ['bunx'];
-          for (const linkName of compatLinks) {
-            const linkPath = join(binDir, isWindows ? linkName + '.exe' : linkName);
-            const sourcePath = join(binDir, EXECUTABLE_NAME);
-            
-            if (!(await pathExists(linkPath))) {
-              try {
-                if (isWindows) {
-                    // Windows: Copy instead of symlink to avoid admin requirement and "file not found" issues
-                    await Bun.write(Bun.file(linkPath), Bun.file(sourcePath));
-                } else {
-                    await symlink(`./${EXECUTABLE_NAME}`, linkPath);
-                }
-              } catch (e) {}
+            const bunxPath = join(binDir, isWindows ? 'bunx.exe' : 'bunx');
+            if (!(await pathExists(bunxPath))) {
+                try {
+                    if (isWindows) {
+                        await Bun.write(Bun.file(bunxPath), Bun.file(bunPath));
+                    } else {
+                        await symlink(`./${EXECUTABLE_NAME}`, bunxPath);
+                    }
+                } catch (e) {}
             }
-          }
-
-          // 2. Clean up legacy problematic aliases (yarn, npm, pnpm) if they point to bun
-          const legacyLinks = ['yarn', 'npm', 'pnpm'];
-          for (const linkName of legacyLinks) {
-            const linkPath = join(binDir, linkName);
-            try {
-              const stats = await lstat(linkPath);
-              if (stats.isSymbolicLink()) {
-                const target = await readlink(linkPath);
-                // If it points to bun executable (either relative or absolute), it's a legacy BVM shim and should be removed
-                if (target === `./${EXECUTABLE_NAME}` || target.endsWith(`/${EXECUTABLE_NAME}`) || target === EXECUTABLE_NAME) {
-                   await unlink(linkPath);
-                }
-              }
-            } catch (e) {
-               // Ignore if file doesn't exist
-            }
-          }
         }
 
         const files = await readDir(binDir);
         for (const file of files) {
-          executables.add(file.replace(/\.(exe|ps1|cmd)$/i, ''));
+          // Add to unique set of executable names
+          const name = file.replace(/\.(exe|ps1|cmd)$/i, '');
+          if (name) executables.add(name);
         }
       }
     }
   }
 
+  // Create shims
   for (const exe of executables) {
     if (isWindows) {
         // Windows: Only .cmd
         const cmdPath = join(BVM_SHIMS_DIR, exe + '.cmd');
         await Bun.write(cmdPath, SHIM_TEMPLATE_CMD);
-        await chmod(cmdPath, 0o755);
     } else {
         // Unix: Standard bash shim
         const shimPath = join(BVM_SHIMS_DIR, exe);
@@ -291,24 +257,25 @@ export async function rehash(): Promise<void> {
     }
   }
 
-  // Cleanup old shims
+  // Cleanup old/unwanted shims
   const existingShims = await readDir(BVM_SHIMS_DIR);
   for (const shim of existingShims) {
     const shimNameWithoutExt = shim.replace(/\.(ps1|cmd)$/i, '');
     
-    // Windows: Remove any .ps1 files (legacy) and ensure only active .cmd exist
     if (isWindows) {
+        // Remove legacy .ps1 files immediately
         if (shim.endsWith('.ps1')) {
-            await unlink(join(BVM_SHIMS_DIR, shim));
+            try { await unlink(join(BVM_SHIMS_DIR, shim)); } catch (e) {}
             continue;
         }
+        // Remove .cmd if no longer needed
         if (shim.endsWith('.cmd') && !executables.has(shimNameWithoutExt)) {
-             await unlink(join(BVM_SHIMS_DIR, shim));
+             try { await unlink(join(BVM_SHIMS_DIR, shim)); } catch (e) {}
         }
     } else {
-        // Unix
+        // Unix cleanup
         if (!executables.has(shimNameWithoutExt)) {
-             await unlink(join(BVM_SHIMS_DIR, shim));
+             try { await unlink(join(BVM_SHIMS_DIR, shim)); } catch (e) {}
         }
     }
   }
