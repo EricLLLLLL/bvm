@@ -218,21 +218,34 @@ export async function rehash(): Promise<void> {
       
       const binDir = join(BVM_VERSIONS_DIR, version, 'bin');
       if (await pathExists(binDir)) {
-        // Ensure essential binaries exist or create copies
-        const bunPath = join(binDir, EXECUTABLE_NAME);
-        if (await pathExists(bunPath)) {
-            const bunxPath = join(binDir, isWindows ? 'bunx.exe' : 'bunx');
-            if (!(await pathExists(bunxPath))) {
-                try {
-                    if (isWindows) {
-                        await Bun.write(Bun.file(bunxPath), Bun.file(bunPath));
-                    } else {
-                        await symlink(`./${EXECUTABLE_NAME}`, bunxPath);
+                    // 1. Create essential aliases (bunx)
+                    const bunxPath = join(binDir, isWindows ? 'bunx.exe' : 'bunx');
+                    if (!(await pathExists(bunxPath))) {
+                        try {
+                            if (isWindows) {
+                                await Bun.write(Bun.file(bunxPath), Bun.file(bunPath));
+                            } else {
+                                await symlink(`./${EXECUTABLE_NAME}`, bunxPath);
+                            }
+                        } catch (e) {}
                     }
-                } catch (e) {}
-            }
-        }
-
+        
+                    // 2. Clean up legacy problematic aliases (yarn, npm, pnpm) if they point to bun
+                    const legacyLinks = ['yarn', 'npm', 'pnpm'];
+                    for (const linkName of legacyLinks) {
+                        const linkPath = join(binDir, linkName);
+                        try {
+                            const { lstat, readlink, unlink } = require('fs/promises');
+                            const stats = await lstat(linkPath);
+                            if (stats.isSymbolicLink()) {
+                                const target = await readlink(linkPath);
+                                if (target === `./${EXECUTABLE_NAME}` || target.endsWith(`/${EXECUTABLE_NAME}`) || target === EXECUTABLE_NAME) {
+                                    await unlink(linkPath);
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
         const files = await readDir(binDir);
         for (const file of files) {
           // Add to unique set of executable names
