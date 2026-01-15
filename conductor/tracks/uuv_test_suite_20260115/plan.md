@@ -9,13 +9,13 @@
     - 编写辅助函数用于捕获输出、检查退出码及验证文件系统变化。
 - [x] Task: Conductor - User Manual Verification 'Phase 1: E2E 测试框架搭建' (Protocol in workflow.md)
 
-## Phase 2: 安装脚本与隔离性测试
+## Phase 2: 安装脚本与隔离性测试 [checkpoint: 9f0f056]
 - [x] Task: 实现安装流测试 (Unix & Windows) [ff63279]
     - 验证 `install.sh` 和 `install.ps1` 在干净环境下的执行结果。
 - [x] Task: 实现 Shim 机制与隔离性测试 [5f5d071]
     - 验证 `bvm` 生成的 shim 是否能正确截获命令。
     - 验证切换版本后，子进程中的版本是否同步更新。
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: 安装脚本与隔离性测试' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: 安装脚本与隔离性测试' (Protocol in workflow.md) [9f0f056]
 
 ## Phase 3: 全命令覆盖与边缘情况
 - [ ] Task: 覆盖所有核心 BVM 命令
