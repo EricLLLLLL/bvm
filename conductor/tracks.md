@@ -31,3 +31,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: 整理 install.sh/ps1 流程、命令实现、测试环境、发布流程及 CDN 方法论，输出为 conductor/architecture.md
 *Link: [./conductor/tracks/project_architecture_doc_20260115/](./conductor/tracks/project_architecture_doc_20260115/)*
+
+---
+
+## [ ] Track: Fix install.ps1 compatibility with Windows PowerShell 5.1
+*Link: [./conductor/tracks/fix_install_ps1_20260115/](./conductor/tracks/fix_install_ps1_20260115/)*
+
+---
+
+## [x] **Track: Optimize Registry Selection via Race Strategy & IP Detection**
+*Link: [./conductor/tracks/optimize_registry_selection_20260115/](./conductor/tracks/optimize_registry_selection_20260115/)*
