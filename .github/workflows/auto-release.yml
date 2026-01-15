@@ -1,44 +1,80 @@
-name: Auto Release
+name: Auto Release Check
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'package.json' # Optimization: Only check when version likely changes
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  check-and-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Necessary to fetch all tags for comparison
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: 'latest'
 
+      - name: Check Version & Tag Existence
+        id: check
+        run: |
+          # Extract version from package.json
+          PACKAGE_VERSION=$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4)
+          TAG_NAME="v$PACKAGE_VERSION"
+          echo "Detected package.json version: $TAG_NAME"
+          
+          # Check if this tag already exists in the repo
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "✅ Tag $TAG_NAME already exists. Skipping release."
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "🚀 New version detected ($TAG_NAME). Proceeding with release."
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          fi
+
       - name: Install Dependencies
+        if: steps.check.outputs.should_release == 'true'
         run: bun install
 
       - name: Build Project
+        if: steps.check.outputs.should_release == 'true'
         run: bun run build
 
-      - name: Commit Artifacts to Tag
+      - name: Package & Push Tag
+        if: steps.check.outputs.should_release == 'true'
+        env:
+          TAG_NAME: ${{ steps.check.outputs.tag_name }}
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Force add dist/ (compiled artifact) so it's available via jsDelivr
+          # jsDelivr requires files to be in the git tree, not just Release Assets.
           git add -f dist/index.js
-          git commit -m "build: release artifacts [skip ci]" || echo "No changes to commit"
-          git tag -fa ${{ github.ref_name }} -m "Release ${{ github.ref_name }}"
-          git push origin ${{ github.ref_name }} --force
+          
+          # Commit artifacts. This commit will be pointed to by the TAG, but NOT pushed to main.
+          # This keeps main branch clean of build artifacts.
+          git commit -m "build: release artifacts for $TAG_NAME [skip ci]"
+          
+          # Create and push the tag
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
 
       - name: Create GitHub Release
+        if: steps.check.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.check.outputs.tag_name }}
           files: |
             dist/index.js
             install.sh
@@ -46,8 +82,16 @@ jobs:
           generate_release_notes: true
 
       - name: Purge jsDelivr Cache
+        if: steps.check.outputs.should_release == 'true'
         run: |
           echo "🧹 Purging jsDelivr cache..."
-          TAG_NAME=${GITHUB_REF#refs/tags/}
+          TAG_NAME=${{ steps.check.outputs.tag_name }}
+          # Purge specific version
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/dist/index.js || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/install.sh || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/install.ps1 || true
+          # Purge @latest alias
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/dist/index.js || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/install.sh || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/install.ps1 || true
           echo "Done."
