@@ -155,7 +155,7 @@ if ($env:BVM_REGISTRY) {
 }
 
 # 1. Resolve BVM and Bun Versions
-$BVM_VER = "v1.0.5" # Updated by release script
+$BVM_VER = "v1.0.6" # Updated by release script
 
 # Parse BVM Major version to use as Bun Major version for runtime
 $BVM_MAJOR = $BVM_VER.TrimStart('v').Split('.')[0]
