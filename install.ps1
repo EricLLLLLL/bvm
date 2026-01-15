@@ -110,13 +110,49 @@ function Expand-Tgz {
 
 # --- Main Logic ---
 
-# 0. Detect Registry
+# 0. Smart Registry Selection
 $REGISTRY = "registry.npmjs.org"
-$MIRROR = "registry.npmmirror.com"
-try {
-    $Test = Invoke-WebRequest -Uri "https://$MIRROR" -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue
-    if ($Test.StatusCode -eq 200) { $REGISTRY = $MIRROR }
-} catch {}
+
+if ($env:BVM_REGISTRY) {
+    $REGISTRY = $env:BVM_REGISTRY
+    Write-Host "Using registry from BVM_REGISTRY: $REGISTRY" -ForegroundColor Cyan
+} else {
+    $Mirror = "registry.npmmirror.com"
+    $Official = "registry.npmjs.org"
+    
+    Write-Host -NoNewline "Selecting best registry... "
+    
+    $TimeMirror = 9999
+    $TimeOfficial = 9999
+    
+    # 1. Test Mirror (Aggressive timeout)
+    try {
+        $TimeMirror = (Measure-Command { 
+            Invoke-WebRequest -Uri "https://$Mirror" -TimeoutSec 1.5 -UseBasicParsing -ErrorAction Stop 
+        }).TotalMilliseconds
+    } catch {}
+
+    # 2. Test Official
+    try {
+        $TimeOfficial = (Measure-Command { 
+            Invoke-WebRequest -Uri "https://$Official" -TimeoutSec 1.5 -UseBasicParsing -ErrorAction Stop 
+        }).TotalMilliseconds
+    } catch {}
+    
+    # 3. Compare
+    if ($TimeMirror -lt $TimeOfficial -and $TimeMirror -lt 1500) {
+        $REGISTRY = $Mirror
+        Write-Host "npmmirror ($([math]::Round($TimeMirror))ms)" -ForegroundColor Green
+    } else {
+        $REGISTRY = $Official
+        # Show time only if successful, else just Official
+        if ($TimeOfficial -lt 1500) {
+             Write-Host "npmjs ($([math]::Round($TimeOfficial))ms)" -ForegroundColor Green
+        } else {
+             Write-Host "npmjs (Default)" -ForegroundColor Gray
+        }
+    }
+}
 
 # 1. Resolve BVM and Bun Versions
 $BVM_VER = "v1.0.5" # Updated by release script
