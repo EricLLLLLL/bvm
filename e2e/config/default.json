@@ -1,0 +1,6 @@
+{
+  "test_env": "e2e-sandbox",
+  "bvm_home": "./.e2e-home",
+  "registry": "https://registry.npmjs.org",
+  "timeout": 30000
+}

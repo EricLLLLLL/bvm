@@ -60,7 +60,7 @@ jobs:
           
           # Force add dist/ (compiled artifact) so it's available via jsDelivr
           # jsDelivr requires files to be in the git tree, not just Release Assets.
-          git add -f dist/index.js
+          git add -f dist/index.js dist/bvm-shim.sh dist/bvm-shim.js
           
           # Commit artifacts. This commit will be pointed to by the TAG, but NOT pushed to main.
           # This keeps main branch clean of build artifacts.
@@ -77,6 +77,8 @@ jobs:
           tag_name: ${{ steps.check.outputs.tag_name }}
           files: |
             dist/index.js
+            dist/bvm-shim.sh
+            dist/bvm-shim.js
             install.sh
             install.ps1
           generate_release_notes: true
@@ -88,10 +90,14 @@ jobs:
           TAG_NAME=${{ steps.check.outputs.tag_name }}
           # Purge specific version
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/dist/index.js || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/dist/bvm-shim.sh || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/dist/bvm-shim.js || true
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/install.sh || true
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/install.ps1 || true
           # Purge @latest alias
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/dist/index.js || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/dist/bvm-shim.sh || true
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/dist/bvm-shim.js || true
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/install.sh || true
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/install.ps1 || true
           echo "Done."

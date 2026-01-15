@@ -222,39 +222,67 @@ fi
 # Link current runtime
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
-# 4. Download BVM Source
+# 4. Download BVM Source & Shim
 SRC_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/index.js"
-download_file "$SRC_URL" "${BVM_SRC_DIR}/index.js" "Downloading BVM Source (${BVM_SRC_VERSION})..."
+SHIM_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/bvm-shim.sh"
 
-if [ ! -f "${BVM_SRC_DIR}/index.js" ]; then
-    error "Failed to download BVM source."
+# Local fallback for development/testing
+if [ -f "./dist/index.js" ]; then
+    cp "./dist/index.js" "${BVM_SRC_DIR}/index.js"
+    info "Using local BVM source from dist/."
+else
+    download_file "$SRC_URL" "${BVM_SRC_DIR}/index.js" "Downloading BVM Source (${BVM_SRC_VERSION})..."
 fi
 
-# 5. Create Wrapper
-WRAPPER="${BVM_BIN_DIR}/bvm"
-cat > "$WRAPPER" <<EOF
+if [ -f "./dist/bvm-shim.sh" ]; then
+    cp "./dist/bvm-shim.sh" "${BVM_BIN_DIR}/bvm-shim.sh"
+    info "Using local shim logic from dist/."
+else
+    download_file "$SHIM_URL" "${BVM_BIN_DIR}/bvm-shim.sh" "Downloading Shim Logic..."
+fi
+
+if [ ! -f "${BVM_SRC_DIR}/index.js" ] || [ ! -f "${BVM_BIN_DIR}/bvm-shim.sh" ]; then
+    error "Failed to download BVM source or shim."
+fi
+chmod +x "${BVM_BIN_DIR}/bvm-shim.sh"
+
+# 5. Create Shims (Decoupled from index.js)
+echo -n -e "${BLUE}ℹ${RESET} Initializing shims... "
+
+# Create bvm wrapper
+cat > "${BVM_BIN_DIR}/bvm" <<EOF
 #!/bin/bash
 export BVM_DIR="$BVM_DIR"
-# Ensure we use the bundled runtime
 exec "${BVM_RUNTIME_DIR}/current/bin/bun" "$BVM_SRC_DIR/index.js" "\$@"
 EOF
-chmod +x "$WRAPPER"
+chmod +x "${BVM_BIN_DIR}/bvm"
 
-# 6. Initialize
+# Create bun and bunx shims
+for cmd in bun bunx; do
+  cat > "${BVM_SHIMS_DIR}/${cmd}" <<EOF
+#!/bin/bash
+export BVM_DIR="$BVM_DIR"
+exec "${BVM_BIN_DIR}/bvm-shim.sh" "$cmd" "\$@"
+EOF
+  chmod +x "${BVM_SHIMS_DIR}/${cmd}"
+done
+
+echo -e "${GREEN}Done${RESET}"
+
+# 6. Initialize First Version
 if [ ! -f "${BVM_ALIAS_DIR}/default" ]; then
+    # Create the versions entry for the first download
     mkdir -p "${BVM_DIR}/versions/v${BUN_VER}/bin"
     ln -sf "${TARGET_RUNTIME_DIR}/bin/bun" "${BVM_DIR}/versions/v${BUN_VER}/bin/bun"
+    # Set it as default
     echo "v${BUN_VER}" > "${BVM_ALIAS_DIR}/default"
 fi
 
-# Run setup/rehash
-# We capture the exit code to know if setup succeeded
-if "$WRAPPER" setup --silent >/dev/null 2>&1; then
-    SETUP_SUCCESS=true
-else
+# We no longer need to run '$WRAPPER rehash' because we just did it manually/statically
+SETUP_SUCCESS=true
+if ! "${BVM_BIN_DIR}/bvm" setup --silent >/dev/null 2>&1; then
     SETUP_SUCCESS=false
 fi
-"$WRAPPER" rehash --silent >/dev/null 2>&1 || true
 
 # 7. Final Instructions
 echo ""

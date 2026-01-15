@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "npx bun run src/index.ts",
-    "build": "npx bun build src/index.ts --target=bun --outfile dist/index.js --minify",
+    "build": "npx bun build src/index.ts --target=bun --outfile dist/index.js --minify && cp src/templates/bvm-shim.sh dist/ && cp src/templates/bvm-shim.js dist/",
     "test": "npx bun test test/*.ts",
     "bvm": "npx bun run src/index.ts",
     "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" npx bun run src/index.ts",
