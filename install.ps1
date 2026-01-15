@@ -1,18 +1,19 @@
 # BVM Installer for Windows (PowerShell)
-$ErrorActionPreference = "Stop"
+# Highlights:
+# 1. Zero external dependencies (no git, no node, no unzip needed).
+# 2. Native .tgz extraction using .NET (works on all Windows versions).
+# 3. Always uses fast NPM CDN.
 
-# Ensure TLS 1.2 is enabled for GitHub/CDN downloads
+$ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # --- Architecture Check ---
-$is64bit = [Environment]::Is64BitOperatingSystem
-if (-not $is64bit) {
-    Write-Host "Current Architecture: $env:PROCESSOR_ARCHITECTURE"
+if (-not [Environment]::Is64BitOperatingSystem) {
     Write-Error "BVM requires a 64-bit version of Windows."
     exit 1
 }
 
-# Configuration
+# --- Configuration ---
 $BVM_DIR = "$HOME\.bvm"
 $BVM_SRC_DIR = "$BVM_DIR\src"
 $BVM_RUNTIME_DIR = "$BVM_DIR\runtime"
@@ -20,55 +21,137 @@ $BVM_BIN_DIR = "$BVM_DIR\bin"
 $BVM_SHIMS_DIR = "$BVM_DIR\shims"
 $BVM_ALIAS_DIR = "$BVM_DIR\aliases"
 
-# 0. Smart Registry Selection
+# --- Helper: Polyfill for extracting .tgz without tar.exe ---
+function Expand-Tgz {
+    param([string]$Source, [string]$Destination)
+    
+    Write-Host "Extracting using PowerShell Native (Slow but steady)..." -ForegroundColor Gray
+    $fs = [System.IO.File]::OpenRead($Source)
+    try {
+        $gzip = New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionMode]::Decompress)
+        try {
+            $chunk = New-Object byte[] 512
+            $mem = New-Object System.IO.MemoryStream
+            $buffer = New-Object byte[] 8192
+            
+            # Simple TAR Parser
+            while ($true) {
+                $read = 0
+                while ($read -lt 512) {
+                    $n = $gzip.Read($chunk, $read, 512 - $read)
+                    if ($n -eq 0) { break }
+                    $read += $n
+                }
+                if ($read -eq 0) { break }
+                
+                # Check for end of archive (null block)
+                if (($chunk | Measure-Object -Sum).Sum -eq 0) { continue }
+                
+                # Parse Filename (0-100)
+                $nameBytes = $chunk[0..99] | Where-Object { $_ -ne 0 }
+                $name = [System.Text.Encoding]::ASCII.GetString($nameBytes).Trim()
+                if ([string]::IsNullOrWhiteSpace($name)) { continue }
+                
+                # Parse Size (124-135, octal)
+                $sizeBytes = $chunk[124..135] | Where-Object { $_ -ne 0 }
+                $sizeStr = [System.Text.Encoding]::ASCII.GetString($sizeBytes).Trim()
+                try { $size = [Convert]::ToInt64($sizeStr, 8) } catch { $size = 0 }
+                
+                # Parse Type (156) - '0' or '\0' is file, '5' is dir
+                $type = [char]$chunk[156]
+                
+                $targetPath = Join-Path $Destination $name
+                
+                # Blocks to consume
+                $blocks = [Math]::Ceiling($size / 512)
+                
+                if ($type -eq '0' -or $type -eq 0) {
+                    # Ensure dir exists
+                    $parent = Split-Path $targetPath
+                    if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+                    
+                    # Read File Data
+                    $outFile = [System.IO.File]::Create($targetPath)
+                    $remain = $size
+                    while ($remain -gt 0) {
+                        # We can read in 512 chunks or larger. 
+                        # Tar data is block aligned, but file size might not be.
+                        # We just need to read exactly $size bytes from the stream, 
+                        # BUT we must also consume the padding to finish the block.
+                        # Easier strategy: read block by block.
+                        
+                        $toRead = if ($remain -lt 512) { $remain } else { 512 }
+                        $readInBlock = 0
+                        while ($readInBlock -lt 512) {
+                             $k = $gzip.Read($chunk, $readInBlock, 512 - $readInBlock)
+                             if ($k -eq 0) { break }
+                             $readInBlock += $k
+                        }
+                        
+                        $outFile.Write($chunk, 0, $toRead)
+                        $remain -= $toRead
+                    }
+                    $outFile.Close()
+                } else {
+                    # Skip directory or other headers logic
+                    # Just consume bytes
+                     $skip = $blocks * 512
+                     while ($skip -gt 0) {
+                        $toSkip = if ($skip -lt 8192) { $skip } else { 8192 }
+                        $k = $gzip.Read($buffer, 0, $toSkip)
+                        if ($k -eq 0) { break }
+                        $skip -= $k
+                     }
+                }
+            }
+        } finally { $gzip.Dispose() }
+    } finally { $fs.Dispose() }
+}
+
+# --- Main Logic ---
+
+# 0. Detect Registry
 $REGISTRY = "registry.npmjs.org"
 $MIRROR = "registry.npmmirror.com"
 try {
-    # Test connection to mirror with 2s timeout
     $Test = Invoke-WebRequest -Uri "https://$MIRROR" -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue
-    if ($Test.StatusCode -eq 200) {
-        $REGISTRY = $MIRROR
-    }
-} catch {
-    # Ignore errors, stick to default
-}
+    if ($Test.StatusCode -eq 200) { $REGISTRY = $MIRROR }
+} catch {}
 
 # 1. Resolve BVM and Bun Versions
-$BVM_VER = "v1.0.0" # Fallback
-$BUN_VER = "1.3.5"  # Fallback
-$BUN_MAJOR = "1"    # Expected Bun Major Version for Runtime
+$BVM_VER = "v1.0.0" # Updated by release script
 
+# Parse BVM Major version to use as Bun Major version for runtime
+$BVM_MAJOR = $BVM_VER.TrimStart('v').Split('.')[0]
+$BUN_MAJOR = $BVM_MAJOR
+$BUN_VER = "" # To be resolved dynamically
+
+Write-Host -NoNewline "Resolving latest BVM version... "
+if ($env:BVM_INSTALL_VERSION) {
+    $BVM_VER = $env:BVM_INSTALL_VERSION
+    $BVM_MAJOR = $BVM_VER.TrimStart('v').Split('.')[0]
+    $BUN_MAJOR = $BVM_MAJOR
+    Write-Host "$BVM_VER (User Specified)" -ForegroundColor Green
+} else {
+    Write-Host "$BVM_VER" -ForegroundColor Green
+}
+
+Write-Host -NoNewline "Resolving latest Bun $BUN_MAJOR.x runtime... "
 try {
-    Write-Host -NoNewline "Resolving latest BVM version... "
-    
-    if ($env:BVM_INSTALL_VERSION) {
-        $BVM_VER = $env:BVM_INSTALL_VERSION
-        Write-Host "$BVM_VER (User Specified)" -ForegroundColor Green
-    } elseif ($BVM_INSTALL_VERSION) {
-        $BVM_VER = $BVM_INSTALL_VERSION
-        Write-Host "$BVM_VER (User Specified)" -ForegroundColor Green
-    } else {
-        # Get latest BVM version from GitHub main branch via jsDelivr
-        $PkgJson = (Invoke-RestMethod -Uri "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/package.json" -TimeoutSec 5)
-        if ($PkgJson -and $PkgJson.version) {
-            $BVM_VER = "v$($PkgJson.version)"
-            Write-Host "$BVM_VER" -ForegroundColor Green
-        } else {
-            Write-Host "Using fallback $BVM_VER" -ForegroundColor Yellow
-        }
-    }
-
-    Write-Host -NoNewline "Resolving latest Bun $BUN_MAJOR.x runtime... "
-    # Using irm (Invoke-RestMethod) to get the latest tag from NPM
+    # Fetch latest version for the current major from NPM
     $BunLatest = (Invoke-RestMethod -Uri "https://$REGISTRY/-/package/bun/dist-tags" -TimeoutSec 5).latest
     if ($BunLatest -and $BunLatest.StartsWith("$BUN_MAJOR.")) {
         $BUN_VER = $BunLatest
         Write-Host "v$BUN_VER" -ForegroundColor Green
     } else {
-        Write-Host "Failed (Using fallback v$BUN_VER)" -ForegroundColor Yellow
+        throw "Could not find compatible Bun version for major $BUN_MAJOR"
     }
 } catch {
-    Write-Host "Network Error (Using fallback versions)" -ForegroundColor Yellow
+    # Last resort fallback if registry is completely down - but we prefer dynamic
+    if (-not $BUN_VER) { 
+        $BUN_VER = "1.3.5" # Safe emergency fallback
+        Write-Host "Failed to resolve (Using emergency fallback v$BUN_VER)" -ForegroundColor Yellow
+    }
 }
 
 # 2. Setup Runtime
@@ -76,116 +159,89 @@ $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR
 foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null } }
 
 $TARGET_DIR = "$BVM_RUNTIME_DIR\v$BUN_VER"
+
 if (-not (Test-Path "$TARGET_DIR\bin\bun.exe")) {
-    Write-Host "Downloading BVM Runtime (bun@$BUN_VER)..."
+    Write-Host "Downloading Bun v$BUN_VER from NPM ($REGISTRY)..."
+    
+    # Always use NPM tgz
     $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$BUN_VER.tgz"
     $TMP = "$BVM_DIR\bun-runtime.tgz"
-    
-    # Clean up existing temp file to prevent curl write errors (Exit Code 23)
-    if (Test-Path $TMP) { Remove-Item $TMP -Force -ErrorAction SilentlyContinue }
+    $EXT_DIR = "$BVM_DIR\temp_extract"
+    if (Test-Path $EXT_DIR) { Remove-Item $EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue }
+    New-Item -ItemType Directory -Path $EXT_DIR -Force | Out-Null
 
     try {
         if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-            # Use curl.exe if available (Best reliability & Progress Bar)
-            # -# : Progress Bar
-            # -S : Show Error
-            # -f : Fail silently (server errors)
-            # -L : Follow Redirects
-            # -o : Output file
             & curl.exe "-#SfLo" "$TMP" "$URL"
-            if ($LASTEXITCODE -ne 0) { throw "curl failed with exit code $LASTEXITCODE" }
         } else {
-            throw "curl not found"
-        }
-    } catch {
-        Write-Warning "curl failed or missing. Falling back to Invoke-RestMethod..."
-        try {
             Invoke-RestMethod -Uri $URL -OutFile $TMP
-        } catch {
-            Write-Error "Failed to download runtime. $_"
-            exit 1
         }
-    }
-    Write-Host "Download complete."
-    
-    $EXT = "$BVM_DIR\temp_extract"
-    if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force -ErrorAction SilentlyContinue }
-    New-Item -ItemType Directory -Path $EXT -Force | Out-Null
-
-    Write-Host "Extracting..."
-    try {
-        # Windows 10+ comes with tar.exe. 
-        # npm packages are .tgz, so tar is perfect.
-        & tar -xf "$TMP" -C "$EXT"
-        if ($LASTEXITCODE -ne 0) { throw "tar failed with exit code $LASTEXITCODE" }
     } catch {
-        Write-Error "Failed to extract runtime. Ensure tar is installed or try a newer Windows version. $_"
+        Write-Error "Download failed: $_"
         exit 1
     }
-
-    # npm packages typically extract into a 'package' folder
-    $SourcePath = "$EXT\package"
-    if (-not (Test-Path $SourcePath)) {
-        # Fallback: Just grab the first directory if 'package' isn't there
-        $SourcePath = (Get-ChildItem -Path $EXT -Directory | Select-Object -First 1).FullName
-    }
-
-    if ($null -eq $SourcePath -or -not (Test-Path $SourcePath)) {
-        Write-Error "Extraction failed: Could not find extracted folder structure."
-        exit 1
-    }
-
-    # Move to target version directory
-    Move-Item -Path $SourcePath -Destination $TARGET_DIR -Force
     
-    # Cleanup
+    # Extract
+    if (Get-Command tar.exe -ErrorAction SilentlyContinue) {
+        Write-Host "Extracting (using tar.exe)..."
+        try {
+            & tar -xf "$TMP" -C "$EXT_DIR"
+            if ($LASTEXITCODE -ne 0) { throw "tar failed" }
+        } catch {
+            Write-Warning "tar failed, falling back to PowerShell polyfill..."
+            Expand-Tgz -Source "$TMP" -Destination "$EXT_DIR"
+        }
+    } else {
+        Expand-Tgz -Source "$TMP" -Destination "$EXT_DIR"
+    }
+
+    # Locate and Move
+    # NPM package structure is usually 'package/bin/bun.exe' or 'package/bun.exe'
+    $FoundBun = Get-ChildItem -Path $EXT_DIR -Filter "bun.exe" -Recurse | Select-Object -First 1
+    if (-not $FoundBun) {
+        Write-Error "Extraction failed: bun.exe not found."
+        exit 1
+    }
+
+    if (Test-Path $TARGET_DIR) { Remove-Item $TARGET_DIR -Recurse -Force -ErrorAction SilentlyContinue }
+    New-Item -ItemType Directory -Path "$TARGET_DIR\bin" -Force | Out-Null
+    
+    Move-Item -Path $FoundBun.FullName -Destination "$TARGET_DIR\bin\bun.exe" -Force
+    
+    # Clean
     Remove-Item $TMP -Force -ErrorAction SilentlyContinue
-    Remove-Item $EXT -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item $EXT_DIR -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# 3. Download Source
+# 3. Download BVM Source
 $LOCAL_DIST = "$PSScriptRoot\dist\index.js"
-
 if (Test-Path $LOCAL_DIST) {
-    Write-Host "Using local BVM build from $LOCAL_DIST..." -ForegroundColor Cyan
     Copy-Item $LOCAL_DIST "$BVM_SRC_DIR\index.js" -Force
 } else {
-    Write-Host "Downloading BVM Source ($BVM_VER)..."
+    Write-Host "Downloading BVM Source..."
     $SRC_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_VER/dist/index.js"
-
     try {
         if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-            # Use curl.exe if available (Best reliability & Progress Bar)
             & curl.exe "-#SfLo" "$BVM_SRC_DIR\index.js" "$SRC_URL"
-            if ($LASTEXITCODE -ne 0) { throw "curl failed with exit code $LASTEXITCODE" }
         } else {
-            throw "curl not found"
+            Invoke-RestMethod -Uri $SRC_URL -OutFile "$BVM_SRC_DIR\index.js"
         }
     } catch {
-        Write-Warning "curl failed or missing. Falling back to Invoke-RestMethod..."
-        try {
-            Invoke-RestMethod -Uri $SRC_URL -OutFile "$BVM_SRC_DIR\index.js"
-        } catch {
-            Write-Error "Failed to download BVM source. $_"
-            exit 1
-        }
+        Write-Error "Failed to download BVM source."
+        exit 1
     }
-    Write-Host "Download complete."
 }
 
-# 4. Finalize
-Write-Host -NoNewline "Configuring shell... "
-
-# Create bvm.cmd wrapper
+# 4. Configure Shell & Wrapper
+Write-Host -NoNewline "Configuring... "
 $Wrapper = "@echo off`r`nset `"BVM_DIR=%USERPROFILE%\.bvm`"`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\src\index.js`" %*"
 Set-Content -Path "$BVM_BIN_DIR\bvm.cmd" -Value $Wrapper -Encoding Ascii
 
-# Update PATH (User Level Persistence)
+# Update PATH
 $Path = [Environment]::GetEnvironmentVariable("Path", "User")
 $New = @("$BVM_SHIMS_DIR", "$BVM_BIN_DIR")
 $Changed = $false
 foreach ($p in $New) { 
-    # Simple check; for robustness we might split by ; but this covers most cases
     if ($Path -notlike "*$p*") { 
         $Path = "$p;$Path"
         $Changed = $true
@@ -195,70 +251,43 @@ if ($Changed) {
     [Environment]::SetEnvironmentVariable("Path", $Path, "User")
 }
 
-# Update Current Session PATH so immediate calls work
+# Session Environment
 $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
 $env:BVM_DIR = $BVM_DIR
 
-# 5. Initialize Default Version (Critical for 'bun' to work immediately)
-$DEFAULT_ALIAS = "$BVM_ALIAS_DIR\default"
-if (-not (Test-Path $DEFAULT_ALIAS)) {
-    $VERSION_DIR = "$BVM_DIR\versions\v$BUN_VER"
-    
-    # Copy the runtime we just downloaded to the versions directory
-    # This avoids downloading it again and ensures 'bun' works instantly
-    if (-not (Test-Path $VERSION_DIR)) {
-        Write-Host "Initializing default Bun version (v$BUN_VER)..."
-        New-Item -ItemType Directory -Path "$BVM_DIR\versions" -Force | Out-Null
-        
-        # Copy from runtime/v1.3.5 to versions/v1.3.5
-        # Use Copy-Item -Recurse to copy the whole folder structure (bin/bun.exe)
-        Copy-Item -Path "$BVM_RUNTIME_DIR\v$BUN_VER" -Destination $VERSION_DIR -Recurse -Force
-    }
-
-    # Set default alias
-    Set-Content -Path $DEFAULT_ALIAS -Value "v$BUN_VER" -Encoding Ascii
-    Write-Host "Set default version to v$BUN_VER"
-}
-
-# Ensure 'current' points to the installed version so bootstrapping works
+# 5. Link Current & Default
 $CURRENT_LINK = "$BVM_RUNTIME_DIR\current"
-if (Test-Path $CURRENT_LINK) {
-    Remove-Item $CURRENT_LINK -Force -Recurse -ErrorAction SilentlyContinue
-}
-Write-Host "Linking 'current' to v$BUN_VER..."
+if (Test-Path $CURRENT_LINK) { Remove-Item $CURRENT_LINK -Force -Recurse -ErrorAction SilentlyContinue }
 New-Item -ItemType Junction -Path $CURRENT_LINK -Target "$BVM_RUNTIME_DIR\v$BUN_VER" | Out-Null
 
-# Run Setup and Rehash
-try {
-    # Clean up legacy .ps1 shims explicitly before rehash
-    if (Test-Path "$BVM_SHIMS_DIR\*.ps1") {
-        Remove-Item "$BVM_SHIMS_DIR\*.ps1" -Force -ErrorAction SilentlyContinue
+$DEFAULT_ALIAS = "$BVM_ALIAS_DIR\default"
+if (-not (Test-Path $DEFAULT_ALIAS)) {
+    # Bootstrap versions folder for 'bvm use'
+    $VERSION_DIR = "$BVM_DIR\versions\v$BUN_VER"
+    if (-not (Test-Path $VERSION_DIR)) {
+        New-Item -ItemType Directory -Path (Split-Path $VERSION_DIR) -Force | Out-Null
+        Copy-Item -Path "$BVM_RUNTIME_DIR\v$BUN_VER" -Destination $VERSION_DIR -Recurse -Force
     }
-
-    & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
-    & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" rehash --silent
-} catch {
-    Write-Warning "Setup/Rehash step failed. Attempting manual shim patch..."
+    Set-Content -Path $DEFAULT_ALIAS -Value "v$BUN_VER" -Encoding Ascii
 }
 
-# --- Execution Policy Check ---
+# 6. Rehash
+Write-Host "Initializing..."
+try {
+    if (Test-Path "$BVM_SHIMS_DIR\*.ps1") { Remove-Item "$BVM_SHIMS_DIR\*.ps1" -Force }
+    & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" setup --silent
+    & "$BVM_RUNTIME_DIR\current\bin\bun.exe" "$BVM_SRC_DIR\index.js" rehash
+} catch {
+    Write-Warning "Shim generation failed. You may need to run 'bvm rehash' manually."
+}
+
+# Execution Policy Check
 try {
     $Policy = Get-ExecutionPolicy -Scope CurrentUser
     if ($Policy -eq "Undefined" -or $Policy -eq "Restricted") {
-        Write-Host "`n`e[1;33m[!] Notice: Adjusting PowerShell Execution Policy...`e[0m"
-        Write-Host "BVM requires scripts to be executable to load configuration."
-        Write-Host "Setting 'RemoteSigned' for CurrentUser."
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
     }
-} catch {
-    Write-Warning "Could not automatically set Execution Policy. If you see 'Running scripts is disabled', please run:"
-    Write-Warning "Set-ExecutionPolicy RemoteSigned -Scope CurrentUser"
-}
+} catch {}
 
-Write-Host "Done."
-
-Write-Host "`n`e[1;32m[OK] BVM $BVM_VER installed successfully!`e[0m"
-Write-Host "`nTo start using bvm:"
-Write-Host "  1. Restart your terminal (Command Prompt or PowerShell)."
-Write-Host "  2. Verify:"
-Write-Host "     bvm --version"
+Write-Host "`n`e[1;32m[OK] BVM $BVM_VER installed!`e[0m"
+Write-Host "Please restart your terminal."

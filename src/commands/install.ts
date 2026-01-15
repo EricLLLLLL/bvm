@@ -1,5 +1,5 @@
 import { join, basename, dirname } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, IS_TEST_MODE, OS_PLATFORM } from '../constants';
+import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, IS_TEST_MODE, OS_PLATFORM, BVM_ALIAS_DIR } from '../constants';
 import { ensureDir, pathExists, removeDir, resolveVersion, normalizeVersion, readDir, getActiveVersion } from '../utils';
 import { findBunDownloadUrl, fetchBunVersions, checkBunVersionExists, fetchBunDistTags } from '../api';
 import { colors, ProgressBar } from '../utils/ui';
@@ -122,7 +122,7 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                  resolvedVersion = normVersion;
              } else {
                  spinner.fail(colors.red(`Bun version ${normVersion} not found on registry.`));
-                 return;
+                 throw new Error(`Bun version ${normVersion} not found on registry.`);
              }
         }
         
@@ -143,7 +143,7 @@ export async function installBunVersion(targetVersion?: string, options: { globa
             spinner.fail(colors.yellow(`Fuzzy matching (e.g. "1.1") is disabled for stability.`));
             console.log(colors.dim(`  Please specify the exact version (e.g. "1.1.20") or "latest".`));
             console.log(colors.dim(`  To see available versions, run: bvm ls-remote`));
-            return;
+            throw new Error('Fuzzy matching disabled');
         }
 
         if (!resolvedVersion) {
@@ -278,6 +278,12 @@ Debug: ${error.message}`)); // Visible if spinner fails
   if (installedVersion) {
       try {
           await useBunVersion(installedVersion, { silent: true });
+          
+          // Auto-set default alias if it doesn't exist (first install)
+          const defaultAliasPath = join(BVM_ALIAS_DIR, 'default');
+          if (!(await pathExists(defaultAliasPath))) {
+              await createAlias('default', installedVersion, { silent: true });
+          }
       } catch (e) {
           // Ignore if switch fails (though unlikely if installed)
       }

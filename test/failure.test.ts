@@ -21,7 +21,7 @@ describe("Failure & Edge Cases Suite", () => {
       // But let's try a very weird version.
       const { exitCode, allOutput } = await runBvm(["install", "999.999.999"]);
       expect(exitCode).not.toBe(0);
-      expect(allOutput).toContain("Could not find a Bun release");
+      expect(allOutput).toContain("not found on registry");
   });
 
   // --- Use Failures ---

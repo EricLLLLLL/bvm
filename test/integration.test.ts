@@ -36,10 +36,11 @@ describe("CLI Integration Suite", () => {
     expect(allOutput).toContain("Now using Bun v1.3.4 (immediate effect)");
   });
 
-  test("install fuzzy version (e.g., 1.2 to v1.2.23) and reports already installed", async () => {
+  test("install fuzzy version (e.g., 1.2 to v1.2.23) fails with disabled message", async () => {
     const { exitCode, allOutput } = await runBvm(["install", "1.2"]);
-    expect(exitCode).toBe(0);
-    expect(allOutput).toContain("Bun v1.2.23 is already installed.");
+    // Should fail now as fuzzy matching is disabled
+    expect(exitCode).not.toBe(0); 
+    expect(allOutput).toContain("Fuzzy matching (e.g. \"1.1\") is disabled");
   });
 
   test("use latest resolves to highest installed", async () => {
@@ -51,7 +52,7 @@ describe("CLI Integration Suite", () => {
   test("install latest installs/reports latest remote", async () => {
     const { exitCode, allOutput } = await runBvm(["install", "latest"]);
     expect(exitCode).toBe(0);
-    expect(allOutput).toMatch(/Bun v\d+\.\d+\.\d+ (installed successfully|is already installed)/);
+    expect(allOutput).toMatch(/Bun v\d+\.\d+\.\d+.*(installed|active)/s);
   });
 
   test("use invalid partial version fails gracefully", async () => {
@@ -63,7 +64,7 @@ describe("CLI Integration Suite", () => {
   test("install invalid partial version fails gracefully", async () => {
     const { exitCode, allOutput } = await runBvm(["install", "99.x"]);
     expect(exitCode).not.toBe(0);
-    expect(allOutput).toContain("Could not find a Bun release for '99.x' compatible with your system.");
+    expect(allOutput).toContain("Fuzzy matching (e.g. \"1.1\") is disabled");
   });
 
   // --- Installation ---

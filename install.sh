@@ -141,24 +141,23 @@ echo -e ""
 # 1. Resolve BVM and Bun Versions
 echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
 
-# Resolve latest BVM version
-BVM_LATEST_VER=$(curl -s https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/package.json | grep -oE '"version":\s*"[^"]+"' | cut -d'"' -f4 || echo "")
-if [ -n "$BVM_LATEST_VER" ]; then
-    BVM_SRC_VERSION="v${BVM_LATEST_VER}"
-fi
+# BVM Version (Fixed at release time)
+# BVM_SRC_VERSION is already set via DEFAULT_BVM_VERSION or env
 
-# Resolve latest Bun 1.x runtime
-BUN_MAJOR="1"
+# Calculate Major version for Bun runtime
+BVM_PLAIN_VER="${BVM_SRC_VERSION#v}"
+BUN_MAJOR="${BVM_PLAIN_VER%%.*}"
+
+# Resolve latest Bun matching that major version
 BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
 if [[ "$BUN_LATEST" == "$BUN_MAJOR."* ]]; then
     BUN_VER="$BUN_LATEST"
 else
-    BUN_VER="$FALLBACK_BUN_VERSION"
+    # Emergency fallback
+    BUN_VER="1.3.5"
 fi
 
 echo -e "${GREEN}Done${RESET}"
-echo -e "   Detected BVM: ${CYAN}${BVM_SRC_VERSION}${RESET}"
-echo -e "   Detected Bun: ${GREEN}v${BUN_VER}${RESET}"
 
 # 2. Setup Directories
 mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR"

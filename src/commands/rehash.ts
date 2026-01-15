@@ -235,10 +235,17 @@ export async function rehash(): Promise<void> {
           // 1. Create essential aliases (bunx)
           const compatLinks = ['bunx'];
           for (const linkName of compatLinks) {
-            const linkPath = join(binDir, linkName);
+            const linkPath = join(binDir, isWindows ? linkName + '.exe' : linkName);
+            const sourcePath = join(binDir, EXECUTABLE_NAME);
+            
             if (!(await pathExists(linkPath))) {
               try {
-                await symlink(`./${EXECUTABLE_NAME}`, linkPath);
+                if (isWindows) {
+                    // Windows: Copy instead of symlink to avoid admin requirement and "file not found" issues
+                    await Bun.write(Bun.file(linkPath), Bun.file(sourcePath));
+                } else {
+                    await symlink(`./${EXECUTABLE_NAME}`, linkPath);
+                }
               } catch (e) {}
             }
           }

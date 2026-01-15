@@ -181,7 +181,9 @@ export async function fetchBunVersions(): Promise<string[]> {
  * This avoids fetching the entire version list for exact version installs.
  */
 export async function checkBunVersionExists(version: string): Promise<boolean> {
-  if (IS_TEST_MODE) return true;
+  if (IS_TEST_MODE) {
+      return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
+  }
   
   const inChina = isChina();
   const registry = inChina ? 'https://registry.npmmirror.com' : 'https://registry.npmjs.org';
