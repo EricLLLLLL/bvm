@@ -18,6 +18,16 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: 重构 install.sh 和 install.ps1 实现自引导（Bootstrap）模式
+## [x] Track: 重构 install.sh 和 install.ps1 实现自引导（Bootstrap）模式
 
 *Link: [./conductor/tracks/bootstrap_install_20260115/](./conductor/tracks/bootstrap_install_20260115/)*
+
+---
+
+## [x] Track: UUV Comprehensive Test Suite for BVM
+*Link: [./conductor/tracks/uuv_test_suite_20260115/](./conductor/tracks/uuv_test_suite_20260115/)*
+
+---
+
+## [x] Track: 整理 install.sh/ps1 流程、命令实现、测试环境、发布流程及 CDN 方法论，输出为 conductor/architecture.md
+*Link: [./conductor/tracks/project_architecture_doc_20260115/](./conductor/tracks/project_architecture_doc_20260115/)*
