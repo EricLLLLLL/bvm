@@ -2,6 +2,7 @@ import { colors } from '../utils/ui';
 import { valid, gt } from '../utils/semver-lite';
 import { IS_TEST_MODE, BVM_SRC_DIR } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
+import { fetchWithTimeout } from '../utils/network-utils';
 import packageJson from '../../package.json';
 import { withSpinner } from '../command-runner';
 import { join } from 'path';
@@ -48,7 +49,7 @@ export async function upgradeBvm(): Promise<void> {
         // We download the pre-built index.js from jsDelivr for the specific tag
         const cdnUrl = `https://cdn.jsdelivr.net/gh/${REPO_OWNER}/${REPO_NAME}@${latest.tagName}/dist/index.js`;
         
-        const response = await fetch(cdnUrl);
+        const response = await fetchWithTimeout(cdnUrl, { timeout: 10000 });
         if (!response.ok) {
           throw new Error(`Failed to download BVM source from CDN: ${response.statusText} (${response.status})`);
         }

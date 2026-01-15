@@ -5,27 +5,14 @@ import { valid, rcompare, parse, compareParsed } from './utils/semver-lite';
 import { colors } from './utils/ui';
 import { getBunNpmPackage, getBunDownloadUrl } from './utils/npm-lookup';
 import { runCommand } from './helpers/process';
-
-/**
- * Detects if the user is likely in China based on timezone.
- */
-function isChina(): boolean {
-  try {
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return timeZone === 'Asia/Shanghai' || timeZone === 'Asia/Chongqing' || timeZone === 'Asia/Harbin' || timeZone === 'Asia/Urumqi';
-  } catch (e) {
-    return false;
-  }
-}
+import { getFastestRegistry, fetchWithTimeout } from './utils/network-utils';
 
 const VERSIONS_CACHE_FILE = 'bun-versions.json';
 const VERSIONS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 /**
  * Fetches available Bun versions from the NPM registry.
- * Uses a failover strategy:
- * - In China: Prefer npmmirror, fallback to npmjs.
- * - Elsewhere: Prefer npmjs, fallback to npmmirror.
+ * Uses the fastest available registry based on race strategy.
  */
 export async function fetchBunVersionsFromNpm(): Promise<string[]> {
   if (IS_TEST_MODE) {
@@ -43,26 +30,27 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
       }
   } catch (e) {}
 
-  const inChina = isChina();
-  const registries = inChina 
-    ? ['https://registry.npmmirror.com/bun', 'https://registry.npmjs.org/bun']
-    : ['https://registry.npmjs.org/bun', 'https://registry.npmmirror.com/bun'];
+  const fastestRegistry = await getFastestRegistry();
+  // Fallback: If fastest fails, try official
+  const registries = [fastestRegistry];
+  if (fastestRegistry !== 'https://registry.npmjs.org') {
+      registries.push('https://registry.npmjs.org');
+  }
 
   let lastError: Error | null = null;
 
   for (const registry of registries) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    // Append /bun to the registry URL for the package info
+    const url = `${registry.replace(/\/$/, '')}/bun`;
 
     try {
-      const response = await fetch(registry, {
+      const response = await fetchWithTimeout(url, {
         headers: {
           'User-Agent': USER_AGENT,
           'Accept': 'application/vnd.npm.install-v1+json'
         },
-        signal: controller.signal
+        timeout: 10000 // 10s timeout
       });
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Status ${response.status}`);
@@ -86,7 +74,6 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
 
       return keys;
     } catch (error: any) {
-      clearTimeout(timeoutId);
       lastError = error;
       // Continue to next registry
     }
@@ -158,9 +145,6 @@ export async function fetchBunVersions(): Promise<string[]> {
     // Reverse sort (newest first)
     mapped.sort((a, b) => compareParsed(b.parsed, a.parsed));
     
-    // De-duplicate (using Set on strings is faster after sort? Actually Set before is safer)
-    // But map-sort-map is easier on array.
-    // Let's just return mapped.map. Duplicates in NPM versions keys are unlikely (Object keys are unique).
     return mapped.map(m => m.v);
   } catch (npmError: any) {
     // Strategy 2: Git
@@ -185,27 +169,31 @@ export async function checkBunVersionExists(version: string): Promise<boolean> {
       return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
   }
   
-  const inChina = isChina();
-  const registry = inChina ? 'https://registry.npmmirror.com' : 'https://registry.npmjs.org';
+  const registry = await getFastestRegistry();
   // NPM Registry URL must not have the 'v' prefix
   const plainVersion = version.replace(/^v/, '');
   const url = `${registry}/bun/${plainVersion}`;
 
-  try {
-    // Use curl instead of fetch to avoid Bun runtime crashes on unstable Windows VMs
-    // -I: Header only
-    // -f: Fail silently (exit code 22) on server errors (404)
-    // -m 5: Max time 5 seconds
-    // -s: Silent
-    const curlCmd = OS_PLATFORM === 'win32' ? 'curl.exe' : 'curl';
-    await runCommand([curlCmd, '-I', '-f', '-m', '5', '-s', url], {
-        stdout: 'ignore',
-        stderr: 'ignore'
-    });
-    return true;
-  } catch (e) {
-    return false;
-  }
+  const curlCmd = OS_PLATFORM === 'win32' ? 'curl.exe' : 'curl';
+  
+  // Safety Wrapper: Don't let a sub-process hang the whole CLI
+  const runWithTimeout = async () => {
+      try {
+        await runCommand([curlCmd, '-I', '-f', '-m', '5', '-s', url], {
+            stdout: 'ignore',
+            stderr: 'ignore'
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
+  };
+
+  const timeout = new Promise<boolean>((resolve) => 
+      setTimeout(() => resolve(false), 10000) // 10s hard timeout
+  );
+
+  return Promise.race([runWithTimeout(), timeout]);
 }
 
 /**
@@ -215,19 +203,14 @@ export async function checkBunVersionExists(version: string): Promise<boolean> {
 export async function fetchBunDistTags(): Promise<Record<string, string>> {
   if (IS_TEST_MODE) return { latest: '1.1.20' };
 
-  const inChina = isChina();
-  const registry = inChina ? 'https://registry.npmmirror.com' : 'https://registry.npmjs.org';
+  const registry = await getFastestRegistry();
   const url = `${registry}/-/package/bun/dist-tags`;
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         headers: { 'User-Agent': USER_AGENT },
-        signal: controller.signal
+        timeout: 5000
     });
-    clearTimeout(timeoutId);
     
     if (response.ok) {
         return await response.json();
@@ -265,15 +248,14 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
     }
 
     // Determine Registry
-    // Priority: BVM_REGISTRY > BVM_DOWNLOAD_MIRROR (legacy) > Auto-detect
-    let registry = 'https://registry.npmjs.org';
+    // Priority: BVM_REGISTRY > Race Strategy
+    let registry = '';
     if (process.env.BVM_REGISTRY) {
         registry = process.env.BVM_REGISTRY;
     } else if (process.env.BVM_DOWNLOAD_MIRROR) {
-        // Fallback for backward compatibility, though mirror URL structure might differ
         registry = process.env.BVM_DOWNLOAD_MIRROR;
-    } else if (isChina()) {
-        registry = 'https://registry.npmmirror.com';
+    } else {
+        registry = await getFastestRegistry();
     }
 
     // Strip 'v' from version for NPM (1.1.0 not v1.1.0)
@@ -292,14 +274,10 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
   
   // Method 1: jsDelivr (Fastest, CDN cached)
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    
-    const response = await fetch(`https://cdn.jsdelivr.net/gh/${REPO_FOR_BVM_CLI}@latest/package.json`, {
+    const response = await fetchWithTimeout(`https://cdn.jsdelivr.net/gh/${REPO_FOR_BVM_CLI}@latest/package.json`, {
         headers: { 'User-Agent': USER_AGENT },
-        signal: controller.signal
+        timeout: 2000
     });
-    clearTimeout(timeoutId);
 
     if (response.ok) {
         const pkg = await response.json();
@@ -317,17 +295,13 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
 
   // Method 2: GitHub Redirect (No API Rate Limit)
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    
     const redirectUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/latest`;
-    const response = await fetch(redirectUrl, { 
+    const response = await fetchWithTimeout(redirectUrl, {
       method: 'HEAD',
       redirect: 'manual', // Don't follow automatically, we want the Location header
       headers: { 'User-Agent': USER_AGENT },
-      signal: controller.signal
+      timeout: 2000
     });
-    clearTimeout(timeoutId);
     
     // GitHub returns 302 Found for /releases/latest -> /releases/tag/vX.Y.Z
     if (response.status === 302 || response.status === 301) {
@@ -353,14 +327,9 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
   const url = `https://api.github.com/repos/${REPO_FOR_BVM_CLI}/releases/latest`;
   
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-    const response = await fetch(url, { headers, signal: controller.signal });
-    clearTimeout(timeoutId);
+    const response = await fetchWithTimeout(url, { headers, timeout: 2000 });
 
     if (!response.ok) {
-      // Silently fail if release info cannot be fetched (e.g. rate limit or no releases yet)
       return null;
     }
     const release = await response.json();
@@ -372,7 +341,9 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
       downloadUrl: downloadUrl,
     };
   } catch (error: any) {
-    // Silently fail on network error
     return null;
   }
 }
+
+// Missing imports to fix potential compilation errors
+import { pathExists, readTextFile, writeTextFile, ensureDir } from './utils';
