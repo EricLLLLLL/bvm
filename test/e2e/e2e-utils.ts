@@ -1,5 +1,5 @@
 import { join } from "path";
-import { rmSync, mkdirSync, existsSync, readdirSync, readFileSync } from "fs";
+import { rmSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync, chmodSync, symlinkSync } from "fs";
 import { execa } from "execa";
 import { tmpdir } from "os";
 import { randomBytes } from "crypto";
@@ -129,5 +129,21 @@ export async function runInstallScript(sandboxDir: string, env: Record<string, s
             exitCode: result.exitCode ?? 1,
             all: stripAnsi(result.all ?? "")
         };
+    }
+}
+
+export function mockRuntime(sandboxDir: string, version: string) {
+    const runtimeDir = join(sandboxDir, ".bvm", "runtime", `v${version}`, "bin");
+    mkdirSync(runtimeDir, { recursive: true });
+    
+    const bunPath = join(runtimeDir, process.platform === "win32" ? "bun.exe" : "bun");
+    
+    // Symlink system bun (which is running this test) to the mock location
+    // This allows bvm (which is JS) to run using this runtime without downloading.
+    try {
+        if (existsSync(bunPath)) rmSync(bunPath);
+        symlinkSync(process.execPath, bunPath);
+    } catch (e) {
+        console.error("Failed to symlink bun:", e);
     }
 }

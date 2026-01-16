@@ -1,6 +1,6 @@
 {
   "name": "@bvm-cli/core",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "The native version manager for Bun. Cross-platform, shell-agnostic, and zero-dependency.",
   "main": "src/index.ts",
   "publishConfig": {
@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npx bun run src/index.ts",
     "build": "npx bun build src/index.ts --target=bun --outfile dist/index.js --minify",
-    "test": "npx bun test test/*.ts",
+    "test": "npx bun test",
     "bvm": "npx bun run src/index.ts",
     "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" npx bun run src/index.ts",
     "release": "npx bun run scripts/release.ts",

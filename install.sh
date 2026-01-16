@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.0.7"
+DEFAULT_BVM_VERSION="v1.0.9"
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
 
@@ -149,12 +149,16 @@ BVM_PLAIN_VER="${BVM_SRC_VERSION#v}"
 BUN_MAJOR="${BVM_PLAIN_VER%%.*}"
 
 # Resolve latest Bun matching that major version
-BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
-if [[ "$BUN_LATEST" == "$BUN_MAJOR."* ]]; then
-    BUN_VER="$BUN_LATEST"
+if [ -n "$BVM_INSTALL_BUN_VERSION" ]; then
+    BUN_VER="$BVM_INSTALL_BUN_VERSION"
 else
-    # Emergency fallback
-    BUN_VER="1.3.5"
+    BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "")
+    if [[ "$BUN_LATEST" == "$BUN_MAJOR."* ]]; then
+        BUN_VER="$BUN_LATEST"
+    else
+        # Emergency fallback
+        BUN_VER="1.3.5"
+    fi
 fi
 
 echo -e "${GREEN}Done${RESET}"
