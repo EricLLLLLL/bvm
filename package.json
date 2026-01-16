@@ -35,6 +35,8 @@
     "dist/index.js",
     "dist/bvm-shim.sh",
     "dist/bvm-shim.js",
+    "install.sh",
+    "install.ps1",
     "README.md"
   ],
   "author": "EricLLLLLL",

@@ -14,6 +14,8 @@ async function main() {
     const cliMd5 = await getFileMd5('dist/index.js');
     const shimWinMd5 = await getFileMd5('dist/bvm-shim.js');
     const shimUnixMd5 = await getFileMd5('dist/bvm-shim.sh');
+    const installShMd5 = await getFileMd5('install.sh');
+    const installPs1Md5 = await getFileMd5('install.ps1');
 
     const pkgPath = join(process.cwd(), 'package.json');
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
@@ -21,7 +23,9 @@ async function main() {
     pkg.bvm_fingerprints = {
         cli: cliMd5,
         shim_win: shimWinMd5,
-        shim_unix: shimUnixMd5
+        shim_unix: shimUnixMd5,
+        install_sh: installShMd5,
+        install_ps1: installPs1Md5
     };
 
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
