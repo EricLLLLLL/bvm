@@ -11,7 +11,7 @@
 - [x] Task: 更新 `package.json` 的 `build` 脚本，使其在编译后自动运行同步脚本。
 - [x] Task: Conductor - 用户手动验证 'Phase 1' (Protocol in workflow.md)
 
-## Phase 2: 发布流程验证 (Verification)
-- [ ] Task: 运行本地构建命令 `npm run build` 并检查 `dist/` 目录。
-- [ ] Task: 模拟 `git add .` 确保不再报错。
-- [ ] Task: Conductor - 用户手动验证 'Phase 2' (Protocol in workflow.md)
+## Phase 2: 发布流程验证 (Verification) [checkpoint: local-verified]
+- [x] Task: 运行本地构建命令 `npm run build` 并检查 `dist/` 目录。
+- [x] Task: 模拟 `git add .` 确保不再报错。
+- [x] Task: Conductor - 用户手动验证 'Phase 2' (Protocol in workflow.md)
