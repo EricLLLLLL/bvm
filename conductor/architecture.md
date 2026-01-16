@@ -10,12 +10,15 @@ BVM 采用“自引导（Bootstrap）”安装模式。安装脚本（Shell/Powe
 
 ```mermaid
 graph TD
-    Start(用户运行 install.sh) --> Registry{检查 npmmirror.com}
-    Registry -- 可连接 --> Reg_CN[设置源: npmmirror]
-    Registry -- 超时 --> Reg_Default[设置源: npmjs]
+    Start(用户运行 install.sh) --> Geo{IP 探测 (1.1.1.1)}
+    Geo -- loc=CN --> Race_CN[竞速: npmmirror, tencent, npmjs]
+    Geo -- loc=Other --> Race_Global[竞速: npmjs, npmmirror]
+    Geo -- Timeout --> Race_Global
     
-    Reg_CN --> ResolveVer[解析 Bun 版本]
-    Reg_Default --> ResolveVer
+    Race_CN --> SetRegistry[选定最快源]
+    Race_Global --> SetRegistry
+    
+    SetRegistry --> ResolveVer[解析 Bun 版本]
     
     ResolveVer --> CheckRuntime{Runtime 已安装?}
     CheckRuntime -- 是 --> LinkCurrent[链接 runtime/current]
@@ -37,7 +40,7 @@ graph TD
 
 **关键实现细节:**
 *   **文件:** `install.sh`
-*   **智能源选择:** 基于 `curl` 连接测试，自动在 `registry.npmjs.org` 和 `registry.npmmirror.com` 之间切换。
+*   **智能源选择:** 结合 IP 地理位置检测（Cloudflare Trace）与实时竞速策略（Race Strategy），在 Official、Taobao、Tencent 源中选择最快的一个。
 *   **运行时解析:** 从 Registry 获取 `dist-tags` 以确定兼容的最新 Bun 版本。
 *   **无依赖:** 脚本仅依赖系统自带的 `curl` 和 `tar`。
 *   **Shim 生成:** 静态生成 `bvm` (CLI 入口) 和 `bun/bunx` (Shims) 脚本文件，指向正确的路径。
@@ -47,12 +50,14 @@ graph TD
 ```mermaid
 graph TD
     Start(用户运行 install.ps1) --> PreClean[清理旧 Shims]
-    PreClean --> Registry{检查 npmmirror.com}
-    Registry -- OK --> Reg_CN[设置源: npmmirror]
-    Registry -- 失败 --> Reg_Default[设置源: npmjs]
+    PreClean --> Geo{IP 探测}
+    Geo -- loc=CN --> Race_CN[竞速: npmmirror, tencent, npmjs]
+    Geo -- Other --> Race_Global[竞速: npmjs, npmmirror]
     
-    Reg_CN --> ResolveVer
-    Reg_Default --> ResolveVer[解析 Bun 版本]
+    Race_CN --> SetRegistry[选定最快源]
+    Race_Global --> SetRegistry
+    
+    SetRegistry --> ResolveVer[解析 Bun 版本]
     
     ResolveVer --> CheckRuntime{Runtime 已安装?}
     CheckRuntime -- 否 --> DownloadRuntime[下载 bun-windows-x64.tgz]
@@ -71,6 +76,7 @@ graph TD
 **关键实现细节:**
 *   **文件:** `install.ps1`
 *   **原生 Powershell:** 使用 `Invoke-WebRequest` 和 `Invoke-RestMethod`。
+*   **兼容性:** 针对 PowerShell 5.1 做了专门适配（处理 `$IsWindows` 缺失问题）。
 *   **Junctions:** 使用 Windows Junctions (`New-Item -ItemType Junction`) 代替软链接，以获得更好的兼容性且无需管理员权限。
 *   **环境变量:** 直接修改 `[Environment]::SetEnvironmentVariable("Path", ...)` 以确保持久化。
 
@@ -192,10 +198,12 @@ BVM 旨在实现全球范围内的“0ms 延迟”和“高可用性”。
 
 ```mermaid
 graph TD
-    UserRequest[用户请求] --> Context{区域 / 网络}
+    UserRequest[用户请求] --> Geo{Cloudflare IP 探测}
+    Geo -- CN --> Race_CN[竞速: 淘宝, 腾讯, 官方]
+    Geo -- Global --> Race_Global[竞速: 官方, 淘宝]
     
-    Context -- 全球 --> NPM_Global[registry.npmjs.org]
-    Context -- 中国/慢速 --> NPM_Mirror[registry.npmmirror.com]
+    Race_CN --> Selected_Mirror[选定 Registry]
+    Race_Global --> Selected_Mirror
     
     subgraph "静态资源 (BVM 源码)"
     UserRequest --> jsDelivr[cdn.jsdelivr.net]
@@ -206,9 +214,23 @@ graph TD
 
 ### 5.2 实施规则
 
-1.  **动态检测:** `install.sh` 和 `src/utils/npm-lookup.ts` 都会对 `registry.npmmirror.com` 执行运行时检查（HEAD 请求或 curl）。
-    *   如果延迟 < 阈值（或成功返回 200 OK），则切换 `REGISTRY` 变量。
-2.  **资源托管:** BVM 不维护自己的后端。所有二进制文件均来源：
+1.  **Geo-Location (IP 探测):** 访问 `https://1.1.1.1/cdn-cgi/trace` 获取用户地理位置 (`loc=CN`)。设置 500ms 超时，快速失败。
+2.  **Race Strategy (竞速策略):** 对候选源（npmmirror, tencent, npmjs）并发发起 `HEAD` 请求，选用响应最快的源。
+3.  **资源托管:** BVM 不维护自己的后端。所有二进制文件均来源：
     *   **BVM 逻辑:** GitHub Repo -> jsDelivr CDN。
-    *   **Bun Runtimes:** 官方 NPM 包 (`@oven/bun-...`) -> NPM Registry / Mirror。
-3.  **零配置:** 用户无需手动设置 `BVM_MIRROR`。系统“默认智能”。
+    *   **Bun Runtimes:** 官方 NPM 包 (`@oven/bun-...`) -> 智能选定的 Registry。
+4.  **零配置:** 用户无需手动设置 `BVM_MIRROR`。系统“默认智能”。
+
+---
+
+## 6. 已知限制与技术债 (Known Issues)
+
+### 6.1 Shim 性能与实现
+*   **现状:** Windows Shim (`bun.cmd`) 和 Unix Shim (`bun`) 目前调用 `bvm-shim.js` 来处理逻辑。这意味着每次运行 `bun` 命令都需要启动一次 Bun JS 运行时。
+*   **影响:** 相比于原生二进制（Native）或纯 Batch/Shell 实现，存在一定的启动延迟。
+*   **计划:** 未来考虑迁移到 Rust/Go 编写的 Native Shim 或纯 CMD/Bash 实现以追求极致性能。
+
+### 6.2 Upgrade 命令局限性
+*   **现状:** `bvm upgrade` 目前仅更新 `dist/index.js` (CLI 核心逻辑)。
+*   **问题:** 它**不会**更新 `bvm-shim.js` 或 Shim 包装器脚本。如果 Shim 逻辑发生变更，用户升级后可能遇到不兼容问题。
+*   **规避:** 建议用户在遇到奇怪问题时，重新运行安装脚本进行“覆盖安装”以更新所有组件。
