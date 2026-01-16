@@ -51,8 +51,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] **Track: Implement Smart Upgrade System & Health Check**
 *Link: [./conductor/tracks/smart_upgrade_system_20260115/](./conductor/tracks/smart_upgrade_system_20260115/)*
-
----
-
-## [x] **Track: Comprehensive README Refactor (BVM 2.0 Hardcore)**
-*Link: [./conductor/tracks/refactor_readme_20260115/](./conductor/tracks/refactor_readme_20260115/)*
