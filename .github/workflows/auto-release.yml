@@ -50,6 +50,10 @@ jobs:
         if: steps.check.outputs.should_release == 'true'
         run: bun run build
 
+      - name: Calculate Fingerprints
+        if: steps.check.outputs.should_release == 'true'
+        run: bun run scripts/fingerprint.ts
+
       - name: Package & Push Tag
         if: steps.check.outputs.should_release == 'true'
         env:
@@ -58,8 +62,10 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
+          # Include updated package.json with fingerprints
+          git add package.json
+          
           # Force add dist/ (compiled artifact) so it's available via jsDelivr
-          # jsDelivr requires files to be in the git tree, not just Release Assets.
           git add -f dist/index.js dist/bvm-shim.sh dist/bvm-shim.js
           
           # Commit artifacts. This commit will be pointed to by the TAG, but NOT pushed to main.

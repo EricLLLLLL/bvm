@@ -22,7 +22,7 @@ import { doctor } from './commands/doctor';
 import { rehash } from './commands/rehash';
 import { printCompletion } from './commands/completion';
 import { colors } from './utils/ui';
-import { notifyUpdate, checkUpdateBackground } from './utils/update-checker';
+import { triggerUpdateCheck, getUpdateNotification } from './utils/update-checker';
 
 // --- Lightweight CLI Router (Inlined for bundle stability) ---
 
@@ -70,6 +70,9 @@ class App {
   }
 
   async run() {
+    // 1. Trigger background check
+    triggerUpdateCheck().catch(() => {});
+
     const { values, positionals } = parseArgs({
       args: Bun.argv.slice(2),
       strict: false,
@@ -90,11 +93,6 @@ class App {
         if (values.help || values.h) { this.showHelp(); process.exit(0); }
         this.showHelp(); process.exit(1);
     }
-    
-    // Notify update only for interactive commands, not for --version, --help, or silent runs
-    if (!isVersionOrHelp && !isSilent && !['rehash', 'completion'].includes(commandName)) {
-        await notifyUpdate();
-    }
 
     if (values.help || values.h) { this.showHelp(); process.exit(0); }
 
@@ -107,6 +105,12 @@ class App {
 
     try {
         await command.action(positionals.slice(1), values);
+
+        // 2. Show notification after execution for interactive commands
+        if (!isVersionOrHelp && !isSilent && ['ls', 'current', 'doctor', 'default'].includes(commandName)) {
+            const notice = await getUpdateNotification();
+            if (notice) console.log(notice);
+        }
     } catch (error: any) {
         if (!error.reported) {
             console.error(colors.red(`✖ ${error.message}`));
@@ -135,9 +139,6 @@ class App {
 // --- Main Execution ---
 
 async function main() {
-  // Start update check in background immediately (parallel with command execution)
-  // checkUpdateBackground();
-
   const app = new App('bvm');
 
   app.command('rehash', 'Regenerate shims for all installed binaries')
@@ -220,20 +221,13 @@ async function main() {
 
   app.command('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
     .action(async (args) => { if (!args[0]) throw new Error('Shell name is required'); printCompletion(args[0]); });
-    await app.run();
-    // Force exit to prevent lingering background tasks (like update checks) from hanging the process
-  
-    process.exit(0);
-  }
 
-  main().catch(err => {
+  await app.run();
+  process.exit(0);
+}
 
-      console.error(colors.red("\n[FATAL ERROR] Unexpected Crash:"));
-
-      console.error(err);
-
-      process.exit(1);
-
-  });
-
-  
+main().catch(err => {
+    console.error(colors.red("\n[FATAL ERROR] Unexpected Crash:"));
+    console.error(err);
+    process.exit(1);
+});

@@ -7,7 +7,7 @@
 - [x] Task: TDD - 编写单元测试模拟文件损坏或锁定时的升级行为。
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
-## Phase 2: 自愈与感知集成 [checkpoint: ec4002f]
+## Phase 2: 自愈与感知集成 [checkpoint: 73ab0cb]
 - [x] Task: 优化 `src/commands/setup.ts` 的 `configureShell` 接口以支持内部静默刷新。
 - [x] Task: 在 `upgrade` 流程末尾触发 `setup`。
 - [x] Task: 实现 `src/utils/update-checker.ts` 异步通知逻辑。

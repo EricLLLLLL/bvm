@@ -25,6 +25,7 @@ export const BVM_SHIMS_DIR = join(BVM_DIR, 'shims');
 export const BVM_CURRENT_DIR = join(BVM_DIR, 'current');
 export const BVM_ALIAS_DIR = join(BVM_DIR, 'aliases');
 export const BVM_CACHE_DIR = join(BVM_DIR, 'cache');
+export const BVM_FINGERPRINTS_FILE = join(BVM_DIR, 'fingerprints.json');
 
 export const EXECUTABLE_NAME = OS_PLATFORM === 'win32' ? 'bun.exe' : 'bun';
 export const BUN_GITHUB_RELEASES_API = 'https://api.github.com/repos/oven-sh/bun/releases';
@@ -32,7 +33,7 @@ export const REPO_FOR_BVM_CLI = 'EricLLLLLL/bvm';
 export const ASSET_NAME_FOR_BVM = OS_PLATFORM === 'win32' ? 'bvm.exe' : 'bvm';
 export const USER_AGENT = 'bvm (Bun Version Manager)';
 
-export const BVM_CDN_ROOT = 'https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm';
+export const BVM_CDN_ROOT = process.env.BVM_CDN_URL || 'https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm';
 
 export interface BvmComponent {
     name: string;

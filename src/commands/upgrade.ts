@@ -1,12 +1,12 @@
 import { colors } from '../utils/ui';
 import { valid, gt } from '../utils/semver-lite';
-import { IS_TEST_MODE, BVM_SRC_DIR, BVM_COMPONENTS, BVM_CDN_ROOT, BVM_DIR, OS_PLATFORM } from '../constants';
+import { IS_TEST_MODE, BVM_SRC_DIR, BVM_COMPONENTS, BVM_CDN_ROOT, BVM_DIR, OS_PLATFORM, BVM_FINGERPRINTS_FILE } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
 import { fetchWithTimeout } from '../utils/network-utils';
 import packageJson from '../../package.json';
 import { withSpinner } from '../command-runner';
 import { join } from 'path';
-import { writeTextFile, ensureDir, pathExists, safeSwap } from '../utils';
+import { writeTextFile, ensureDir, pathExists, safeSwap, readTextFile } from '../utils';
 import { configureShell } from './setup';
 import { stat } from 'fs/promises';
 
@@ -45,7 +45,27 @@ export async function upgradeBvm(): Promise<void> {
           return;
         }
 
-        // --- Smart Component Upgrade ---
+        // --- Fetch Remote package.json for Fingerprints ---
+        spinner.update('Fetching remote fingerprints...');
+        const baseUrl = BVM_CDN_ROOT.includes('jsdelivr.net') 
+            ? `${BVM_CDN_ROOT}@${latest.tagName}`
+            : BVM_CDN_ROOT;
+
+        const pkgUrl = `${baseUrl.replace(/\/$/, '')}/package.json`;
+        const pkgRes = await fetchWithTimeout(pkgUrl, { timeout: 5000 });
+        if (!pkgRes.ok) throw new Error(`Failed to fetch remote package.json`);
+        
+        const remotePkg = await pkgRes.json();
+        const remoteFingerprints = remotePkg.bvm_fingerprints || {};
+
+        // --- Load Local Fingerprints ---
+        let localFingerprints: Record<string, string> = {};
+        try {
+            if (await pathExists(BVM_FINGERPRINTS_FILE)) {
+                localFingerprints = JSON.parse(await readTextFile(BVM_FINGERPRINTS_FILE));
+            }
+        } catch (e) {}
+
         const components = BVM_COMPONENTS.filter(c => {
             if (!c.platform) return true;
             if (c.platform === 'win32') return OS_PLATFORM === 'win32';
@@ -53,50 +73,47 @@ export async function upgradeBvm(): Promise<void> {
             return true;
         });
 
+        const newLocalFingerprints = { ...localFingerprints };
+        let updatedCount = 0;
+
         for (const component of components) {
-            const remoteUrl = `${BVM_CDN_ROOT}@${latest.tagName}/dist/${component.remotePath}`;
+            const remoteUrl = `${baseUrl.replace(/\/$/, '')}/dist/${component.remotePath}`;
             const localDest = join(BVM_DIR, component.localPath);
             
-            spinner.update(`Checking component: ${component.name}...`);
+            const fpKey = component.name === 'CLI Core' ? 'cli' : 
+                          component.name === 'Windows Shim' ? 'shim_win' : 'shim_unix';
 
-            try {
-                // 1. HEAD request to check size
-                const headRes = await fetchWithTimeout(remoteUrl, { method: 'HEAD', timeout: 5000 });
-                if (!headRes.ok) {
-                    // Fallback to direct download if HEAD fails (some CDNs might block it)
-                    spinner.update(`Downloading ${component.name}...`);
-                    await downloadAndSwap(remoteUrl, localDest, component.name);
-                    continue;
-                }
+            const remoteMd5 = remoteFingerprints[fpKey];
+            const localMd5 = localFingerprints[fpKey];
 
-                const remoteSize = +(headRes.headers.get('Content-Length') || 0);
-                
-                // 2. Compare with local size
-                if (await pathExists(localDest)) {
-                    const localStat = await stat(localDest);
-                    if (localStat.size === remoteSize && remoteSize > 0) {
-                        spinner.update(`Component ${component.name} is already up-to-date (skipped).`);
-                        continue;
-                    }
-                }
+            spinner.update(`Checking ${component.name}...`);
 
-                // 3. Download and swap
-                spinner.update(`Downloading ${component.name}...`);
-                await downloadAndSwap(remoteUrl, localDest, component.name);
-
-            } catch (error: any) {
-                console.log(colors.yellow(`  ! Failed to update ${component.name}: ${error.message}`));
-                // We continue with other components, but maybe we should fail?
-                // CLI Core is critical.
-                if (component.name === 'CLI Core') throw error;
+            if (remoteMd5 && localMd5 === remoteMd5 && await pathExists(localDest)) {
+                // If matched, we still report it but count as not updated
+                continue;
             }
+
+            spinner.update(`Downloading ${component.name}...`);
+            await downloadAndSwap(remoteUrl, localDest, component.name);
+            
+            if (remoteMd5) newLocalFingerprints[fpKey] = remoteMd5;
+            updatedCount++;
         }
 
-        spinner.update('Finalizing environment...');
-        // Refresh shims and wrappers locally using the NEW code
-        await configureShell(true);
+        // --- Finalize ---
+        if (updatedCount > 0) {
+            spinner.update('Saving fingerprints...');
+            await ensureDir(BVM_DIR);
+            await writeTextFile(BVM_FINGERPRINTS_FILE, JSON.stringify(newLocalFingerprints, null, 2));
 
-        spinner.succeed(colors.green(`BVM updated to v${latestVersion} successfully.`));
+            spinner.update('Finalizing environment...');
+            await configureShell(false);
+            
+            spinner.succeed(colors.green(`BVM updated to v${latestVersion} successfully (${updatedCount} components updated).`));
+        } else {
+            spinner.succeed(colors.green(`BVM components are already at the latest fingerprints for v${latestVersion}.`));
+        }
+        
         console.log(colors.yellow(`Please restart your terminal to apply changes.`));
       },
       { failMessage: 'Failed to upgrade BVM' },
@@ -108,10 +125,8 @@ export async function upgradeBvm(): Promise<void> {
 
 async function downloadAndSwap(url: string, dest: string, name: string) {
     const res = await fetchWithTimeout(url, { timeout: 10000 });
-    if (!res.ok) throw new Error(`Failed to download ${name} (${res.status})`);
-    
+    if (!res.ok) throw new Error(`Failed to download ${name}`);
     const content = await res.arrayBuffer();
-    if (content.byteLength < 10) throw new Error(`${name} content too small, likely invalid.`);
-    
+    if (content.byteLength < 10) throw new Error(`${name} invalid`);
     await safeSwap(dest, new Uint8Array(content));
 }
