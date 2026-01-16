@@ -1,21 +1,23 @@
 import { join, dirname, delimiter } from 'path';
 import { homedir } from 'os';
 import { pathExists, ensureDir, removeDir } from '../utils';
-import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME } from '../constants';
+import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR } from '../constants';
 import { colors, confirm } from '../utils/ui';
 import { chmod } from 'fs/promises';
-import { BVM_INIT_SH_TEMPLATE, BVM_INIT_FISH_TEMPLATE } from '../templates/init-scripts';
+import { BVM_INIT_SH_TEMPLATE, BVM_INIT_FISH_TEMPLATE, BVM_SHIM_SH_TEMPLATE, BVM_SHIM_JS_TEMPLATE } from '../templates/init-scripts';
 
 /**
  * Detects the user's shell and configures the PATH.
  */
 export async function configureShell(displayPrompt: boolean = true): Promise<void> {
+  // 1. Refresh shims and wrappers (Self-Healing)
+  await recreateShims(displayPrompt);
+
   // Windows Support
   if (process.platform === 'win32') {
       await configureWindows(displayPrompt);
       return;
   }
-
 
   if (!process.env.BVM_TEST_MODE) {
       await checkConflicts();
@@ -32,7 +34,6 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
   } else if (shell.includes('bash')) {
     shellName = 'bash';
     if (process.platform === 'darwin') {
-        // macOS: Prefer .bashrc if it exists, otherwise use .bash_profile
         if (await pathExists(join(homedir(), '.bashrc'))) {
              configFile = join(homedir(), '.bashrc');
         } else {
@@ -45,22 +46,21 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
     shellName = 'fish';
     configFile = join(homedir(), '.config', 'fish', 'config.fish');
   } else {
-    // If we can't detect shell, we can't auto-configure, but we processed the uninstall check above.
-    console.log(colors.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
+    if (displayPrompt) {
+        console.log(colors.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
+    }
     return;
   }
-
-  await ensureDir(BVM_BIN_DIR); // This is already here
 
   // Copy bvm-init.sh
   const bvmInitShPath = join(BVM_BIN_DIR, 'bvm-init.sh');
   await Bun.write(bvmInitShPath, BVM_INIT_SH_TEMPLATE);
-  await chmod(bvmInitShPath, 0o755); // Make it executable
+  await chmod(bvmInitShPath, 0o755);
 
   // Copy bvm-init.fish
   const bvmInitFishPath = join(BVM_BIN_DIR, 'bvm-init.fish');
   await Bun.write(bvmInitFishPath, BVM_INIT_FISH_TEMPLATE);
-  await chmod(bvmInitFishPath, 0o755); // Make it executable
+  await chmod(bvmInitFishPath, 0o755);
 
   let content = '';
   try {
@@ -104,15 +104,10 @@ end
     const blockRegex = new RegExp(`${startMarker}[\s\S]*?${endMarker}`, 'g');
 
     if (content.includes(startMarker)) {
-      // 1. Update existing managed block
       newContent = content.replace(blockRegex, shellName === 'fish' ? fishConfigBlock : configBlock);
     } else if (content.includes('export BVM_DIR=') || content.includes('set -Ux BVM_DIR')) {
-      // 2. Transition from old unmanaged config to new managed block
-      // We'll append the new block and suggest the user remove the old lines, 
-      // or just append. For safety, let's append.
       newContent = content + '\n' + (shellName === 'fish' ? fishConfigBlock : configBlock);
     } else {
-      // 3. Fresh install
       newContent = content + '\n' + (shellName === 'fish' ? fishConfigBlock : configBlock);
     }
 
@@ -133,10 +128,49 @@ end
   }
 }
 
+async function recreateShims(displayPrompt: boolean) {
+    if (displayPrompt) console.log(colors.cyan('Refreshing shims and wrappers...'));
+    await ensureDir(BVM_BIN_DIR);
+    await ensureDir(BVM_SHIMS_DIR);
+
+    const isWindows = process.platform === 'win32';
+
+    if (isWindows) {
+        // Create bvm-shim.js
+        await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), BVM_SHIM_JS_TEMPLATE);
+        
+        // Create wrappers
+        const bvmWrapper = `@echo off\r\nset "BVM_DIR=%USERPROFILE%\.bvm"\r\n"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\src\index.js" %*`;
+        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), bvmWrapper);
+
+        for (const cmd of ['bun', 'bunx']) {
+            const shim = `@echo off\r\n"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "${cmd}" %*`;
+            await Bun.write(join(BVM_SHIMS_DIR, `${cmd}.cmd`), shim);
+        }
+    } else {
+        // Create bvm-shim.sh
+        const bvmShimShPath = join(BVM_BIN_DIR, 'bvm-shim.sh');
+        await Bun.write(bvmShimShPath, BVM_SHIM_SH_TEMPLATE);
+        await chmod(bvmShimShPath, 0o755);
+
+        // Create bvm wrapper
+        const bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
+        const bvmPath = join(BVM_BIN_DIR, 'bvm');
+        await Bun.write(bvmPath, bvmWrapper);
+        await chmod(bvmPath, 0o755);
+
+        for (const cmd of ['bun', 'bunx']) {
+            const shim = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/bin/bvm-shim.sh" "${cmd}" "$@"`;
+            const shimPath = join(BVM_SHIMS_DIR, cmd);
+            await Bun.write(shimPath, shim);
+            await chmod(shimPath, 0o755);
+        }
+    }
+}
+
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     await checkConflicts();
 
-    // 1. Get the real Profile path from PowerShell itself
     let profilePath = '';
     try {
         const proc = Bun.spawnSync({
@@ -145,23 +179,22 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
         });
         profilePath = proc.stdout.toString().trim();
     } catch (e) {
-        // Fallback to manual path if powershell fails
         profilePath = join(homedir(), 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1');
     }
 
     if (!profilePath) return;
-
-    // 2. Ensure the directory exists
     await ensureDir(dirname(profilePath));
+    await updatePowerShellProfile(profilePath, displayPrompt);
+}
 
-    // 3. Prepare the config string (Strictly ASCII to avoid encoding drama)
+export async function updatePowerShellProfile(profilePath: string, displayPrompt: boolean = true): Promise<void> {
     const psStr = `
 # BVM Configuration
 $env:BVM_DIR = "${BVM_DIR}"
-$env:PATH = "$env:BVM_DIR\\shims;$env:BVM_DIR\\bin;$env:PATH"
+$env:PATH = "$env:BVM_DIR\shims;$env:BVM_DIR\bin;$env:PATH"
 # Auto-activate default version
-if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
-    & "$env:BVM_DIR\\bin\\bvm.cmd" use default --silent *>$null
+if (Test-Path "$env:BVM_DIR\bin\bvm.cmd") {
+    & "$env:BVM_DIR\bin\bvm.cmd" use default --silent *>$null
 }
 `;
 
@@ -174,6 +207,9 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
         }
 
         if (existingContent.includes('$env:BVM_DIR')) {
+            if (displayPrompt) {
+                 console.log(colors.gray('✓ Configuration is already up to date.'));
+            }
             return;
         }
 
@@ -181,18 +217,6 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
             console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
         }
 
-        // Use Bun.write directly to append (read content + new content)
-        // Note: Bun doesn't have a direct 'appendFile', but for text config files, read+write is fine.
-        // Or we can use Bun.file(path).writer() but that's more complex for a simple append.
-        // Actually, Bun.write(file, content) overwrites.
-        // To append efficiently in Bun:
-        const file = Bun.file(profilePath);
-        const writer = file.writer();
-        // Since we want to append, we probably need to seek to end? 
-        // Bun writer starts at 0 by default and overwrites?
-        // Wait, the simplest way for text files is just read string + write string.
-        // Since we already read 'existingContent', let's just use that.
-        
         await Bun.write(profilePath, existingContent + `\r\n${psStr}`);
         
         if (displayPrompt) {
@@ -213,21 +237,16 @@ async function checkConflicts(): Promise<void> {
     const officialBunBin = join(officialBunPath, 'bin');
     
     for (const p of paths) {
-        // Skip empty paths or BVM bin dir
         if (!p || p === BVM_BIN_DIR || p.includes('.bvm')) continue;
 
         const bunPath = join(p, EXECUTABLE_NAME);
         if (await pathExists(bunPath)) {
-            // New condition: If the path contains 'node_modules', skip this conflict check.
             if (p.includes('node_modules')) {
-                continue; // Skip this path and check the next one
+                continue;
             }
             
-            // Case 1: Official Bun (~/.bun)
             if (p === officialBunBin || p === officialBunPath) { 
                  console.log();
-                 // Note: Chalk bgYellow.black is hard to replicate exactly with simple ANSI, using yellow+black
-                 // Or just yellow. Let's simplify to yellow bold.
                  console.log(colors.yellow(' CONFLICT DETECTED ')); 
                  console.log(colors.yellow(`Found existing official Bun installation at: ${bunPath}`));
                  console.log(colors.yellow(`This will conflict with bvm as it is also in your PATH.`));
@@ -241,12 +260,9 @@ async function checkConflicts(): Promise<void> {
                         console.log(colors.dim('Skipping uninstallation. Please ensure bvm path takes precedence.'));
                     }
                  } catch (e) {
-                     // ignore
                  }
                  return; 
             } 
-            
-            // Case 2: Other installation (npm, brew, etc.)
             else {
                 console.log();
                 console.log(colors.red(' CONFLICT DETECTED '));
@@ -254,7 +270,6 @@ async function checkConflicts(): Promise<void> {
                 console.log(colors.yellow(`This might be installed via npm, Homebrew, or another package manager.`));
                 console.log(colors.yellow(`To avoid conflicts, please uninstall it manually (e.g., 'npm uninstall -g bun').`));
                 console.log();
-                // Stop search after one warning to avoid spam
                 return;
             }
         }

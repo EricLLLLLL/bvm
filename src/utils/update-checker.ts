@@ -1,93 +1,66 @@
 import { join } from 'path';
-import { readTextFile, writeTextFile, pathExists, ensureDir } from '../utils';
 import { BVM_CACHE_DIR, IS_TEST_MODE } from '../constants';
+import { pathExists, readTextFile, writeTextFile, ensureDir } from '../utils';
 import { fetchLatestBvmReleaseInfo } from '../api';
 import { gt } from './semver-lite';
-import { colors } from './ui';
 import packageJson from '../../package.json';
+import { colors } from './ui';
 
-const UPDATE_CHECK_FILE = 'update-check.json';
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const UPDATE_CACHE_FILE = 'update-check.json';
+const CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
-interface UpdateInfo {
-  lastChecked: number;
-  latestVersion: string;
-}
+/**
+ * Checks for updates in the background. 
+ * This is non-blocking and writes the result to a local cache.
+ */
+export async function triggerUpdateCheck(): Promise<void> {
+    if (process.env.CI || IS_TEST_MODE) return;
 
-export async function notifyUpdate(): Promise<void> {
-  if (IS_TEST_MODE) return;
-  const cacheFile = join(BVM_CACHE_DIR, UPDATE_CHECK_FILE);
-  try {
-    if (await pathExists(cacheFile)) {
-      const updateInfo: UpdateInfo = JSON.parse(await readTextFile(cacheFile));
-      if (updateInfo.latestVersion && gt(updateInfo.latestVersion, packageJson.version)) {
-        printUpdateBox(packageJson.version, updateInfo.latestVersion);
-      }
+    const cachePath = join(BVM_CACHE_DIR, UPDATE_CACHE_FILE);
+    
+    try {
+        if (await pathExists(cachePath)) {
+            const content = await readTextFile(cachePath);
+            const cache = JSON.parse(content);
+            // Don't check more than once a day
+            if (Date.now() - cache.lastCheck < CHECK_INTERVAL) return;
+        }
+    } catch (e) {}
+
+    // Perform check
+    try {
+        const latest = await fetchLatestBvmReleaseInfo();
+        if (latest) {
+            const latestVersion = latest.tagName.startsWith('v') ? latest.tagName.slice(1) : latest.tagName;
+            await ensureDir(BVM_CACHE_DIR);
+            await writeTextFile(cachePath, JSON.stringify({
+                lastCheck: Date.now(),
+                latestVersion
+            }));
+        }
+    } catch (e) {
+        // Silently fail on network issues
     }
-  } catch (e) {}
 }
 
-export async function checkUpdateBackground(): Promise<void> {
-  if (IS_TEST_MODE) return;
-  const cacheFile = join(BVM_CACHE_DIR, UPDATE_CHECK_FILE);
-  let lastChecked = 0;
-  
-  try {
-      if (await pathExists(cacheFile)) {
-          const info = JSON.parse(await readTextFile(cacheFile));
-          lastChecked = info.lastChecked || 0;
-      }
-  } catch(e) {}
+/**
+ * Returns a formatted notification string if an update is available.
+ */
+export async function getUpdateNotification(): Promise<string | null> {
+    if (process.env.CI || IS_TEST_MODE) return null;
 
-  if (Date.now() - lastChecked > CHECK_INTERVAL_MS) {
-     await refreshUpdateInfo(cacheFile);
-  }
-}
+    const currentVersion = packageJson.version;
+    const cachePath = join(BVM_CACHE_DIR, UPDATE_CACHE_FILE);
 
-async function refreshUpdateInfo(cacheFile: string) {
-    let latestVersion = '';
     try {
-        const latestRelease = await fetchLatestBvmReleaseInfo();
-        if (latestRelease) {
-            latestVersion = latestRelease.tagName.replace(/^v/, '');
+        if (await pathExists(cachePath)) {
+            const content = await readTextFile(cachePath);
+            const cache = JSON.parse(content);
+            if (cache.latestVersion && gt(cache.latestVersion, currentVersion)) {
+                return `\n${colors.gray('Update available:')} ${colors.green(`v${cache.latestVersion}`)} ${colors.dim(`(current: v${currentVersion})`)}
+${colors.gray('Run')} ${colors.cyan('bvm upgrade')} ${colors.gray('to update.')}`;
+            }
         }
     } catch (e) {}
-
-    // Always update timestamp to prevent blocking every run if network is down
-    try {
-        await ensureDir(BVM_CACHE_DIR);
-        let existing: UpdateInfo = { lastChecked: 0, latestVersion: '' };
-        if (await pathExists(cacheFile)) {
-             try { existing = JSON.parse(await readTextFile(cacheFile)); } catch {}
-        }
-        
-        const newInfo: UpdateInfo = {
-            lastChecked: Date.now(),
-            latestVersion: latestVersion || existing.latestVersion
-        };
-        await writeTextFile(cacheFile, JSON.stringify(newInfo));
-    } catch (e) {}
-}
-function printUpdateBox(current: string, latest: string) {
-  const message = `Update available! ${colors.dim(current)} -> ${colors.green(latest)}`;
-  const command = `Run ${colors.cyan('bvm upgrade')} to update`;
-  
-  // Simple box drawing
-  const lineLength = Math.max(stripAnsi(message).length, stripAnsi(command).length) + 4;
-  const top = '╭' + '─'.repeat(lineLength) + '╮';
-  const bottom = '╰' + '─'.repeat(lineLength) + '╯';
-  const pad = (str: string) => {
-      const len = stripAnsi(str).length;
-      const rightPad = lineLength - 2 - len;
-      return '│ ' + str + ' '.repeat(rightPad) + ' │';
-  };
-
-  console.log('\n' + colors.yellow(top));
-  console.log(colors.yellow(pad(message)));
-  console.log(colors.yellow(pad(command)));
-  console.log(colors.yellow(bottom) + '\n');
-}
-
-function stripAnsi(str: string) {
-  return str.replace(/[][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+    return null;
 }

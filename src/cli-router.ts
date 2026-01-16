@@ -1,6 +1,7 @@
 import { parseArgs } from 'util';
 import { colors } from './utils/ui';
 import packageJson from '../package.json';
+import { triggerUpdateCheck, getUpdateNotification } from './utils/update-checker';
 
 type ActionHandler = (args: string[], flags: Record<string, any>) => Promise<void> | void;
 
@@ -23,39 +24,29 @@ export class App {
   }
 
   command(usage: string, description: string, options: { aliases?: string[] } = {}) {
-    // usage: "install [version]" -> name: "install"
     const name = usage.split(' ')[0];
     
     const commandObj: CommandDef = {
       description,
-      usage: `${this.name} ${usage}`, // Prepend 'bvm'
-      action: async () => {}, // Placeholder
+      usage: `${this.name} ${usage}`,
+      action: async () => {},
       aliases: options.aliases
     };
 
     this.commands[name] = commandObj;
-    
-    // Add to help entries
     this.helpEntries.push(`  ${usage.padEnd(35)} ${description}`);
     if (options.aliases) {
         options.aliases.forEach(alias => {
             this.commands[alias] = commandObj;
-            // Don't clutter help with aliases usually, or maybe do?
-            // Let's keep it clean like cac, aliases are hidden or shown differently.
-            // But for simplicity, we add them if needed. 
-            // Actually, let's NOT list aliases in main help to save space, user can discover them or we list them in description.
         });
     }
 
-    // Builder pattern
     const builder = {
         action: (handler: ActionHandler) => {
             commandObj.action = handler;
             return builder;
         },
         option: (rawName: string, description: string) => {
-            // We ignore options registration for parsing since we use loose parsing,
-            // but we could use this for help generation if we wanted to be fancy.
             return builder;
         }
     };
@@ -63,8 +54,9 @@ export class App {
   }
 
   async run() {
-    // Parse args using util.parseArgs
-    // We allow loose parsing because each command might have different flags
+    // 1. Trigger background update check (non-blocking)
+    triggerUpdateCheck().catch(() => {});
+
     const { values, positionals } = parseArgs({
       args: Bun.argv.slice(2),
       strict: false,
@@ -78,7 +70,6 @@ export class App {
 
     const commandName = positionals[0];
     
-    // Handle global flags only if no command is specified
     if (!commandName) {
         if (values.version || values.v) {
             console.log(this.versionStr);
@@ -88,12 +79,10 @@ export class App {
             this.showHelp();
             process.exit(0);
         }
-        // If no command and no global flag, show help and exit with error
         this.showHelp();
         process.exit(1);
     }
 
-    // If help requested for a specific command, show global help (simplified)
     if (values.help || values.h) {
         this.showHelp(); 
         process.exit(0);
@@ -103,14 +92,17 @@ export class App {
     if (!command) {
         console.error(colors.yellow(`Unknown command '${commandName}'`));
         this.showHelp();
-        process.exit(0); // Exit cleanly as per original cac behavior
+        process.exit(0);
     }
 
     try {
-        // Pass arguments excluding the command name itself
-        // args: positionals after command
-        // flags: parsed options
         await command.action(positionals.slice(1), values);
+
+        // 2. Show update notification after command execution for interactive commands
+        if (['ls', 'current', 'alias', 'default', 'doctor'].includes(commandName)) {
+            const notice = await getUpdateNotification();
+            if (notice) console.log(notice);
+        }
     } catch (error: any) {
         console.error(colors.red(`✖ ${error.message}`));
         process.exit(1);
