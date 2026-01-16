@@ -8,7 +8,7 @@ if (-not [Environment]::Is64BitOperatingSystem) {
 }
 
 # --- Cross-platform Path Helpers ---
-$BVM_DIR = Join-Path $HOME ".bvm"
+$BVM_DIR = if ($env:BVM_DIR) { $env:BVM_DIR } else { Join-Path $HOME ".bvm" }
 $BVM_BIN_DIR = Join-Path $BVM_DIR "bin"
 $BVM_SHIMS_DIR = Join-Path $BVM_DIR "shims"
 $BVM_SRC_DIR = Join-Path $BVM_DIR "src"
@@ -38,8 +38,12 @@ if ($env:BVM_REGISTRY) {
     } catch {}
 }
 
-# --- 2. Resolve Versions ---
-$BVM_VER = "v1.0.6" # Updated by release script
+# --- Resolve Versions ---
+$IsWin = $true # Explicitly true for install.ps1
+if ($PSVersionTable.PSVersion.Major -ge 6) { $IsWin = $IsWindows } 
+else { $IsWin = [Environment]::OSVersion.Platform -eq "Win32NT" }
+
+$BVM_VER = "v1.0.7" # Updated by release script
 $BVM_MAJOR = $BVM_VER.TrimStart('v').Split('.')[0]
 $BUN_MAJOR = $BVM_MAJOR
 $BUN_VER = "1.3.6" # Fallback
@@ -57,7 +61,7 @@ foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory 
 # --- 4. Download & Extract Bun ---
 # Note: In bootstrap, we install directly to versions/ and then link to runtime/
 $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR "v$BUN_VER"
-$BUN_EXE_NAME = if ($IsWindows) { "bun.exe" } else { "bun" }
+$BUN_EXE_NAME = if ($IsWin) { "bun.exe" } else { "bun" }
 
 if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
     Write-Host "Downloading Bun v$BUN_VER..."
@@ -90,14 +94,14 @@ if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
 $RUNTIME_VER_DIR = Join-Path $BVM_RUNTIME_DIR "v$BUN_VER"
 if (-not (Test-Path $RUNTIME_VER_DIR)) {
     # Windows Junction or Unix Symlink
-    if ($IsWindows) {
+    if ($IsWin) {
         New-Item -ItemType Junction -Path $RUNTIME_VER_DIR -Target $TARGET_DIR | Out-Null
     } else {
         New-Item -ItemType SymbolicLink -Path $RUNTIME_VER_DIR -Target $TARGET_DIR | Out-Null
     }
 }
 $CURRENT_LINK = Join-Path $BVM_RUNTIME_DIR "current"
-if ($IsWindows) {
+if ($IsWin) {
     New-Item -ItemType Junction -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
 } else {
     New-Item -ItemType SymbolicLink -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
@@ -125,7 +129,15 @@ Write-Host "Initializing shims..." -ForegroundColor Gray
 
 $CMD_NAMES = @("bun", "bunx")
 foreach ($name in $CMD_NAMES) {
-    $tpl = "@echo off`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\bin\bvm-shim.js`" `"$name`" %*"
+    $tpl = "@echo off`r`nset `"BVM_DIR=%USERPROFILE%\.bvm`"`r`n`r`n"
+    $tpl += ":: Fast-path: If no .bvmrc in current directory, run default directly`r`n"
+    $tpl += "if not exist `".bvmrc`" (`r`n"
+    $tpl += "    `"%BVM_DIR%\\runtime\\current\\bin\\bun.exe`" %*`r`n"
+    $tpl += "    exit /b %errorlevel%`r`n"
+    $tpl += ")`r`n`r`n"
+    $tpl += ":: Slow-path: Hand over to JS shim for version resolution`r`n"
+    $tpl += "`"%BVM_DIR%\\runtime\\current\\bin\\bun.exe`" `"%BVM_DIR%\\bin\\bvm-shim.js`" `"$name`" %*"
+    
     $SHIM_PATH = Join-Path $BVM_SHIMS_DIR "$name.cmd"
     Set-Content -Path $SHIM_PATH -Value $tpl -Encoding Ascii
     

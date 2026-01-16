@@ -48,7 +48,9 @@ async function verifyInstall() {
   const shimsDir = join(bvmDir, 'shims');
   const versionsDir = join(bvmDir, 'versions');
   
-  const vDefault = '1.3.5';
+  // Get whatever version was actually installed as default
+  const vDefaultRaw = await Bun.file(join(bvmDir, 'aliases', 'default')).text();
+  const vDefault = vDefaultRaw.trim().replace(/^v/, '');
   const vOther = '1.0.2';
 
   // 1. Setup
