@@ -34,11 +34,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Fix install.ps1 compatibility with Windows PowerShell 5.1
-*Link: [./conductor/tracks/fix_install_ps1_20260115/](./conductor/tracks/fix_install_ps1_20260115/)*
-
----
-
 ## [x] **Track: Optimize Registry Selection via Race Strategy & IP Detection**
 *Link: [./conductor/tracks/optimize_registry_selection_20260115/](./conductor/tracks/optimize_registry_selection_20260115/)*
 
