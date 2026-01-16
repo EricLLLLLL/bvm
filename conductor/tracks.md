@@ -56,3 +56,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Fix Rehash Cleanup Regression to unblock CI**
 *Link: [./conductor/tracks/fix_rehash_cleanup_20260116/](./conductor/tracks/fix_rehash_cleanup_20260116/)*
+
+---
+
+- [ ] **Track: Full NPM Release & Real-time Mirror Sync**
+*Link: [./conductor/tracks/npm_release_smart_sync_20260116/](./conductor/tracks/npm_release_smart_sync_20260116/)*
+
+---
+
+- [ ] **Track: Hotfix - Missing Shim Build Artifacts**
+*Link: [./conductor/tracks/fix_missing_shims_20260116/](./conductor/tracks/fix_missing_shims_20260116/)*

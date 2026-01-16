@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "npx bun run src/index.ts",
-    "build": "npx bun build src/index.ts --target=bun --outfile dist/index.js --minify",
+    "build": "npx bun build src/index.ts --target=bun --outfile dist/index.js --minify && npm run sync-runtime",
     "test": "npx bun test",
     "bvm": "npx bun run src/index.ts",
     "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" npx bun run src/index.ts",
@@ -33,6 +33,8 @@
   ],
   "files": [
     "dist/index.js",
+    "dist/bvm-shim.sh",
+    "dist/bvm-shim.js",
     "README.md"
   ],
   "author": "EricLLLLLL",

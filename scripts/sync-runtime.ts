@@ -1,4 +1,9 @@
 import { join } from 'path';
+import { 
+    BVM_SHIM_SH_TEMPLATE, 
+    BVM_SHIM_JS_TEMPLATE 
+} from '../src/templates/init-scripts';
+import { chmodSync, existsSync, mkdirSync } from 'fs';
 
 async function syncRuntime() {
   const cwd = process.cwd();
@@ -49,6 +54,23 @@ async function syncRuntime() {
         console.log(`✓ install.ps1 is already up to date.`);
       }
     }
+
+    // 3. Export Shims to dist/
+    console.log('🚀 Exporting shims to dist/ directory...');
+    const distDir = join(cwd, 'dist');
+    if (!existsSync(distDir)) {
+        mkdirSync(distDir, { recursive: true });
+    }
+
+    const shimShPath = join(distDir, 'bvm-shim.sh');
+    const shimJsPath = join(distDir, 'bvm-shim.js');
+
+    await Bun.write(shimShPath, BVM_SHIM_SH_TEMPLATE);
+    chmodSync(shimShPath, 0o755); // Ensure executable
+    console.log(`✅ Exported bvm-shim.sh`);
+
+    await Bun.write(shimJsPath, BVM_SHIM_JS_TEMPLATE);
+    console.log(`✅ Exported bvm-shim.js`);
 
   } catch (error: any) {
     console.error(`❌ Error syncing runtime: ${error.message}`);

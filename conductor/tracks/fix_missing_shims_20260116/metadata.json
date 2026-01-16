@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_missing_shims_20260116",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-01-16T16:00:00Z",
+  "updated_at": "2026-01-16T16:00:00Z",
+  "description": "Hotfix: Fix missing shim build artifacts (bvm-shim.sh/js) in dist directory"
+}

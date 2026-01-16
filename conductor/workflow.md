@@ -82,7 +82,7 @@ All tasks follow a strict lifecycle:
 
 3.  **Execute Automated Tests with Proactive Debugging:**
     -   Before execution, you **must** announce the exact shell command you will use to run the tests.
-    -   **Example Announcement:** "I will now run the automated test suite to verify the phase. **Command:** `CI=true npm test`"
+    -   **Example Announcement:** "I will now run the automated test suite to verify the phase. **Command:** `CI=true npx bun test`"
     -   Execute the announced command.
     -   If tests fail, you **must** inform the user and begin debugging. You may attempt to propose a fix a **maximum of two times**. If the tests still fail after your second proposed fix, you **must stop**, report the persistent failure, and ask the user for guidance.
 
@@ -96,7 +96,7 @@ All tasks follow a strict lifecycle:
         The automated tests have passed. For manual verification, please follow these steps:
 
         **Manual Verification Steps:**
-        1.  **Start the development server with the command:** `npm run dev`
+        1.  **Start the development server with the command:** `npx bun run dev`
         2.  **Open your browser to:** `http://localhost:3000`
         3.  **Confirm that you see:** The new user profile page, with the user's name and email displayed correctly.
         ```

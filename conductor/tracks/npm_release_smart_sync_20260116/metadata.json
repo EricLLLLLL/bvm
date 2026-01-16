@@ -1,0 +1,8 @@
+{
+  "track_id": "npm_release_smart_sync_20260116",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-16T15:30:00Z",
+  "updated_at": "2026-01-16T15:30:00Z",
+  "description": "Full NPM release with smart source auto-switching and real-time mirror sync"
+}
