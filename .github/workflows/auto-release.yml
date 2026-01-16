@@ -89,6 +89,28 @@ jobs:
             install.ps1
           generate_release_notes: true
 
+      - name: Publish to NPM
+        if: steps.check.outputs.should_release == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          npm publish --access public
+          rm .npmrc
+
+      - name: Trigger & Verify Mirror Sync
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          PACKAGE_NAME=$(grep -oE '"name": "[^"]+"' package.json | cut -d'"' -f4)
+          PACKAGE_VERSION=$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4)
+          
+          echo "🔄 Triggering sync for $PACKAGE_NAME..."
+          npm install -g cnpm --registry=https://registry.npmmirror.com
+          cnpm sync $PACKAGE_NAME
+          
+          echo "🕵️‍♂️ Verifying sync..."
+          bun run scripts/verify-sync.ts $PACKAGE_NAME $PACKAGE_VERSION
+
       - name: Purge jsDelivr Cache
         if: steps.check.outputs.should_release == 'true'
         run: |
