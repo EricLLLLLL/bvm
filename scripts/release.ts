@@ -43,7 +43,15 @@ const runGit = (...args: string[]) => run('git', args);
       runGit('add', '.');
       runGit('commit', '-m', 'chore: update runtime dependencies');
     }
+    
+    console.log('\n🧪 Running Unit & Integration Tests...');
     run('bun', ['test']);
+
+    console.log('\n🕵️‍♂️ Running E2E Installation Verification (Unix)...');
+    run('bun', ['run', 'scripts/verify-install.ts']);
+
+    console.log('\n🪟 Running E2E Installation Verification (Windows via pwsh)...');
+    run('bun', ['test', 'test/e2e/install-ps1.test.ts']);
 
     // 3. Select Version Bump
     console.log('\n📈 Version Bump Selection');
