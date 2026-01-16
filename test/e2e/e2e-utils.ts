@@ -88,7 +88,7 @@ export async function runBvm(args: string[], sandboxDir: string, env: Record<str
     }
 }
 
-export async function runInstallScript(sandboxDir: string): Promise<RunResult> {
+export async function runInstallScript(sandboxDir: string, env: Record<string, string> = {}): Promise<RunResult> {
     const isWindows = process.platform === "win32";
     const scriptPath = isWindows 
         ? join(process.cwd(), "install.ps1") 
@@ -99,7 +99,8 @@ export async function runInstallScript(sandboxDir: string): Promise<RunResult> {
         HOME: sandboxDir,
         USERPROFILE: sandboxDir,
         BVM_DIR: join(sandboxDir, ".bvm"),
-        BVM_TEST_MODE: "true"
+        BVM_TEST_MODE: "true",
+        ...env
     };
 
     if (isWindows) {

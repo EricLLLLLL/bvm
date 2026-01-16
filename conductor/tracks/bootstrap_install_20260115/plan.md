@@ -20,14 +20,16 @@
 - [x] 任务：从 `install.ps1` 中移除对 `index.js rehash` 的调用。 [c2d3e4f]
 - [x] 任务：Conductor - 用户手册验证 '第 3 阶段：重构 install.ps1' (遵循 workflow.md 协议)
 
-## 第 4 阶段：同步 rehash.ts 与清理 (当前卡顿点)
-- [~] 任务：重构 `src/commands/rehash.ts`，使其逻辑与新垫片同步（修复 $ 转义问题）。
-- [ ] 任务：确保 `rehash` 不再生成 `.ps1` 文件。
+## 第 4 阶段：同步 rehash.ts 与清理 [checkpoint: 7cb64c3]
+- [x] 任务：重构 `src/commands/rehash.ts`，使其逻辑与新垫片同步（修复 $ 转义问题）。 [7cb64c3]
+- [x] 任务：确保 `rehash` 不再生成 `.ps1` 文件。 [7cb64c3]
+- [x] 任务：验证 Unix 和 Windows（模拟）环境下的端到端安装流程。 [7cb64c3]
+- [x] 任务：Conductor - 用户手册验证 '第 4 阶段：最终完善' (遵循 workflow.md 协议)
 
-## 第 5 阶段：建立完备的 E2E 测试体系 (Using UUV)
-- [ ] 任务：创建 `e2e/` 目录结构（coverage, scenarios, config, reports, etc.）。
-- [ ] 任务：编写 `e2e/run.sh` 脚本，集成 `uuv` 执行器。
-- [ ] 任务：在 `e2e/scenarios` 中编写“全平台 Bootstrap 安装”验证场景。
-- [ ] 任务：配置 `e2e/reports` 生成可视化测试报告。
-- [ ] 任务：利用 E2E 体系彻底修复并验证第 4 阶段的 Shim 逻辑。
-- [ ] 任务：Conductor - 用户手册验证 '第 5 阶段：E2E 体系与最终交付' (遵循 workflow.md 协议)
+## 第 5 阶段：建立完备的 E2E 测试体系 (Using UUV) [checkpoint: 7cb64c3]
+- [x] 任务：创建 `e2e/` 目录结构（coverage, scenarios, config, reports, etc.）。 [7cb64c3]
+- [x] 任务：编写 `e2e/run.sh` 脚本，集成 `uuv` 执行器。 [7cb64c3]
+- [x] 任务：在 `e2e/scenarios` 中编写“全平台 Bootstrap 安装”验证场景。 [7cb64c3]
+- [x] 任务：配置 `e2e/reports` 生成可视化测试报告。 [7cb64c3]
+- [x] 任务：利用 E2E 体系彻底修复并验证第 4 阶段的 Shim 逻辑。 [7cb64c3]
+- [x] 任务：Conductor - 用户手册验证 '第 5 阶段：E2E 体系与最终交付' (遵循 workflow.md 协议)

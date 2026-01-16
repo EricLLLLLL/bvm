@@ -42,10 +42,19 @@ Run the source code directly:
 npx bun run src/index.ts <command>
 ```
 
-**Run tests before committing:**
-```bash
-bun test
-```
+**Running Tests:**
+
+BVM has two types of tests:
+1.  **Unit/Integration Tests**: Fast tests for internal logic.
+    ```bash
+    bun test
+    ```
+2.  **E2E Tests**: Comprehensive tests that verify the full CLI workflow in an isolated sandbox.
+    ```bash
+    bun test test/e2e
+    ```
+
+**Note:** E2E tests are slower but essential for verifying installation scripts and shell configuration changes. CI runs these automatically on Linux, macOS, and Windows.
 
 ### 5. Commit & Push
 We follow [Conventional Commits](https://www.conventionalcommits.org/).

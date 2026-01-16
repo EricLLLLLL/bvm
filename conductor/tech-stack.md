@@ -19,3 +19,4 @@
 
 ## Testing
 - **Framework:** `bun test`
+- **E2E Tool:** `execa` (For cross-platform CLI interaction and validation)

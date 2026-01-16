@@ -5,11 +5,11 @@ import { spawnSync } from 'bun';
 // --- Helpers ---
 const run = (cmd: string, args: string[], opts: { ignoreError?: boolean, capture?: boolean } = {}) => {
   console.log(`> ${cmd} ${args.join(' ')}`);
-  const result = spawnSync({ 
-    cmd: [cmd, ...args], 
-    stdout: opts.capture ? 'pipe' : 'inherit', 
-    stderr: 'inherit', 
-    stdin: 'inherit' 
+  const result = spawnSync({
+    cmd: [cmd, ...args],
+    stdout: opts.capture ? 'pipe' : 'inherit',
+    stderr: 'inherit',
+    stdin: 'inherit'
   });
   if (result.exitCode !== 0 && !opts.ignoreError) {
     console.error(`❌ Command failed: ${cmd} ${args.join(' ')}`);
@@ -69,38 +69,33 @@ const runGit = (...args: string[]) => run('git', args);
     console.log(`\n🔖 Bumping version (${bumpType})...`);
     
     // npm version updates package.json AND creates a commit, but we suppress the tag
-    // We want the Action to create the tag AFTER building dist
     run('npm', ['version', bumpType, '--no-git-tag-version']);
     
-    const newVersion = require('../package.json').version;
+    const pkg = require('../package.json');
+    const newVersion = pkg.version;
     const tagName = `v${newVersion}`;
 
-    // --- NEW: Update hardcoded default version in install scripts (Cross-platform) ---
+    // --- Update hardcoded default version in install scripts (Cross-platform) ---
     console.log(`\n📝 Updating hardcoded default version to ${tagName}...`);
     
-    // Update install.sh
     const installShPath = 'install.sh';
     let installShContent = await Bun.file(installShPath).text();
-    installShContent = installShContent.replace(/DEFAULT_BVM_VERSION="v[^"]*"/, `DEFAULT_BVM_VERSION="${tagName}"`);
+    installShContent = installShContent.replace(/DEFAULT_BVM_VERSION="v[^\"]*"/, `DEFAULT_BVM_VERSION="${tagName}"`);
     await Bun.write(installShPath, installShContent);
 
-    // Update install.ps1
     const installPs1Path = 'install.ps1';
     let installPs1Content = await Bun.file(installPs1Path).text();
-    installPs1Content = installPs1Content.replace(/\$BVM_VER = "v[^"]*"/, `$BVM_VER = "${tagName}"`);
+    installPs1Content = installPs1Content.replace(/\$BVM_VER = "v[^\"]*"/, `$BVM_VER = "${tagName}"`);
     await Bun.write(installPs1Path, installPs1Content);
 
     // Commit
     runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1');
-    runGit('commit', '-m', `chore: release ${tagName}`);
+    runGit('commit', '-m', `chore: release ${tagName} [skip ci]`);
 
     console.log(`\n⬆️  Pushing to main to trigger GitHub Action...`);
     runGit('push', 'origin', currentBranch);
 
-    console.log(`\n✅ Triggered! GitHub Action will now:`);
-    console.log(`   1. Build the project`);
-    console.log(`   2. Create a tag '${tagName}' containing 'dist/'`);
-    console.log(`   3. Publish to GitHub Releases`);
+    console.log(`\n✅ Triggered! GitHub Action will now handle fingerprints and assets.`);
     console.log(`\n👀 Watch progress at: https://github.com/EricLLLLLL/bvm/actions`);
 
   } catch (error) {
@@ -108,4 +103,3 @@ const runGit = (...args: string[]) => run('git', args);
     process.exit(1);
   }
 })();
-

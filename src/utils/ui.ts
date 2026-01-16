@@ -24,10 +24,11 @@ export const colors = {
 export class Spinner {
   private timer: Timer | null = null;
   private frames = process.platform === 'win32' 
-    ? ['-', '\\', '|', '/'] 
+    ? ['-'] // No animation on Windows
     : ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   private frameIndex = 0;
   private text: string;
+  private isWindows = process.platform === 'win32';
 
   constructor(text: string) {
     this.text = text;
@@ -36,6 +37,13 @@ export class Spinner {
   start(text?: string) {
     if (text) this.text = text;
     if (this.timer) return;
+    
+    if (this.isWindows) {
+        // Just print once, no interval
+        process.stdout.write(`${colors.cyan('>')} ${this.text}\n`);
+        return;
+    }
+
     this.timer = setInterval(() => {
       // \r moves to start, \x1b[K clears the line
       process.stdout.write(`\r\x1b[K${colors.cyan(this.frames[this.frameIndex])} ${this.text}`);
@@ -44,6 +52,9 @@ export class Spinner {
   }
 
   stop() {
+    if (this.isWindows) {
+        return;
+    }
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
@@ -55,21 +66,24 @@ export class Spinner {
 
   succeed(text?: string) {
     this.stop();
-    console.log(`${colors.green('✓')} ${text || this.text}`);
+    console.log(`${colors.green('  ✓')} ${text || this.text}`);
   }
 
   fail(text?: string) {
     this.stop();
-    console.log(`${colors.red('✖')} ${text || this.text}`);
+    console.log(`${colors.red('  ✖')} ${text || this.text}`);
   }
   
   info(text?: string) {
       this.stop();
-      console.log(`${colors.blue('ℹ')} ${text || this.text}`);
+      console.log(`${colors.blue('  ℹ')} ${text || this.text}`);
   }
 
   update(text: string) {
     this.text = text;
+    if (this.isWindows) {
+        console.log(colors.dim(`  ... ${this.text}`));
+    }
   }
 }
 

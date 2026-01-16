@@ -18,15 +18,15 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: 安装脚本与隔离性测试' (Protocol in workflow.md) [9f0f056]
 
 ## Phase 3: 全命令覆盖与边缘情况
-- [ ] Task: 覆盖所有核心 BVM 命令
+- [x] Task: 覆盖所有核心 BVM 命令
     - `install`, `use`, `ls`, `ls-remote`, `alias`, `unalias`, `current`, `which`。
-- [ ] Task: 覆盖维护类命令
+- [x] Task: 覆盖维护类命令
     - `upgrade`, `doctor`, `cache`, `setup`, `rehash`, `deactivate`。
-- [ ] Task: 验证 Shell 配置文件修改 (bashrc, zshrc, profile)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: 全命令覆盖与边缘情况' (Protocol in workflow.md)
+- [x] Task: 验证 Shell 配置文件修改 (bashrc, zshrc, profile)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: 全命令覆盖与边缘情况' (Protocol in workflow.md)
 
 ## Phase 4: CI 集成与文档
-- [ ] Task: 更新 GitHub Actions 工作流
+- [x] Task: 更新 GitHub Actions 工作流
     - 配置在 ubuntu-latest, macos-latest, windows-latest 上运行 `npx bun test test/e2e`。
-- [ ] Task: 在 README 或 CONTRIBUTING 中增加测试指南
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: CI 集成与文档' (Protocol in workflow.md)
+- [x] Task: 在 README 或 CONTRIBUTING 中增加测试指南
+- [x] Task: Conductor - User Manual Verification 'Phase 4: CI 集成与文档' (Protocol in workflow.md)
