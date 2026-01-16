@@ -41,3 +41,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] **Track: Optimize Registry Selection via Race Strategy & IP Detection**
 *Link: [./conductor/tracks/optimize_registry_selection_20260115/](./conductor/tracks/optimize_registry_selection_20260115/)*
+
+---
+
+## [x] **Track: Update BVM Architect Skill & Documentation**
+*Link: [./conductor/tracks/update_skills_20260115/](./conductor/tracks/update_skills_20260115/)*
