@@ -66,6 +66,48 @@ export async function writeTextFile(filePath: string, data: string | Uint8Array)
   await Bun.write(filePath, data);
 }
 
+/**
+ * Atomically replaces a file with new content, with optional backup.
+ */
+export async function safeSwap(filePath: string, newContent: string | Uint8Array, options: { backup?: boolean } = {}): Promise<void> {
+    const { backup = true } = options;
+    const dir = dirname(filePath);
+    await ensureDir(dir);
+    
+    const tempPath = `${filePath}.tmp-${Date.now()}`;
+    const bakPath = `${filePath}.bak`;
+
+    try {
+        // 1. Write to temp file
+        await writeTextFile(tempPath, newContent);
+
+        // 2. Backup existing file if requested
+        if (backup && await pathExists(filePath)) {
+            try {
+                const { rename, unlink } = await import('fs/promises');
+                if (await pathExists(bakPath)) await unlink(bakPath).catch(() => {});
+                await rename(filePath, bakPath);
+            } catch (e) {
+                // Fallback if backup fails
+            }
+        }
+
+        // 3. Atomic rename (works best on POSIX, on Windows it might fail if locked)
+        const { rename } = await import('fs/promises');
+        try {
+            await rename(tempPath, filePath);
+        } catch (e) {
+            // Fallback for Windows if file is locked or cross-device
+            await Bun.write(filePath, newContent);
+            await unlink(tempPath).catch(() => {});
+        }
+    } catch (error) {
+        const { unlink } = await import('fs/promises');
+        await unlink(tempPath).catch(() => {});
+        throw error;
+    }
+}
+
 export function normalizeVersion(version: string): string {
   let normalized = version.trim();
   if (normalized.startsWith('bun-v')) {

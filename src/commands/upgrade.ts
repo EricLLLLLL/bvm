@@ -1,16 +1,16 @@
 import { colors } from '../utils/ui';
 import { valid, gt } from '../utils/semver-lite';
-import { IS_TEST_MODE, BVM_SRC_DIR } from '../constants';
+import { IS_TEST_MODE, BVM_SRC_DIR, BVM_COMPONENTS, BVM_CDN_ROOT, BVM_DIR, OS_PLATFORM } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
 import { fetchWithTimeout } from '../utils/network-utils';
 import packageJson from '../../package.json';
 import { withSpinner } from '../command-runner';
 import { join } from 'path';
-import { writeTextFile, ensureDir } from '../utils';
+import { writeTextFile, ensureDir, pathExists, safeSwap } from '../utils';
+import { configureShell } from './setup';
+import { stat } from 'fs/promises';
 
 const CURRENT_VERSION = packageJson.version;
-const REPO_OWNER = 'EricLLLLLL';
-const REPO_NAME = 'bvm';
 
 export async function upgradeBvm(): Promise<void> {
   try {
@@ -45,46 +45,56 @@ export async function upgradeBvm(): Promise<void> {
           return;
         }
 
-        // --- Core Upgrade Logic ---
-        // We download the pre-built index.js from jsDelivr for the specific tag
-        const cdnUrl = `https://cdn.jsdelivr.net/gh/${REPO_OWNER}/${REPO_NAME}@${latest.tagName}/dist/index.js`;
-        
-        const response = await fetchWithTimeout(cdnUrl, { timeout: 10000 });
-        if (!response.ok) {
-          throw new Error(`Failed to download BVM source from CDN: ${response.statusText} (${response.status})`);
-        }
-        
-        const newCode = await response.text();
-        if (!newCode || newCode.length < 100) {
-           throw new Error('Downloaded BVM source seems invalid or empty.');
+        // --- Smart Component Upgrade ---
+        const components = BVM_COMPONENTS.filter(c => {
+            if (!c.platform) return true;
+            if (c.platform === 'win32') return OS_PLATFORM === 'win32';
+            if (c.platform === 'posix') return OS_PLATFORM !== 'win32';
+            return true;
+        });
+
+        for (const component of components) {
+            const remoteUrl = `${BVM_CDN_ROOT}@${latest.tagName}/dist/${component.remotePath}`;
+            const localDest = join(BVM_DIR, component.localPath);
+            
+            spinner.update(`Checking component: ${component.name}...`);
+
+            try {
+                // 1. HEAD request to check size
+                const headRes = await fetchWithTimeout(remoteUrl, { method: 'HEAD', timeout: 5000 });
+                if (!headRes.ok) {
+                    // Fallback to direct download if HEAD fails (some CDNs might block it)
+                    spinner.update(`Downloading ${component.name}...`);
+                    await downloadAndSwap(remoteUrl, localDest, component.name);
+                    continue;
+                }
+
+                const remoteSize = +(headRes.headers.get('Content-Length') || 0);
+                
+                // 2. Compare with local size
+                if (await pathExists(localDest)) {
+                    const localStat = await stat(localDest);
+                    if (localStat.size === remoteSize && remoteSize > 0) {
+                        spinner.update(`Component ${component.name} is already up-to-date (skipped).`);
+                        continue;
+                    }
+                }
+
+                // 3. Download and swap
+                spinner.update(`Downloading ${component.name}...`);
+                await downloadAndSwap(remoteUrl, localDest, component.name);
+
+            } catch (error: any) {
+                console.log(colors.yellow(`  ! Failed to update ${component.name}: ${error.message}`));
+                // We continue with other components, but maybe we should fail?
+                // CLI Core is critical.
+                if (component.name === 'CLI Core') throw error;
+            }
         }
 
-        const srcDir = BVM_SRC_DIR;
-        const destFile = join(srcDir, 'index.js');
-        const tempFile = join(srcDir, `index.js.new-${Date.now()}`);
-
-        await ensureDir(srcDir);
-        
-        // Write to temp file first
-        await writeTextFile(tempFile, newCode);
-        
-        // Atomic rename (replace)
-        // Note: Bun/Node fs.rename handles replacement on POSIX, 
-        // on Windows it might fail if file is locked, but usually safe for running script to replace itself in memory? 
-        // Actually, replacing the running script file works on Unix, but on Windows it might be locked if it's currently executing via `bun run index.js`.
-        // However, BVM is usually loaded into memory by Bun. Let's try.
-        // If rename fails, we might need a wrapper.
-        
-        try {
-            const { rename } = await import('fs/promises');
-            await rename(tempFile, destFile);
-        } catch (e: any) {
-            // Fallback for Windows if locked: try to overwrite content directly
-             await writeTextFile(destFile, newCode);
-             // Cleanup temp
-             const { unlink } = await import('fs/promises');
-             await unlink(tempFile).catch(() => {});
-        }
+        spinner.update('Finalizing environment...');
+        // Refresh shims and wrappers locally using the NEW code
+        await configureShell(true);
 
         spinner.succeed(colors.green(`BVM updated to v${latestVersion} successfully.`));
         console.log(colors.yellow(`Please restart your terminal to apply changes.`));
@@ -94,4 +104,14 @@ export async function upgradeBvm(): Promise<void> {
   } catch (error: any) {
     throw new Error(`Failed to upgrade BVM: ${error.message}`);
   }
+}
+
+async function downloadAndSwap(url: string, dest: string, name: string) {
+    const res = await fetchWithTimeout(url, { timeout: 10000 });
+    if (!res.ok) throw new Error(`Failed to download ${name} (${res.status})`);
+    
+    const content = await res.arrayBuffer();
+    if (content.byteLength < 10) throw new Error(`${name} content too small, likely invalid.`);
+    
+    await safeSwap(dest, new Uint8Array(content));
 }

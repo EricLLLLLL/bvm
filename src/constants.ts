@@ -32,6 +32,21 @@ export const REPO_FOR_BVM_CLI = 'EricLLLLLL/bvm';
 export const ASSET_NAME_FOR_BVM = OS_PLATFORM === 'win32' ? 'bvm.exe' : 'bvm';
 export const USER_AGENT = 'bvm (Bun Version Manager)';
 
+export const BVM_CDN_ROOT = 'https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm';
+
+export interface BvmComponent {
+    name: string;
+    remotePath: string; // Relative to CDN root (dist/)
+    localPath: string;  // Relative to BVM_DIR
+    platform?: 'win32' | 'posix';
+}
+
+export const BVM_COMPONENTS: BvmComponent[] = [
+    { name: 'CLI Core', remotePath: 'index.js', localPath: 'src/index.js' },
+    { name: 'Windows Shim', remotePath: 'bvm-shim.js', localPath: 'bin/bvm-shim.js', platform: 'win32' },
+    { name: 'Unix Shim', remotePath: 'bvm-shim.sh', localPath: 'bin/bvm-shim.sh', platform: 'posix' },
+];
+
 export function getBunAssetName(version: string): string {
   let platform = OS_PLATFORM === 'win32' ? 'windows' : OS_PLATFORM;
   let arch = CPU_ARCH === 'arm64' ? 'aarch64' : 'x64';
