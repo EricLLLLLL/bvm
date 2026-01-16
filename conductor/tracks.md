@@ -51,8 +51,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] **Track: Optimize Windows Shim Performance (Fast-Path)**
 *Link: [./conductor/tracks/optimize_windows_shim_20260115/](./conductor/tracks/optimize_windows_shim_20260115/)*
-
----
-
-## [x] **Track: Optimize Unix Shim Performance (Bash Native)**
-*Link: [./conductor/tracks/optimize_unix_shim_20260115/](./conductor/tracks/optimize_unix_shim_20260115/)*
