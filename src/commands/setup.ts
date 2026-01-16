@@ -4,7 +4,15 @@ import { pathExists, ensureDir, removeDir } from '../utils';
 import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR } from '../constants';
 import { colors, confirm } from '../utils/ui';
 import { chmod } from 'fs/promises';
-import { BVM_INIT_SH_TEMPLATE, BVM_INIT_FISH_TEMPLATE, BVM_SHIM_SH_TEMPLATE, BVM_SHIM_JS_TEMPLATE } from '../templates/init-scripts';
+import { 
+    BVM_INIT_SH_TEMPLATE, 
+    BVM_INIT_FISH_TEMPLATE, 
+    BVM_SHIM_SH_TEMPLATE, 
+    BVM_SHIM_JS_TEMPLATE,
+    BVM_BUN_CMD_TEMPLATE,
+    BVM_BUNX_CMD_TEMPLATE,
+    BVM_WRAPPER_CMD_TEMPLATE
+} from '../templates/init-scripts';
 
 /**
  * Detects the user's shell and configures the PATH.
@@ -136,17 +144,11 @@ async function recreateShims(displayPrompt: boolean) {
     const isWindows = process.platform === 'win32';
 
     if (isWindows) {
-        // Create bvm-shim.js
+        // Use external templates for Windows
         await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), BVM_SHIM_JS_TEMPLATE);
-        
-        // Create wrappers
-        const bvmWrapper = `@echo off\r\nset "BVM_DIR=%USERPROFILE%\.bvm"\r\n"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\src\index.js" %*`;
-        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), bvmWrapper);
-
-        for (const cmd of ['bun', 'bunx']) {
-            const shim = `@echo off\r\n"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "${cmd}" %*`;
-            await Bun.write(join(BVM_SHIMS_DIR, `${cmd}.cmd`), shim);
-        }
+        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE);
+        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE);
+        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE);
     } else {
         // Create bvm-shim.sh
         const bvmShimShPath = join(BVM_BIN_DIR, 'bvm-shim.sh');

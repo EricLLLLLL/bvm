@@ -46,3 +46,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] **Track: Implement Smart Upgrade System & Health Check**
 *Link: [./conductor/tracks/smart_upgrade_system_20260115/](./conductor/tracks/smart_upgrade_system_20260115/)*
+
+---
+
+## [x] **Track: Optimize Windows Shim Performance (Fast-Path)**
+*Link: [./conductor/tracks/optimize_windows_shim_20260115/](./conductor/tracks/optimize_windows_shim_20260115/)*

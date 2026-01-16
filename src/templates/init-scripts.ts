@@ -144,31 +144,48 @@ function resolveVersion() {
   return '';
 }
 
-(async () => {
-    const version = resolveVersion();
-    if (!version) {
-        console.error("BVM Error: No Bun version is active or default is set.");
-        process.exit(1);
-    }
+// Simple synchronous execution for performance
+const version = resolveVersion();
+if (!version) {
+    console.error("BVM Error: No Bun version is active or default is set.");
+    process.exit(1);
+}
 
-    const versionDir = path.join(BVM_DIR, 'versions', version);
-    const binDir = path.join(versionDir, 'bin');
-    const realExecutable = path.join(binDir, CMD + '.exe');
+const versionDir = path.join(BVM_DIR, 'versions', version);
+const binDir = path.join(versionDir, 'bin');
+const realExecutable = path.join(binDir, CMD + '.exe');
 
-    if (!fs.existsSync(realExecutable)) {
-        console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + realExecutable);
-        process.exit(127);
-    }
+if (!fs.existsSync(realExecutable)) {
+    console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + realExecutable);
+    process.exit(127);
+}
 
-    process.env.BUN_INSTALL = versionDir;
-    process.env.PATH = binDir + path.delimiter + process.env.PATH;
+process.env.BUN_INSTALL = versionDir;
+process.env.PATH = binDir + path.delimiter + process.env.PATH;
 
-    const child = spawn(realExecutable, ARGS, { stdio: 'inherit', shell: false });
-    child.on('exit', (code) => process.exit(code ?? 0));
-    
-    child.on('error', (err) => {
-        console.error("BVM Error: Failed to start child process: " + err.message);
-        process.exit(1);
-    });
-})();
+const child = spawn(realExecutable, ARGS, { stdio: 'inherit', shell: false });
+child.on('exit', (code) => process.exit(code ?? 0));
+child.on('error', (err) => {
+    console.error("BVM Error: Failed to start child process: " + err.message);
+    process.exit(1);
+});
 `;
+
+export const BVM_BUN_CMD_TEMPLATE = `@echo off\r\nset "BVM_DIR=%USERPROFILE%\\.bvm"\r\n\r\n` + 
+    `:: Fast-path: If no .bvmrc in current directory, run default directly\r\n` + 
+    `if not exist ".bvmrc" (\r\n` + 
+    `    "%BVM_DIR%\\runtime\\current\\bin\\bun.exe" %*\r\n` + 
+    `    exit /b %errorlevel%\r\n` + 
+    `)\r\n\r\n` + 
+    `:: Slow-path: Hand over to JS shim for version resolution\r\n` + 
+    `"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "bun" %*`;
+
+export const BVM_BUNX_CMD_TEMPLATE = `@echo off\r\nset "BVM_DIR=%USERPROFILE%\\.bvm"\r\n\r\n` + 
+    `if not exist ".bvmrc" (\r\n` + 
+    `    "%BVM_DIR%\\runtime\\current\\bin\\bun.exe" %*\r\n` + 
+    `    exit /b %errorlevel%\r\n` + 
+    `)\r\n\r\n` + 
+    `"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "bunx" %*`;
+
+export const BVM_WRAPPER_CMD_TEMPLATE = `@echo off\r\nset "BVM_DIR=%USERPROFILE%\\.bvm"\r\n` + 
+    `"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\src\\index.js" %*`;
