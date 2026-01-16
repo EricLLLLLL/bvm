@@ -16,39 +16,59 @@ $BVM_RUNTIME_DIR = Join-Path $BVM_DIR "runtime"
 $BVM_ALIAS_DIR = Join-Path $BVM_DIR "aliases"
 $BVM_VERSIONS_DIR = Join-Path $BVM_DIR "versions"
 
+# --- 0. Smart Network Detection (CN vs Global) ---
+function Detect-NetworkZone {
+    if ($env:BVM_REGION) { return $env:BVM_REGION }
+    if ($env:BVM_TEST_FORCE_CN) { return "cn" }
+    if ($env:BVM_TEST_FORCE_GLOBAL) { return "global" }
+
+    $Mirror = "npm.elemecdn.com"
+    try {
+        $Test = Invoke-WebRequest -Uri "https://$Mirror" -Method Head -TimeoutSec 1.5 -UseBasicParsing -ErrorAction SilentlyContinue
+        if ($Test.StatusCode -eq 200) { return "cn" }
+    } catch {}
+    return "global"
+}
+
+$BVM_REGION = Detect-NetworkZone
+if ($BVM_REGION -eq "cn") {
+    $REGISTRY = "registry.npmmirror.com"
+    $NPM_CDN = "https://npm.elemecdn.com"
+} else {
+    $REGISTRY = "registry.npmjs.org"
+    $NPM_CDN = "https://unpkg.com"
+}
+
 # --- Setup Curl Command ---
 $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
-# --- 0. Pre-Installation Cleanup (Crucial) ---
-Write-Host "Cleaning up environment..." -ForegroundColor Gray
-if (Test-Path $BVM_SHIMS_DIR) {
-    Get-ChildItem -Path $BVM_SHIMS_DIR -Filter "*.ps1" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+# --- 1. Resolve BVM and Bun Versions ---
+$DEFAULT_BVM_VER = "v1.0.9"
+$BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
+
+# Resolve BVM Version dynamically if not provided
+if (-not $BVM_VER) {
+    # Check for local development mode
+    if ((Test-Path "dist\index.js") -and (Test-Path "package.json")) {
+        $PkgContent = Get-Content "package.json" -Raw | ConvertFrom-Json
+        $BVM_VER = "v" + $PkgContent.version
+        Write-Host "Using local version from package.json: $BVM_VER" -ForegroundColor Gray
+    } else {
+        try {
+            $Resp = Invoke-RestMethod -Uri "https://$REGISTRY/@bvm-cli/core" -TimeoutSec 5
+            $BVM_VER = "v" + $Resp."dist-tags".latest
+        } catch {
+            $BVM_VER = $DEFAULT_BVM_VER
+        }
+    }
 }
 
-# --- 1. Smart Registry Selection ---
-$REGISTRY = "registry.npmjs.org"
-if ($env:BVM_REGISTRY) {
-    $REGISTRY = $env:BVM_REGISTRY
-} else {
-    $Mirror = "registry.npmmirror.com"
-    try {
-        $Test = Invoke-WebRequest -Uri "https://$Mirror" -TimeoutSec 1.5 -UseBasicParsing -ErrorAction SilentlyContinue
-        if ($Test.StatusCode -eq 200) { $REGISTRY = $Mirror }
-    } catch {}
-}
-
-# --- Resolve Versions ---
-$IsWin = $true # Explicitly true for install.ps1
-if ($PSVersionTable.PSVersion.Major -ge 6) { $IsWin = $IsWindows } 
-else { $IsWin = [Environment]::OSVersion.Platform -eq "Win32NT" }
-
-$BVM_VER = "v1.0.7" # Updated by release script
 $BVM_MAJOR = $BVM_VER.TrimStart('v').Split('.')[0]
 $BUN_MAJOR = $BVM_MAJOR
-$BUN_VER = "1.3.6" # Fallback
+$BUN_VER = "1.3.5" # Fallback
 
-Write-Host "Resolving Bun v$BUN_MAJOR runtime..." -ForegroundColor Gray
+Write-Host "BVM Installer ($BVM_REGION) - Resolving Bun v$BUN_MAJOR runtime..." -ForegroundColor Gray
 try {
     $BunLatest = (Invoke-RestMethod -Uri "https://$REGISTRY/-/package/bun/dist-tags" -TimeoutSec 5).latest
     if ($BunLatest -and $BunLatest.StartsWith("$BUN_MAJOR.")) { $BUN_VER = $BunLatest }
@@ -108,6 +128,9 @@ if ($IsWin) {
 }
 
 # --- 5. Download BVM Source & Shim ---
+$BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
+$BASE_URL = "$NPM_CDN/@bvm-cli/core@$BVM_PLAIN_VER"
+
 $LOCAL_DIST = Join-Path $PSScriptRoot "dist"
 $INDEX_JS = Join-Path $LOCAL_DIST "index.js"
 if (Test-Path $INDEX_JS) {
@@ -118,8 +141,8 @@ if (Test-Path $INDEX_JS) {
     }
 } else {
     Write-Host "Downloading BVM Source & Shim $BVM_VER..."
-    $SRC_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_VER/dist/index.js"
-    $SHIM_URL = "https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@$BVM_VER/dist/bvm-shim.js"
+    $SRC_URL = "$BASE_URL/dist/index.js"
+    $SHIM_URL = "$BASE_URL/dist/bvm-shim.js"
     & $CURL_CMD "-#SfLo" (Join-Path $BVM_SRC_DIR "index.js") "$SRC_URL"
     & $CURL_CMD "-#SfLo" (Join-Path $BVM_BIN_DIR "bvm-shim.js") "$SHIM_URL"
 }

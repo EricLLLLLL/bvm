@@ -2,9 +2,9 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.0.9"
+DEFAULT_BVM_VERSION="v1.0.9" # Fallback
 FALLBACK_BUN_VERSION="1.3.5"
-BVM_SRC_VERSION="${BVM_INSTALL_VERSION:-$DEFAULT_BVM_VERSION}"
+BVM_SRC_VERSION="${BVM_INSTALL_VERSION}" # If empty, will resolve dynamically
 
 # --- Colors (Matches src/utils/ui.ts) ---
 if [ -t 1 ]; then
@@ -86,6 +86,27 @@ download_file() {
     fi
 }
 
+# 0. Smart Network Detection (CN vs Global)
+detect_network_zone() {
+  if [ -n "$BVM_REGION" ]; then
+    echo "$BVM_REGION"
+    return
+  fi
+
+  # Test connectivity to unpkg vs elemecdn
+  # We use a short timeout for the race
+  if [ -n "$BVM_TEST_FORCE_CN" ]; then
+    echo "cn"
+  elif [ -n "$BVM_TEST_FORCE_GLOBAL" ]; then
+    echo "global"
+  elif curl -s -m 1.5 https://npm.elemecdn.com > /dev/null; then
+    # Usually elemecdn is much faster in CN
+    echo "cn"
+  else
+    echo "global"
+  fi
+}
+
 detect_shell() {
   local shell_name=""
   
@@ -120,10 +141,14 @@ detect_shell() {
 
 # --- Main Script ---
 
-# 0. Smart Registry Selection
-REGISTRY="registry.npmjs.org"
-if curl -s -m 2 https://registry.npmmirror.com > /dev/null; then
+BVM_REGION=$(detect_network_zone)
+
+if [ "$BVM_REGION" == "cn" ]; then
     REGISTRY="registry.npmmirror.com"
+    NPM_CDN="https://npm.elemecdn.com"
+else
+    REGISTRY="registry.npmjs.org"
+    NPM_CDN="https://unpkg.com"
 fi
 
 echo -e "${CYAN}"
@@ -135,14 +160,27 @@ echo -e " |______  / \\_/|__|_|  / "
 echo -e "        \\/           \\/ "
 echo -e "${RESET}"
 echo -e ""
-echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_SRC_VERSION})${RESET}"
+echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_REGION})${RESET}"
 echo -e ""
 
 # 1. Resolve BVM and Bun Versions
 echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
 
-# BVM Version (Fixed at release time)
-# BVM_SRC_VERSION is already set via DEFAULT_BVM_VERSION or env
+# Resolve BVM Version dynamically if not provided
+if [ -z "$BVM_SRC_VERSION" ]; then
+    if [ -f "./dist/index.js" ] && [ -f "./package.json" ]; then
+        # Use version from local package.json
+        BVM_SRC_VERSION="v$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4 || echo "0.0.0")"
+        info "Using local version from package.json: $BVM_SRC_VERSION"
+    else
+        BVM_LATEST=$(curl -s https://${REGISTRY}/@bvm-cli/core | grep -oE '"dist-tags":\{"latest":"[^"]+"\}' | cut -d'"' -f6 || echo "")
+        if [ -n "$BVM_LATEST" ]; then
+            BVM_SRC_VERSION="v$BVM_LATEST"
+        else
+            BVM_SRC_VERSION="$DEFAULT_BVM_VERSION"
+        fi
+    fi
+fi
 
 # Calculate Major version for Bun runtime
 BVM_PLAIN_VER="${BVM_SRC_VERSION#v}"
@@ -157,11 +195,11 @@ else
         BUN_VER="$BUN_LATEST"
     else
         # Emergency fallback
-        BUN_VER="1.3.5"
+        BUN_VER="$FALLBACK_BUN_VERSION"
     fi
 fi
 
-echo -e "${GREEN}Done${RESET}"
+echo -e "${GREEN}${BVM_SRC_VERSION} (Bun v${BUN_VER})${RESET}"
 
 # 2. Setup Directories
 mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR"
@@ -227,8 +265,10 @@ fi
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
 # 4. Download BVM Source & Shim
-SRC_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/index.js"
-SHIM_URL="https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@${BVM_SRC_VERSION}/dist/bvm-shim.sh"
+# Use the detected NPM CDN
+BASE_URL="${NPM_CDN}/@bvm-cli/core@${BVM_SRC_VERSION#v}"
+SRC_URL="${BASE_URL}/dist/index.js"
+SHIM_URL="${BASE_URL}/dist/bvm-shim.sh"
 
 # Local fallback for development/testing
 if [ -f "./dist/index.js" ]; then
