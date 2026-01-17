@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.1.1" # Fallback
+DEFAULT_BVM_VERSION="v1.1.2" # Fallback
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION}" # If empty, will resolve dynamically
 
@@ -173,7 +173,7 @@ if [ -z "$BVM_SRC_VERSION" ]; then
         BVM_SRC_VERSION="v$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4 || echo "0.0.0")"
         info "Using local version from package.json: $BVM_SRC_VERSION"
     else
-        BVM_LATEST=$(curl -s https://${REGISTRY}/@bvm-cli/core | grep -oE '"dist-tags":\{"latest":"[^"]+"\}' | cut -d'"' -f6 || echo "")
+        BVM_LATEST=$(curl -s https://${REGISTRY}/@ericll/bvm-core | grep -oE '"dist-tags":\{"latest":"[^"]+"\}' | cut -d'"' -f6 || echo "")
         if [ -n "$BVM_LATEST" ]; then
             BVM_SRC_VERSION="v$BVM_LATEST"
         else
@@ -266,7 +266,7 @@ ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
 # 4. Download BVM Source & Shim
 # Use the detected NPM CDN
-BASE_URL="${NPM_CDN}/@bvm-cli/core@${BVM_SRC_VERSION#v}"
+BASE_URL="${NPM_CDN}/@ericll/bvm-core@${BVM_SRC_VERSION#v}"
 SRC_URL="${BASE_URL}/dist/index.js"
 SHIM_URL="${BASE_URL}/dist/bvm-shim.sh"
 
