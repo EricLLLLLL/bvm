@@ -45,7 +45,8 @@ const runGit = (...args: string[]) => run('git', args);
     }
     
     console.log('\n🧪 Running Unit & Integration Tests...');
-    run('bun', ['test', 'test/*.test.ts']);
+    // Run via shell to expand glob pattern, ensuring we only run tests in the root test dir (excluding e2e)
+    run('bash', ['-c', 'bun test test/*.test.ts']);
 
     // 3. Select Version Bump
     console.log('\n📈 Version Bump Selection');
