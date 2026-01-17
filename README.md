@@ -41,26 +41,38 @@ BVM was engineered to solve the common pitfalls of traditional version managers:
 
 ## Installation
 
-### Install Script
+### 1. Fast Installation (Recommended for China 🇨🇳)
 
-To install or update BVM, you should run the install script.
+This method downloads the full package directly from the mirror registry, ensuring 100% success without waiting for CDN synchronization.
 
 **macOS / Linux / WSL:**
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
+curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz | tar -xz && bash package/install.sh
 ```
 
-**Windows (Native PowerShell):**
+**Windows (PowerShell):**
 ```powershell
-irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1
 ```
 
-### Verify Installation
+### 2. Standard Installation
 
-To verify that BVM has been installed correctly, open a new terminal and run:
+**macOS / Linux / WSL:**
 ```bash
-bvm --version
+curl -fsSL https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh | bash
 ```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex
+```
+
+---
+
+## Verification
+
+After installation, restart your terminal or source your profile, then verify:
+
 
 ### Manual Update
 

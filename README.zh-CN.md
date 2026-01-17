@@ -39,37 +39,41 @@ BVM 旨在解决传统版本管理器常见的两大痛点：终端启动延迟�
 
 ---
 
-## 安装指南
+## 安装
 
-### 安装脚本
+BVM 提供了多种安装方式，在中国大陆地区，我们强烈建议使用 **淘宝镜像加速** 方案。
 
-运行以下命令即可完成安装或更新。
+### 1. 极速安装 (推荐 🇨🇳)
+
+该方式直接从淘宝 NPM 镜像下载完整包并解压安装，**无需等待 CDN 同步**，成功率 100%。
 
 **macOS / Linux / WSL:**
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.sh | bash
+curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz | tar -xz && bash package/install.sh
 ```
 
-**Windows (原生 PowerShell):**
+**Windows (PowerShell):**
 ```powershell
-irm https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm@main/install.ps1 | iex
+curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1
 ```
 
-### 验证安装
+### 2. 标准安装 (通过 GitHub)
 
-要验证 BVM 是否安装成功，请打开新终端并运行：
+**macOS / Linux / WSL:**
 ```bash
-bvm --version
+curl -fsSL https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh | bash
 ```
 
-### 手动更新
-
-如果您已经安装了 BVM，可以使用内置命令一键升级到最新版：
-```bash
-bvm upgrade
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex
 ```
 
 ---
+
+## 验证安装
+
+安装完成后，请重启终端或执行 `source` 命令刷新环境变量，然后验证：
 
 ## 基本用法
 
