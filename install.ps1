@@ -44,7 +44,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.0.9"
+$DEFAULT_BVM_VER = "v1.1.1"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
