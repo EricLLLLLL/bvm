@@ -52,7 +52,7 @@ if (-not $BVM_VER) {
     # Check for local development mode
     if ((Test-Path "dist\index.js") -and (Test-Path "package.json")) {
         $PkgContent = Get-Content "package.json" -Raw | ConvertFrom-Json
-        $BVM_VER = "v" + $PkgContent.version
+        $BVM_VER = "v1.1.0" + $PkgContent.version
         Write-Host "Using local version from package.json: $BVM_VER" -ForegroundColor Gray
     } else {
         try {
