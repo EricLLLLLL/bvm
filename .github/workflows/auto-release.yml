@@ -50,6 +50,12 @@ jobs:
         if: steps.check.outputs.should_release == 'true'
         run: bun run build
 
+      - name: Debug Build Artifacts
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          echo "📂 Listing dist directory..."
+          ls -R dist/ || echo "❌ dist directory not found"
+
       - name: Calculate Fingerprints
         if: steps.check.outputs.should_release == 'true'
         run: bun run scripts/fingerprint.ts

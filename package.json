@@ -7,13 +7,13 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "npx bun run src/index.ts",
-    "build": "npx bun build src/index.ts --target=bun --outfile dist/index.js --minify && npm run sync-runtime",
-    "test": "npx bun test",
-    "bvm": "npx bun run src/index.ts",
-    "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" npx bun run src/index.ts",
-    "release": "npx bun run scripts/release.ts",
-    "sync-runtime": "npx bun run scripts/sync-runtime.ts"
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target=bun --outfile dist/index.js --minify && bun run scripts/sync-runtime.ts",
+    "test": "bun test",
+    "bvm": "bun run src/index.ts",
+    "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" bun run src/index.ts",
+    "release": "bun run scripts/release.ts",
+    "sync-runtime": "bun run scripts/sync-runtime.ts"
   },
   "repository": {
     "type": "git",
