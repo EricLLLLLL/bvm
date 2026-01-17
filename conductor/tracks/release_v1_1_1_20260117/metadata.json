@@ -1,0 +1,8 @@
+{
+  "track_id": "release_v1_1_1_20260117",
+  "type": "chore",
+  "status": "new",
+  "created_at": "2026-01-17T11:00:00Z",
+  "updated_at": "2026-01-17T11:00:00Z",
+  "description": "Execute and verify the release process for v1.1.1 (Patch)"
+}
