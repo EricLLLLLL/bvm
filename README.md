@@ -61,10 +61,25 @@ curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz -o bvm.
 ### 2. CDN Installation
 Install via global CDNs. Note: there might be a few minutes of cache delay after a new release.
 
-| Provider | macOS / Linux / WSL (bash) | Windows (PowerShell) |
-| :--- | :--- | :--- |
-| **jsDelivr** | `curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh \| bash` | `irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 \| iex` |
-| **unpkg** | `curl -fsSL https://unpkg.com/bvm-core/install.sh \| bash` | `irm https://unpkg.com/bvm-core/install.ps1 \| iex` |
+#### jsDelivr (Recommended)
+**macOS / Linux / WSL:**
+```bash
+curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh | bash
+```
+**Windows (PowerShell):**
+```powershell
+irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 | iex
+```
+
+#### unpkg
+**macOS / Linux / WSL:**
+```bash
+curl -fsSL https://unpkg.com/bvm-core/install.sh | bash
+```
+**Windows (PowerShell):**
+```powershell
+irm https://unpkg.com/bvm-core/install.ps1 | iex
+```
 
 ---
 

@@ -61,10 +61,25 @@ curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz -o bvm.
 ### 2. CDN 安装
 通过各大公共 CDN 加速安装脚本。注意：新版本发布后可能存在数分钟的缓存延迟。
 
-| 源 | macOS / Linux / WSL (bash) | Windows (PowerShell) |
-| :--- | :--- | :--- |
-| **jsDelivr** | `curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh \| bash` | `irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 \| iex` |
-| **unpkg** | `curl -fsSL https://unpkg.com/bvm-core/install.sh \| bash` | `irm https://unpkg.com/bvm-core/install.ps1 \| iex` |
+#### jsDelivr (推荐)
+**macOS / Linux / WSL:**
+```bash
+curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh | bash
+```
+**Windows (PowerShell):**
+```powershell
+irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 | iex
+```
+
+#### unpkg
+**macOS / Linux / WSL:**
+```bash
+curl -fsSL https://unpkg.com/bvm-core/install.sh | bash
+```
+**Windows (PowerShell):**
+```powershell
+irm https://unpkg.com/bvm-core/install.ps1 | iex
+```
 
 ---
 
