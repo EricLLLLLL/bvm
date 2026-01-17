@@ -1,8 +1,8 @@
 # Implementation Plan - Release v1.1.1
 
 ## Phase 1: Preparation & Trigger [checkpoint: ]
-- [ ] Task: Ensure local workspace is clean (Clean Git Status).
-- [ ] Task: Run `bun run release` script.
+- [x] Task: Ensure local workspace is clean (Clean Git Status).
+- [~] Task: Run `bun run release` script.
     - [ ] Sub-task: Interactively select "patch" (1).
     - [ ] Sub-task: Observe and confirm local tests pass.
     - [ ] Sub-task: Confirm version update and Git tag generation.
