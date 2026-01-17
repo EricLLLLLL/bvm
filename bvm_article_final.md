@@ -94,12 +94,12 @@ BVM 现已发布 **v1.1.4 正式版**。这是我为您准备的**一口气安�
 
 **macOS / Linux / WSL:**
 ```bash
-curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.6.tgz | tar -xz && bash package/install.sh && rm -rf package
+curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.8.tgz | tar -xz && bash package/install.sh && rm -rf package
 ```
 
 **Windows (PowerShell):**
 ```powershell
-curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.5.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1; Remove-Item bvm.tgz, package -Recurse -Force
+curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.8.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1; Remove-Item bvm.tgz, package -Recurse -Force
 ```
 
 ---
