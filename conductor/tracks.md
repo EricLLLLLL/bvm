@@ -71,3 +71,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Execute and verify the release process for v1.1.1 (Patch)**
 *Link: [./conductor/tracks/release_v1_1_1_20260117/](./conductor/tracks/release_v1_1_1_20260117/)*
+
+---
+
+- [~] **Track: 修复安装脚本在创建 runtime/current 链接时因路径已存在非空目录导致的报错问题**
+*Link: [./conductor/tracks/fix_install_conflict_20260117/](./conductor/tracks/fix_install_conflict_20260117/)*
