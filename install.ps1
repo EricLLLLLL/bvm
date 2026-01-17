@@ -44,7 +44,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.1.3"
+$DEFAULT_BVM_VER = "v1.1.4"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
@@ -127,24 +127,36 @@ if ($IsWin) {
     New-Item -ItemType SymbolicLink -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
 }
 
-# --- 5. Download BVM Source & Shim ---
+# --- 5. Download BVM Source & Shim (Tarball Strategy) ---
 $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
-$BASE_URL = "$NPM_CDN/bvm-core@$BVM_PLAIN_VER"
+if ($BVM_REGION -eq "cn") {
+    $TARBALL_URL = "https://registry.npmmirror.com/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
+} else {
+    $TARBALL_URL = "https://registry.npmjs.org/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
+}
 
 $LOCAL_DIST = Join-Path $PSScriptRoot "dist"
-$INDEX_JS = Join-Path $LOCAL_DIST "index.js"
-if (Test-Path $INDEX_JS) {
-    Copy-Item $INDEX_JS (Join-Path $BVM_SRC_DIR "index.js") -Force
-    $SHIM_JS_SRC = Join-Path $LOCAL_DIST "bvm-shim.js"
-    if (Test-Path $SHIM_JS_SRC) {
-        Copy-Item $SHIM_JS_SRC (Join-Path $BVM_BIN_DIR "bvm-shim.js") -Force
-    }
+if (Test-Path $LOCAL_DIST) {
+    Copy-Item $LOCAL_DIST\* (Join-Path $BVM_SRC_DIR) -Recurse -Force
+    Write-Host "Using local BVM source from dist/." -ForegroundColor Gray
 } else {
-    Write-Host "Downloading BVM Source & Shim $BVM_VER..."
-    $SRC_URL = "$BASE_URL/dist/index.js"
-    $SHIM_URL = "$BASE_URL/dist/bvm-shim.js"
-    & $CURL_CMD "-#SfLo" (Join-Path $BVM_SRC_DIR "index.js") "$SRC_URL"
-    & $CURL_CMD "-#SfLo" (Join-Path $BVM_BIN_DIR "bvm-shim.js") "$SHIM_URL"
+    Write-Host "Downloading BVM Tarball $BVM_VER..."
+    $TMP_TGZ = Join-Path $BVM_DIR "bvm-core.tgz"
+    & $CURL_CMD "-#SfLo" "$TMP_TGZ" "$TARBALL_URL"
+    
+    $EXT_DIR = Join-Path $BVM_DIR "temp_bvm_extract"
+    if (Test-Path $EXT_DIR) { Remove-Item $EXT_DIR -Recurse -Force }
+    New-Item -ItemType Directory -Path $EXT_DIR | Out-Null
+    
+    Write-Host "Extracting BVM assets..."
+    & tar -xf "$TMP_TGZ" -C "$EXT_DIR"
+    
+    # NPM tarballs put everything in 'package/'
+    Copy-Item (Join-Path $EXT_DIR "package\dist\index.js") (Join-Path $BVM_SRC_DIR "index.js") -Force
+    Copy-Item (Join-Path $EXT_DIR "package\dist\bvm-shim.js") (Join-Path $BVM_BIN_DIR "bvm-shim.js") -Force
+    
+    Remove-Item $TMP_TGZ -Force
+    Remove-Item $EXT_DIR -Recurse -Force
 }
 
 # --- 6. Bootstrap Shims (Pure PowerShell, No index.js dependency) ---

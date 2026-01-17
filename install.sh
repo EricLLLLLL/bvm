@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.1.3" # Fallback
+DEFAULT_BVM_VERSION="v1.1.4" # Fallback
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION}" # If empty, will resolve dynamically
 
@@ -264,29 +264,33 @@ fi
 # Link current runtime
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
-# 4. Download BVM Source & Shim
-# Use the detected NPM CDN
-BASE_URL="${NPM_CDN}/bvm-core@${BVM_SRC_VERSION#v}"
-SRC_URL="${BASE_URL}/dist/index.js"
-SHIM_URL="${BASE_URL}/dist/bvm-shim.sh"
+# 4. Download BVM Source & Shim (Tarball Strategy)
+# Use Registry Tarball to avoid CDN sync delays
+if [ "$BVM_REGION" == "cn" ]; then
+    TARBALL_URL="https://registry.npmmirror.com/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
+else
+    TARBALL_URL="https://registry.npmjs.org/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
+fi
 
 # Local fallback for development/testing
 if [ -f "./dist/index.js" ]; then
     cp "./dist/index.js" "${BVM_SRC_DIR}/index.js"
+    cp "./dist/bvm-shim.sh" "${BVM_BIN_DIR}/bvm-shim.sh"
     info "Using local BVM source from dist/."
 else
-    download_file "$SRC_URL" "${BVM_SRC_DIR}/index.js" "Downloading BVM Source (${BVM_SRC_VERSION})..."
-fi
-
-if [ -f "./dist/bvm-shim.sh" ]; then
-    cp "./dist/bvm-shim.sh" "${BVM_BIN_DIR}/bvm-shim.sh"
-    info "Using local shim logic from dist/."
-else
-    download_file "$SHIM_URL" "${BVM_BIN_DIR}/bvm-shim.sh" "Downloading Shim Logic..."
+    TEMP_TGZ="$(mktemp)"
+    download_file "$TARBALL_URL" "$TEMP_TGZ" "Downloading BVM Source (${BVM_SRC_VERSION})..."
+    
+    # Extract specific files from tarball (strip components to handle 'package/' prefix)
+    # The tarball structure is package/dist/index.js
+    tar -xzf "$TEMP_TGZ" -C "$BVM_SRC_DIR" --strip-components=2 "package/dist/index.js"
+    tar -xzf "$TEMP_TGZ" -C "$BVM_BIN_DIR" --strip-components=2 "package/dist/bvm-shim.sh"
+    
+    rm -f "$TEMP_TGZ"
 fi
 
 if [ ! -f "${BVM_SRC_DIR}/index.js" ] || [ ! -f "${BVM_BIN_DIR}/bvm-shim.sh" ]; then
-    error "Failed to download BVM source or shim."
+    error "Failed to extract BVM source or shim from tarball."
 fi
 chmod +x "${BVM_BIN_DIR}/bvm-shim.sh"
 
