@@ -126,6 +126,9 @@ if (-not (Test-Path $RUNTIME_VER_DIR)) {
     }
 }
 $CURRENT_LINK = Join-Path $BVM_RUNTIME_DIR "current"
+if (Test-Path $CURRENT_LINK) {
+    Remove-Item -Recurse -Force $CURRENT_LINK | Out-Null
+}
 if ($IsWindows) {
     New-Item -ItemType Junction -Path $CURRENT_LINK -Value $RUNTIME_VER_DIR -Force | Out-Null
 } else {

@@ -262,6 +262,7 @@ else
 fi
 
 # Link current runtime
+rm -rf "${BVM_RUNTIME_DIR}/current"
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
 # 4. Download BVM Source & Shim (Tarball Strategy)
