@@ -27,6 +27,9 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
+      - name: Build Project
+        run: bun run build
+
       - name: Run Tests
         run: bun test test/*.test.ts
         env:
