@@ -1,13 +1,13 @@
 # Implementation Plan - Release v1.1.1
 
-## Phase 1: Preparation & Trigger [checkpoint: ]
+## Phase 1: Preparation & Trigger [checkpoint: 4d60a46]
 - [x] Task: Ensure local workspace is clean (Clean Git Status).
-- [~] Task: Run `bun run release` script.
-    - [ ] Sub-task: Interactively select "patch" (1).
-    - [ ] Sub-task: Observe and confirm local tests pass.
-    - [ ] Sub-task: Confirm version update and Git tag generation.
-    - [ ] Sub-task: Confirm script automatically pushes to remote `main` branch.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Run `bun run release` script.
+    - [x] Sub-task: Interactively select "patch" (1).
+    - [x] Sub-task: Observe and confirm local tests pass.
+    - [x] Sub-task: Confirm version update and Git tag generation.
+    - [x] Sub-task: Confirm script automatically pushes to remote `main` branch.
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: CI/CD Execution Monitoring [checkpoint: ]
 - [ ] Task: Monitor GitHub Actions "Auto Release Check" workflow.
