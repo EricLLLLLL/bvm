@@ -60,7 +60,12 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "bvm_fingerprints": {
+    "cli": "31d6842e9bd5370075bf1848a1391f6a",
+    "shim_win": "c6f43afddfb205e130633fe00ee860d8",
+    "shim_unix": "8aa89a0324b52c9c81b96c0c03afe36c",
+    "install_sh": "5f94b7e805bfb84c94013fd9fe4cf990",
+    "install_ps1": "743188f762854bd0340ddfe9206ee22a"
   }
 }
-
-
