@@ -2,6 +2,11 @@
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# Standard environment detection for compatibility with PS 5.1 and 7+
+$IsWindows = $env:OS -like "*Windows*"
+$IsMacOS = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)
+$IsLinux = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Linux)
+
 if (-not [Environment]::Is64BitOperatingSystem) {
     Write-Error "BVM requires a 64-bit version of Windows."
     exit 1
@@ -44,7 +49,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.1.5"
+$DEFAULT_BVM_VER = "v1.1.6"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
@@ -81,50 +86,25 @@ foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory 
 # --- 4. Download & Extract Bun ---
 # Note: In bootstrap, we install directly to versions/ and then link to runtime/
 $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR "v$BUN_VER"
-$BUN_EXE_NAME = if ($IsWin) { "bun.exe" } else { "bun" }
+$BUN_EXE_NAME = if ($IsWindows) { "bun.exe" } else { "bun" }
 
 if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
-    Write-Host "Downloading Bun v$BUN_VER..."
-    $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$BUN_VER.tgz"
-    $TMP = Join-Path $BVM_DIR "bun-runtime.tgz"
-    & $CURL_CMD "-#SfLo" "$TMP" "$URL"
-    
-    $EXT = Join-Path $BVM_DIR "temp_extract"
-    if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force | Out-Null }
-    New-Item -ItemType Directory -Path $EXT | Out-Null
-    
-    Write-Host "Extracting..."
-    & tar -xf "$TMP" -C "$EXT"
-    
-    $FoundBun = Get-ChildItem -Path $EXT -Filter $BUN_EXE_NAME -Recurse | Select-Object -First 1
-    if ($null -eq $FoundBun) {
-        # Fallback for different archive structures
-        $FoundBun = Get-ChildItem -Path $EXT -Filter "bun*" -Recurse | Where-Object { $_.Name -match "^bun(\.exe)?$" } | Select-Object -First 1
-    }
-
-    $BIN_DEST = Join-Path $TARGET_DIR "bin"
-    New-Item -ItemType Directory -Path $BIN_DEST -Force | Out-Null
-    Move-Item -Path $FoundBun.FullName -Destination (Join-Path $BIN_DEST $BUN_EXE_NAME) -Force
-    
-    Remove-Item $TMP -Force
-    Remove-Item $EXT -Recurse -Force
-}
-
+...
 # Sync to runtime for BVM execution
 $RUNTIME_VER_DIR = Join-Path $BVM_RUNTIME_DIR "v$BUN_VER"
 if (-not (Test-Path $RUNTIME_VER_DIR)) {
     # Windows Junction (no admin req) or Unix Symlink
-    if ($PSVersionTable.PSVersion.Major -ge 6 -and $IsWin -or $env:OS -like "*Windows*") {
-        New-Item -ItemType Junction -Path $RUNTIME_VER_DIR -Target $TARGET_DIR | Out-Null
+    if ($IsWindows) {
+        New-Item -ItemType Junction -Path $RUNTIME_VER_DIR -Value $TARGET_DIR | Out-Null
     } else {
-        New-Item -ItemType SymbolicLink -Path $RUNTIME_VER_DIR -Target $TARGET_DIR | Out-Null
+        New-Item -ItemType SymbolicLink -Path $RUNTIME_VER_DIR -Value $TARGET_DIR | Out-Null
     }
 }
 $CURRENT_LINK = Join-Path $BVM_RUNTIME_DIR "current"
-if ($PSVersionTable.PSVersion.Major -ge 6 -and $IsWin -or $env:OS -like "*Windows*") {
-    New-Item -ItemType Junction -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
+if ($IsWindows) {
+    New-Item -ItemType Junction -Path $CURRENT_LINK -Value $RUNTIME_VER_DIR -Force | Out-Null
 } else {
-    New-Item -ItemType SymbolicLink -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
+    New-Item -ItemType SymbolicLink -Path $CURRENT_LINK -Value $RUNTIME_VER_DIR -Force | Out-Null
 }
 
 # --- 5. Download BVM Source & Shim (Tarball Strategy) ---
