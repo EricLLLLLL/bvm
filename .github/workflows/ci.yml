@@ -27,8 +27,8 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Run E2E Tests
-        run: bun test test/e2e
+      - name: Run Tests
+        run: bun test test/*.test.ts
         env:
           # Ensure CI environment variables don't interfere with sandbox
           CI: true

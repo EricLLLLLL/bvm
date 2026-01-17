@@ -13,19 +13,31 @@ if (!pkgName || !version) {
 console.log(`🔍 Verifying mirror sync for ${pkgName}@${version} on npmmirror.com...`);
 
 async function check() {
+    console.log(`📡 Mirror Registry: https://registry.npmmirror.com/${pkgName}/${version}`);
     for (let i = 0; i < maxRetries; i++) {
         try {
-            // Check specific version existence
+            const start = Date.now();
             const res = await fetch(`https://registry.npmmirror.com/${pkgName}/${version}`, {
-                method: "HEAD"
+                method: "GET",
+                headers: { "Accept": "application/json" }
             });
+            const duration = Date.now() - start;
+
             if (res.status === 200) {
-                console.log(`✅ Sync successful! ${pkgName}@${version} is available on mirror.`);
-                return true;
+                const data = await res.json();
+                if (data.version === version) {
+                    console.log(`✅ [${duration}ms] Sync successful! ${pkgName}@${version} is live.`);
+                    return true;
+                }
             }
-            console.log(`⏳ Attempt ${i+1}/${maxRetries}: Version not found yet (Status ${res.status})...`);
+            
+            if (res.status === 404) {
+                console.log(`⏳ [${duration}ms] Attempt ${i+1}/${maxRetries}: Not found yet...`);
+            } else {
+                console.log(`⚠️ [${duration}ms] Attempt ${i+1}/${maxRetries}: Unexpected status ${res.status}`);
+            }
         } catch (e: any) {
-            console.error(`⚠️ Error checking mirror: ${e.message}`);
+            console.error(`❌ Network Error: ${e.message}`);
         }
         await new Promise(r => setTimeout(r, interval));
     }

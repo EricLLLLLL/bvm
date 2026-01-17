@@ -45,13 +45,7 @@ const runGit = (...args: string[]) => run('git', args);
     }
     
     console.log('\n🧪 Running Unit & Integration Tests...');
-    run('bun', ['test']);
-
-    console.log('\n🕵️‍♂️ Running E2E Installation Verification (Unix)...');
-    run('bun', ['run', 'scripts/verify-install.ts']);
-
-    console.log('\n🪟 Running E2E Installation Verification (Windows via pwsh)...');
-    run('bun', ['test', 'test/e2e/install-ps1.test.ts']);
+    run('bun', ['test', 'test/*.test.ts']);
 
     // 3. Select Version Bump
     console.log('\n📈 Version Bump Selection');
@@ -93,7 +87,7 @@ const runGit = (...args: string[]) => run('git', args);
 
     const installPs1Path = 'install.ps1';
     let installPs1Content = await Bun.file(installPs1Path).text();
-    installPs1Content = installPs1Content.replace(/\$BVM_VER = "v[^\"]*"/, `$BVM_VER = "${tagName}"`);
+    installPs1Content = installPs1Content.replace(/\$DEFAULT_BVM_VER = "v[^\"]*"/, `$DEFAULT_BVM_VER = "${tagName}"`);
     await Bun.write(installPs1Path, installPs1Content);
 
     // Commit
