@@ -41,9 +41,10 @@ BVM was engineered to solve the common pitfalls of traditional version managers:
 
 ## Installation
 
-### 1. Fast Installation (Recommended for China 🇨🇳)
+BVM provides several installation channels. Choose the one that best fits your network environment:
 
-This method downloads the full package directly from the mirror registry, ensuring 100% success without waiting for CDN synchronization.
+### 1. Fast Installation (Recommended for China 🇨🇳)
+Downloads the full package directly from the mirror registry. This method **does not depend on CDN sync** and is available seconds after release.
 
 **macOS / Linux / WSL:**
 ```bash
@@ -55,7 +56,20 @@ curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz | tar -xz &
 curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1
 ```
 
-### 2. Standard Installation
+---
+
+### 2. CDN Installation
+Install via global CDNs. Note: there might be a few minutes of cache delay after a new release.
+
+| Provider | macOS / Linux / WSL (bash) | Windows (PowerShell) |
+| :--- | :--- | :--- |
+| **jsDelivr** | `curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh \| bash` | `irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 \| iex` |
+| **unpkg** | `curl -fsSL https://unpkg.com/bvm-core/install.sh \| bash` | `irm https://unpkg.com/bvm-core/install.ps1 \| iex` |
+
+---
+
+### 3. Developer Installation (GitHub Raw)
+Get the latest script directly from the source repository.
 
 **macOS / Linux / WSL:**
 ```bash

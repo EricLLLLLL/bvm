@@ -41,11 +41,10 @@ BVM 旨在解决传统版本管理器常见的两大痛点：终端启动延迟�
 
 ## 安装
 
-BVM 提供了多种安装方式，在中国大陆地区，我们强烈建议使用 **淘宝镜像加速** 方案。
+BVM 提供了多种安装渠道。请根据您的网络环境选择最合适的方式：
 
 ### 1. 极速安装 (推荐 🇨🇳)
-
-该方式直接从淘宝 NPM 镜像下载完整包并解压安装，**无需等待 CDN 同步**，成功率 100%。
+直接从淘宝 NPM 镜像下载完整 Tarball。该方式**不依赖 CDN 同步**，发布后秒级可用，成功率 100%。
 
 **macOS / Linux / WSL:**
 ```bash
@@ -57,7 +56,20 @@ curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz | tar -xz &
 curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.4.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1
 ```
 
-### 2. 标准安装 (通过 GitHub)
+---
+
+### 2. CDN 安装
+通过各大公共 CDN 加速安装脚本。注意：新版本发布后可能存在数分钟的缓存延迟。
+
+| 源 | macOS / Linux / WSL (bash) | Windows (PowerShell) |
+| :--- | :--- | :--- |
+| **jsDelivr** | `curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh \| bash` | `irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 \| iex` |
+| **unpkg** | `curl -fsSL https://unpkg.com/bvm-core/install.sh \| bash` | `irm https://unpkg.com/bvm-core/install.ps1 \| iex` |
+
+---
+
+### 3. 开发者安装 (GitHub 直连)
+直接从 GitHub 源代码库获取最新的安装脚本。
 
 **macOS / Linux / WSL:**
 ```bash
