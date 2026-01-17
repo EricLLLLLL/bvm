@@ -49,7 +49,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.1.6"
+$DEFAULT_BVM_VER = "v1.1.7"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
@@ -89,7 +89,32 @@ $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR "v$BUN_VER"
 $BUN_EXE_NAME = if ($IsWindows) { "bun.exe" } else { "bun" }
 
 if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
-...
+    Write-Host "Downloading Bun v$BUN_VER..."
+    $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$BUN_VER.tgz"
+    $TMP = Join-Path $BVM_DIR "bun-runtime.tgz"
+    & $CURL_CMD "-#SfLo" "$TMP" "$URL"
+    
+    $EXT = Join-Path $BVM_DIR "temp_extract"
+    if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force | Out-Null }
+    New-Item -ItemType Directory -Path $EXT | Out-Null
+    
+    Write-Host "Extracting..."
+    & tar -xf "$TMP" -C "$EXT"
+    
+    $FoundBun = Get-ChildItem -Path $EXT -Filter $BUN_EXE_NAME -Recurse | Select-Object -First 1
+    if ($null -eq $FoundBun) {
+        # Fallback for different archive structures
+        $FoundBun = Get-ChildItem -Path $EXT -Filter "bun*" -Recurse | Where-Object { $_.Name -match "^bun(\.exe)?$" } | Select-Object -First 1
+    }
+
+    $BIN_DEST = Join-Path $TARGET_DIR "bin"
+    New-Item -ItemType Directory -Path $BIN_DEST -Force | Out-Null
+    Move-Item -Path $FoundBun.FullName -Destination (Join-Path $BIN_DEST $BUN_EXE_NAME) -Force
+    
+    Remove-Item $TMP -Force
+    Remove-Item $EXT -Recurse -Force
+}
+
 # Sync to runtime for BVM execution
 $RUNTIME_VER_DIR = Join-Path $BVM_RUNTIME_DIR "v$BUN_VER"
 if (-not (Test-Path $RUNTIME_VER_DIR)) {
@@ -147,11 +172,11 @@ foreach ($name in $CMD_NAMES) {
     $tpl = "@echo off`r`nset `"BVM_DIR=%USERPROFILE%\.bvm`"`r`n`r`n"
     $tpl += ":: Fast-path: If no .bvmrc in current directory, run default directly`r`n"
     $tpl += "if not exist `".bvmrc`" (`r`n"
-    $tpl += "    `"%BVM_DIR%\\runtime\\current\\bin\\bun.exe`" %*`r`n"
+    $tpl += "    `"%BVM_DIR%\runtime\current\bin\bun.exe`" %*`r`n"
     $tpl += "    exit /b %errorlevel%`r`n"
     $tpl += ")`r`n`r`n"
     $tpl += ":: Slow-path: Hand over to JS shim for version resolution`r`n"
-    $tpl += "`"%BVM_DIR%\\runtime\\current\\bin\\bun.exe`" `"%BVM_DIR%\\bin\\bvm-shim.js`" `"$name`" %*"
+    $tpl += "`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\bin\bvm-shim.js`" `"$name`" %*"
     
     $SHIM_PATH = Join-Path $BVM_SHIMS_DIR "$name.cmd"
     Set-Content -Path $SHIM_PATH -Value $tpl -Encoding Ascii

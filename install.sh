@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.1.6" # Fallback
+DEFAULT_BVM_VERSION="v1.1.7" # Fallback
 FALLBACK_BUN_VERSION="1.3.5"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION}" # If empty, will resolve dynamically
 
