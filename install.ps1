@@ -44,7 +44,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.1.2"
+$DEFAULT_BVM_VER = "v1.1.3"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
@@ -56,7 +56,7 @@ if (-not $BVM_VER) {
         Write-Host "Using local version from package.json: $BVM_VER" -ForegroundColor Gray
     } else {
         try {
-            $Resp = Invoke-RestMethod -Uri "https://$REGISTRY/@ericll/bvm-core" -TimeoutSec 5
+            $Resp = Invoke-RestMethod -Uri "https://$REGISTRY/bvm-core" -TimeoutSec 5
             $BVM_VER = "v" + $Resp."dist-tags".latest
         } catch {
             $BVM_VER = $DEFAULT_BVM_VER
@@ -129,7 +129,7 @@ if ($IsWin) {
 
 # --- 5. Download BVM Source & Shim ---
 $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
-$BASE_URL = "$NPM_CDN/@ericll/bvm-core@$BVM_PLAIN_VER"
+$BASE_URL = "$NPM_CDN/bvm-core@$BVM_PLAIN_VER"
 
 $LOCAL_DIST = Join-Path $PSScriptRoot "dist"
 $INDEX_JS = Join-Path $LOCAL_DIST "index.js"
