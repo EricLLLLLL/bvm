@@ -44,7 +44,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.1.4"
+$DEFAULT_BVM_VER = "v1.1.5"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
@@ -113,15 +113,15 @@ if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
 # Sync to runtime for BVM execution
 $RUNTIME_VER_DIR = Join-Path $BVM_RUNTIME_DIR "v$BUN_VER"
 if (-not (Test-Path $RUNTIME_VER_DIR)) {
-    # Windows Junction or Unix Symlink
-    if ($IsWin) {
+    # Windows Junction (no admin req) or Unix Symlink
+    if ($PSVersionTable.PSVersion.Major -ge 6 -and $IsWin -or $env:OS -like "*Windows*") {
         New-Item -ItemType Junction -Path $RUNTIME_VER_DIR -Target $TARGET_DIR | Out-Null
     } else {
         New-Item -ItemType SymbolicLink -Path $RUNTIME_VER_DIR -Target $TARGET_DIR | Out-Null
     }
 }
 $CURRENT_LINK = Join-Path $BVM_RUNTIME_DIR "current"
-if ($IsWin) {
+if ($PSVersionTable.PSVersion.Major -ge 6 -and $IsWin -or $env:OS -like "*Windows*") {
     New-Item -ItemType Junction -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
 } else {
     New-Item -ItemType SymbolicLink -Path $CURRENT_LINK -Target $RUNTIME_VER_DIR -Force | Out-Null
