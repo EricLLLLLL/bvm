@@ -1,11 +1,46 @@
 # BVM Installer for Windows (PowerShell)
 $ErrorActionPreference = "Stop"
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Standard environment detection for compatibility with PS 5.1 and 7+
-$IsWindows = $env:OS -like "*Windows*"
-$IsMacOS = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)
-$IsLinux = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Linux)
+# --- Fix: Enforce TLS 1.2 for Legacy Windows (Win7/Win10 Old) ---
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+} catch {
+    # If TLS1.2 isn't available, we can't download anyway, but let's not crash here.
+}
+
+# --- Platform Detection (Compatible with PS 5.1 & Core) ---
+$IsWindows = $false
+$IsMacOS = $false
+$IsLinux = $false
+
+if ($PSVersionTable.PSVersion.Major -ge 6) {
+    # PowerShell Core (Cross-platform) - Safe to use modern APIs
+    $IsWindows = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Windows)
+    $IsMacOS = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)
+    $IsLinux = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Linux)
+} else {
+    # Windows PowerShell 5.1 (Legacy) - Almost certainly Windows
+    # We use a fallback check just in case
+    if ($env:OS -like "*Windows*" -or $env:windir) {
+        $IsWindows = $true
+    }
+}
+
+if (-not $IsWindows -and -not $IsMacOS -and -not $IsLinux) {
+    # Final fallback
+    $IsWindows = $env:OS -like "*Windows*"
+}
+
+if (-not $IsWindows) {
+    Write-Error "BVM install.ps1 is intended for Windows. For Unix-like systems, please use install.sh."
+    exit 1
+}
+
+# --- Dependency Check: tar ---
+if (-not (Get-Command "tar" -ErrorAction SilentlyContinue)) {
+    Write-Error "Error: 'tar' command not found.`nBVM requires a modern Windows version (1809+) or a third-party 'tar' tool (e.g., Git Bash).`nPlease upgrade Windows or install Git."
+    exit 1
+}
 
 if (-not [Environment]::Is64BitOperatingSystem) {
     Write-Error "BVM requires a 64-bit version of Windows."
@@ -49,7 +84,7 @@ $CURL_CMD = "curl.exe"
 if (-not (Get-Command $CURL_CMD -ErrorAction SilentlyContinue)) { $CURL_CMD = "curl" }
 
 # --- 1. Resolve BVM and Bun Versions ---
-$DEFAULT_BVM_VER = "v1.1.10"
+$DEFAULT_BVM_VER = "v1.1.11"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 
 # Resolve BVM Version dynamically if not provided
