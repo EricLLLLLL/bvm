@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_release_upgrade_sync_20260118",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-01-18T18:15:00Z",
+  "updated_at": "2026-01-18T18:15:00Z",
+  "description": "重新分析整个发布和升级流程，解决 npm v1.1.11 已发布但 GitHub Release 停留在 v1.1.9 且 upgrade 无法检测到新版的问题。重构 upgrade 逻辑为基于 npm 竞速策略。"
+}
