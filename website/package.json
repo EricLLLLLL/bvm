@@ -1,0 +1,20 @@
+{
+  "name": "website",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "sync-docs": "bun run sync-docs.ts",
+    "dev": "bun run sync-docs && vitepress dev docs",
+    "build": "bun run sync-docs && vitepress build docs",
+    "preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.26"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
