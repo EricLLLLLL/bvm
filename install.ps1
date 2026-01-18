@@ -143,8 +143,13 @@ if ($BVM_REGION -eq "cn") {
     $TARBALL_URL = "https://registry.npmjs.org/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
 }
 
-$LOCAL_DIST = Join-Path $PSScriptRoot "dist"
-if (Test-Path $LOCAL_DIST) {
+if ($PSScriptRoot) {
+    $LOCAL_DIST = Join-Path $PSScriptRoot "dist"
+} else {
+    $LOCAL_DIST = ""
+}
+
+if ($LOCAL_DIST -and (Test-Path $LOCAL_DIST)) {
     Copy-Item $LOCAL_DIST\* $BVM_SRC_DIR -Recurse -Force
     Write-Host "Using local BVM source from dist/." -ForegroundColor Gray
 } else {
