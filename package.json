@@ -16,7 +16,8 @@
     "bvm": "bun run src/index.ts",
     "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" bun run src/index.ts",
     "release": "bun run scripts/release.ts",
-    "sync-runtime": "bun run scripts/sync-runtime.ts"
+    "sync-runtime": "bun run scripts/sync-runtime.ts",
+    "postinstall": "node scripts/postinstall.js"
   },
   "repository": {
     "type": "git",
@@ -38,6 +39,7 @@
     "dist/index.js",
     "dist/bvm-shim.sh",
     "dist/bvm-shim.js",
+    "scripts/postinstall.js",
     "install.sh",
     "install.ps1",
     "README.md"
