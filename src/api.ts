@@ -266,31 +266,39 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
 }
 
 /**
- * Fetches the latest BVM release info.
- * Uses the fastest available NPM registry based on race strategy.
- * @returns Object with tag_name and download_url for the current platform, or null.
+ * Fetches the latest BVM release info from NPM Registry.
+ * @returns Object with version, tarball url, and integrity check.
  */
-export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; downloadUrl: string } | null> {
-  const assetName = ASSET_NAME_FOR_BVM;
-  
+export async function fetchLatestBvmReleaseInfo(): Promise<{ version: string; tarball: string; integrity: string; shasum: string } | null> {
   try {
     const registry = await getFastestRegistry();
-    const url = `${registry.replace(/\/$/, '')}/-/package/bvm-core/dist-tags`;
+    const cleanRegistry = registry.replace(/\/$/, '');
     
-    const response = await fetchWithTimeout(url, {
+    // 1. Get latest version tag
+    const distTagsRes = await fetchWithTimeout(`${cleanRegistry}/-/package/bvm-core/dist-tags`, {
         headers: { 'User-Agent': USER_AGENT },
         timeout: 5000
     });
 
-    if (response.ok) {
-        const data = await response.json();
-        if (data && data.latest) {
-            const tagName = `v${data.latest}`;
-            return {
-                tagName: tagName,
-                downloadUrl: `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tagName}/${assetName}`
-            };
-        }
+    if (!distTagsRes.ok) return null;
+    const tags = await distTagsRes.json();
+    const latestVersion = tags.latest;
+    if (!latestVersion) return null;
+
+    // 2. Get full metadata for this version
+    const versionRes = await fetchWithTimeout(`${cleanRegistry}/bvm-core/${latestVersion}`, {
+        headers: { 'User-Agent': USER_AGENT },
+        timeout: 5000
+    });
+
+    if (versionRes.ok) {
+        const data = await versionRes.json();
+        return {
+            version: latestVersion,
+            tarball: data.dist.tarball,
+            integrity: data.dist.integrity,
+            shasum: data.dist.shasum
+        };
     }
   } catch (e) {
       // Silently fail
