@@ -29,8 +29,8 @@ features:
 <script setup>
 import { ref } from 'vue'
 
-const unixCommand = "curl -fsSL https://bvm.app/install | bash"
-const winCommand = "irm https://bvm.app/install | iex"
+const unixCommand = "curl -fsSL https://bvm-core.pages.dev/install | bash"
+const winCommand = "irm https://bvm-core.pages.dev/install | iex"
 const copied = ref('')
 
 const copy = (text, type) => {
