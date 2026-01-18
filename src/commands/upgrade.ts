@@ -1,8 +1,8 @@
 import { colors } from '../utils/ui';
 import { valid, gt } from '../utils/semver-lite';
-import { IS_TEST_MODE, BVM_SRC_DIR, BVM_COMPONENTS, BVM_CDN_ROOT, BVM_DIR, OS_PLATFORM, BVM_FINGERPRINTS_FILE } from '../constants';
+import { IS_TEST_MODE, BVM_SRC_DIR, BVM_COMPONENTS, BVM_CDN_ROOT, BVM_DIR, OS_PLATFORM, BVM_FINGERPRINTS_FILE, REPO_FOR_BVM_CLI } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
-import { fetchWithTimeout } from '../utils/network-utils';
+import { fetchWithTimeout, getFastestRegistry } from '../utils/network-utils';
 import packageJson from '../../package.json';
 import { withSpinner } from '../command-runner';
 import { join } from 'path';
@@ -47,9 +47,23 @@ export async function upgradeBvm(): Promise<void> {
 
         // --- Fetch Remote package.json for Fingerprints ---
         spinner.update('Fetching remote fingerprints...');
-        const baseUrl = BVM_CDN_ROOT.includes('jsdelivr.net') 
-            ? `${BVM_CDN_ROOT}@${latest.tagName}`
-            : BVM_CDN_ROOT;
+        
+        const registry = await getFastestRegistry();
+        let baseUrl = BVM_CDN_ROOT;
+        
+        if (IS_TEST_MODE) {
+            // Respect test-provided CDN root
+            baseUrl = BVM_CDN_ROOT.includes('jsdelivr.net') 
+                ? `${BVM_CDN_ROOT}@${latest.tagName}`
+                : BVM_CDN_ROOT;
+        } else if (registry.includes('npmmirror.com')) {
+            baseUrl = `https://npm.elemecdn.com/bvm-core@${latestVersion}`;
+        } else if (registry.includes('npmjs.org')) {
+            baseUrl = `https://unpkg.com/bvm-core@${latestVersion}`;
+        } else {
+            // Default to jsDelivr if something is weird
+            baseUrl = `https://cdn.jsdelivr.net/gh/${REPO_FOR_BVM_CLI}@${latest.tagName}`;
+        }
 
         const pkgUrl = `${baseUrl.replace(/\/$/, '')}/package.json`;
         const pkgRes = await fetchWithTimeout(pkgUrl, { timeout: 5000 });

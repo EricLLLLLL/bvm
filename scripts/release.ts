@@ -83,30 +83,42 @@ const runGit = (...args: string[]) => run('git', args);
     
     const installShPath = 'install.sh';
     let installShContent = await Bun.file(installShPath).text();
+    const oldInstallShContent = installShContent;
     installShContent = installShContent.replace(/DEFAULT_BVM_VERSION="v[^\"]*"/, `DEFAULT_BVM_VERSION="${tagName}"`);
+    if (installShContent === oldInstallShContent && !oldInstallShContent.includes(tagName)) {
+        throw new Error(`Failed to find or update DEFAULT_BVM_VERSION in ${installShPath}`);
+    }
     await Bun.write(installShPath, installShContent);
 
     const installPs1Path = 'install.ps1';
     let installPs1Content = await Bun.file(installPs1Path).text();
+    const oldInstallPs1Content = installPs1Content;
     installPs1Content = installPs1Content.replace(/\$DEFAULT_BVM_VER = "v[^\"]*"/, `$DEFAULT_BVM_VER = "${tagName}"`);
+    if (installPs1Content === oldInstallPs1Content && !oldInstallPs1Content.includes(tagName)) {
+        throw new Error(`Failed to find or update \$DEFAULT_BVM_VER in ${installPs1Path}`);
+    }
     await Bun.write(installPs1Path, installPs1Content);
 
     // --- Update version numbers in documentation ---
     console.log(`\n📚 Updating version numbers in documentation to ${newVersion}...`);
     const docsToUpdate = ['README.md', 'README.zh-CN.md', 'bvm_article_final.md'];
+    const updatedDocs = [];
     for (const doc of docsToUpdate) {
       const file = Bun.file(doc);
       if (await file.exists()) {
         let content = await file.text();
+        const oldContent = content;
         // Match patterns like bvm-core-1.1.4.tgz or bvm-core@1.1.4
-        // We use a global regex to catch all instances
         content = content.replace(/bvm-core-[\d\.]+\.tgz/g, `bvm-core-${newVersion}.tgz`);
-        await Bun.write(doc, content);
+        if (content !== oldContent) {
+            await Bun.write(doc, content);
+            updatedDocs.push(doc);
+        }
       }
     }
 
     // Commit
-    runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1', ...docsToUpdate);
+    runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1', ...updatedDocs);
     runGit('commit', '-m', `chore: release ${tagName}`);
 
     console.log(`\n⬆️  Pushing to main to trigger GitHub Action...`);

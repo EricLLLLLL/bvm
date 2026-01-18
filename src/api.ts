@@ -267,22 +267,25 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
 
 /**
  * Fetches the latest BVM release info.
+ * Uses the fastest available NPM registry based on race strategy.
  * @returns Object with tag_name and download_url for the current platform, or null.
  */
 export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; downloadUrl: string } | null> {
   const assetName = ASSET_NAME_FOR_BVM;
   
-  // Method 1: jsDelivr (Fastest, CDN cached)
   try {
-    const response = await fetchWithTimeout(`https://cdn.jsdelivr.net/gh/${REPO_FOR_BVM_CLI}@latest/package.json`, {
+    const registry = await getFastestRegistry();
+    const url = `${registry.replace(/\/$/, '')}/-/package/bvm-core/dist-tags`;
+    
+    const response = await fetchWithTimeout(url, {
         headers: { 'User-Agent': USER_AGENT },
-        timeout: 2000
+        timeout: 5000
     });
 
     if (response.ok) {
-        const pkg = await response.json();
-        if (pkg && pkg.version) {
-            const tagName = `v${pkg.version}`; // convention: tag is vX.Y.Z
+        const data = await response.json();
+        if (data && data.latest) {
+            const tagName = `v${data.latest}`;
             return {
                 tagName: tagName,
                 downloadUrl: `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tagName}/${assetName}`
@@ -290,59 +293,10 @@ export async function fetchLatestBvmReleaseInfo(): Promise<{ tagName: string; do
         }
     }
   } catch (e) {
-      // Fallback
+      // Silently fail
   }
-
-  // Method 2: GitHub Redirect (No API Rate Limit)
-  try {
-    const redirectUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/latest`;
-    const response = await fetchWithTimeout(redirectUrl, {
-      method: 'HEAD',
-      redirect: 'manual', // Don't follow automatically, we want the Location header
-      headers: { 'User-Agent': USER_AGENT },
-      timeout: 2000
-    });
-    
-    // GitHub returns 302 Found for /releases/latest -> /releases/tag/vX.Y.Z
-    if (response.status === 302 || response.status === 301) {
-       const location = response.headers.get('location');
-       if (location) {
-          // location is like: https://github.com/bvm-cli/bvm/releases/tag/v1.0.10
-          const parts = location.split('/');
-          const tag = parts[parts.length - 1];
-          if (tag && valid(tag)) {
-             return {
-               tagName: tag,
-               downloadUrl: `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tag}/${assetName}`
-             };
-          }
-       }
-    }
-  } catch (e) {
-      // Ignore error and fall back to API
-  }
-
-  // Method 3: GitHub API (Last Resort)
-  const headers: HeadersInit = { 'User-Agent': USER_AGENT };
-  const url = `https://api.github.com/repos/${REPO_FOR_BVM_CLI}/releases/latest`;
   
-  try {
-    const response = await fetchWithTimeout(url, { headers, timeout: 2000 });
-
-    if (!response.ok) {
-      return null;
-    }
-    const release = await response.json();
-    
-    const tagName = release.tag_name;
-    const downloadUrl = `https://github.com/${REPO_FOR_BVM_CLI}/releases/download/${tagName}/${assetName}`;
-    return {
-      tagName: tagName,
-      downloadUrl: downloadUrl,
-    };
-  } catch (error: any) {
-    return null;
-  }
+  return null;
 }
 
 // Missing imports to fix potential compilation errors

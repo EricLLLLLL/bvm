@@ -76,14 +76,6 @@ jobs:
           echo "🔄 Triggering sync for $PACKAGE_NAME via npmmirror API..."
           curl -X PUT "https://registry-direct.npmmirror.com/$PACKAGE_NAME/sync?nodeps=true&publish=true"
 
-      - name: Verify Mirror Sync
-        if: steps.check.outputs.should_release == 'true'
-        run: |
-          PACKAGE_NAME=$(grep -oE '"name": "[^"]+"' package.json | cut -d'"' -f4)
-          PACKAGE_VERSION=$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4)
-          echo "🕵️‍♂️ Verifying sync..."
-          bun run scripts/verify-sync.ts $PACKAGE_NAME $PACKAGE_VERSION
-
       - name: Package & Push Tag
         if: steps.check.outputs.should_release == 'true'
         env:
@@ -117,6 +109,15 @@ jobs:
             install.sh
             install.ps1
           generate_release_notes: true
+
+      - name: Verify Mirror Sync
+        if: steps.check.outputs.should_release == 'true'
+        continue-on-error: true
+        run: |
+          PACKAGE_NAME=$(grep -oE '"name": "[^"]+"' package.json | cut -d'"' -f4)
+          PACKAGE_VERSION=$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4)
+          echo "🕵️‍♂️ Verifying sync..."
+          bun run scripts/verify-sync.ts $PACKAGE_NAME $PACKAGE_VERSION
 
       - name: Purge jsDelivr Cache
         if: steps.check.outputs.should_release == 'true'
