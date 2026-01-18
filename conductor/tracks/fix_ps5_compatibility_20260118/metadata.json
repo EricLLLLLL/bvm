@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_ps5_compatibility_20260118",
+  "type": "bug",
+  "status": "completed",
+  "created_at": "2026-01-18T00:00:00Z",
+  "updated_at": "2026-01-18T05:00:00Z",
+  "description": "Fix install.ps1 crashing on Windows PowerShell 5.1 due to incompatible .NET Core API calls."
+}

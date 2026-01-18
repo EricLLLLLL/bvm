@@ -21,6 +21,7 @@ You are the Lead Architect for BVM. Your goal is to guide the user and the AI th
 *   **Cross-Platform**: Every feature MUST work on macOS, Linux, and Windows (PowerShell).
 *   **Self-Contained**: The runtime environment should be robust against user path manipulation.
 *   **Smart Distribution**: Always prioritize the fastest registry using the Race Strategy & Geo-Location (Cloudflare Trace).
+*   **Release Discipline**: NEVER manually tag or push version tags. The CI (`auto-release.yml`) owns the release lifecycle. Pushing a tag manually will cause CI to skip publishing to NPM. Just bump `package.json` and push to `main`.
 
 ## How to Use This Skill
 

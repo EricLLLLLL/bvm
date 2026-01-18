@@ -49,23 +49,29 @@ const runGit = (...args: string[]) => run('git', args);
     run('bash', ['-c', 'bun test test/*.test.ts']);
 
     // 3. Select Version Bump
-    console.log('\n📈 Version Bump Selection');
-    console.log('1) patch');
-    console.log('2) minor');
-    console.log('3) major');
-    console.log('4) cancel');
-    process.stdout.write('Enter choice: ');
-    
-    const reader = Bun.stdin.stream().getReader();
-    const { value } = await reader.read();
-    const input = new TextDecoder().decode(value).trim();
-    
     let bumpType = '';
-    switch (input) {
-      case '1': bumpType = 'patch'; break;
-      case '2': bumpType = 'minor'; break;
-      case '3': bumpType = 'major'; break;
-      default: console.log('Cancelled.'); process.exit(0);
+    const args = process.argv.slice(2);
+    if (args.length > 0 && ['patch', 'minor', 'major'].includes(args[0])) {
+        bumpType = args[0];
+        console.log(`\n📈 Version Bump Selection: ${bumpType} (from args)`);
+    } else {
+        console.log('\n📈 Version Bump Selection');
+        console.log('1) patch');
+        console.log('2) minor');
+        console.log('3) major');
+        console.log('4) cancel');
+        process.stdout.write('Enter choice: ');
+        
+        const reader = Bun.stdin.stream().getReader();
+        const { value } = await reader.read();
+        const input = new TextDecoder().decode(value).trim();
+        
+        switch (input) {
+          case '1': bumpType = 'patch'; break;
+          case '2': bumpType = 'minor'; break;
+          case '3': bumpType = 'major'; break;
+          default: console.log('Cancelled.'); process.exit(0);
+        }
     }
 
     // 4. Bump Version & Push
