@@ -1,17 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- 1. Hexagon Background (Deep Slate) -->
-  <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <!-- Vibrant Pink Gradient -->
+    <linearGradient id="pink_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f9cedf;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Shadow for the bolt -->
+    <filter id="bolt_shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
 
-  <!-- 2. The Bun (Solid White) -->
-  <g transform="translate(68, 85) scale(0.6)">
+  <!-- 1. The Bun (Bottom Layer, now with 0.7 opacity) -->
+  <g transform="translate(32, 30) scale(0.75)" opacity="0.7">
     <!-- Body -->
-    <path d="M48 180 C 48 80, 208 80, 208 180 L 48 180 Z" fill="#ffffff" />
-    <!-- Simple Face -->
-    <circle cx="95" cy="140" r="10" fill="#1e293b" />
-    <circle cx="161" cy="140" r="10" fill="#1e293b" />
-    <path d="M118 155 Q 123 162 128 155 Q 133 162 138 155" stroke="#1e293b" stroke-width="5" stroke-linecap="round" fill="none" />
+    <path d="M48 180 C 48 80, 208 80, 208 180 L 48 180 Z" fill="#ffffff" stroke="#db2777" stroke-width="6" stroke-linejoin="round"/>
+    <!-- Face -->
+    <circle cx="95" cy="140" r="12" fill="#db2777" />
+    <circle cx="161" cy="140" r="12" fill="#db2777" />
+    <path d="M118 155 Q 123 162 128 155 Q 133 162 138 155" stroke="#db2777" stroke-width="5" stroke-linecap="round" fill="none" />
+    <circle cx="75" cy="155" r="15" fill="#fecdd3" />
+    <circle cx="181" cy="155" r="15" fill="#fecdd3" />
   </g>
 
-  <!-- 3. The Bolt (Bright Yellow with stroke for clarity) -->
-  <path d="M148 70 L92 142 H140 L108 214 L164 142 H116 L148 70 Z" fill="#facc15" stroke="#1e293b" stroke-width="4" stroke-linejoin="round" />
+  <!-- 2. Pink Hexagon (Middle Layer) -->
+  <!-- Fill (Transparent) -->
+  <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" fill="url(#pink_grad)" opacity="0.4" />
+  <!-- Stroke (Solid) -->
+  <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" stroke="#db2777" stroke-width="8" stroke-linejoin="round" />
+
+  <!-- 3. The Lightning Bolt (Top Layer, Extra Large, Pure Gold) -->
+  <g filter="url(#bolt_shadow)">
+      <path d="M175 10 L85 135 H160 L105 250 L210 135 H135 L175 10 Z" 
+            fill="#facc15" 
+            stroke="#facc15" 
+            stroke-width="8" 
+            stroke-linejoin="round" />
+  </g>
 </svg>
