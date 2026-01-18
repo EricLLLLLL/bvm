@@ -69,5 +69,28 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+
+
 - [x] **Track: Execute and verify the release process for v1.1.1 (Patch)**
+
 *Link: [./conductor/tracks/release_v1_1_1_20260117/](./conductor/tracks/release_v1_1_1_20260117/)*
+
+
+
+---
+
+
+
+ 
+
+
+
+ - [x] **Track: Reset and Re-release BVM v1.1.8**
+
+
+
+ *Link: [./conductor/tracks/reset_v1_1_8_20260118/](./conductor/tracks/reset_v1_1_8_20260118/)*
+
+
+
+

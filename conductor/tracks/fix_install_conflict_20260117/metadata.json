@@ -1,8 +1,0 @@
-{
-  "track_id": "fix_install_conflict_20260117",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-01-17T13:40:00Z",
-  "updated_at": "2026-01-17T13:40:00Z",
-  "description": "修复安装脚本在创建 runtime/current 链接时因路径已存在非空目录导致的报错问题"
-}

@@ -145,7 +145,7 @@ if ($BVM_REGION -eq "cn") {
 
 $LOCAL_DIST = Join-Path $PSScriptRoot "dist"
 if (Test-Path $LOCAL_DIST) {
-    Copy-Item $LOCAL_DIST\* (Join-Path $BVM_SRC_DIR) -Recurse -Force
+    Copy-Item $LOCAL_DIST\* $BVM_SRC_DIR -Recurse -Force
     Write-Host "Using local BVM source from dist/." -ForegroundColor Gray
 } else {
     Write-Host "Downloading BVM Tarball $BVM_VER..."
