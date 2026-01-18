@@ -80,12 +80,10 @@ try {
 } catch {}
 
 # --- 3. Setup Directories ---
-Write-Host "Debug: Setting up directories..." -ForegroundColor DarkGray
 $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR, $BVM_ALIAS_DIR, $BVM_VERSIONS_DIR)
 foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null } }
 
 # --- 4. Download & Extract Bun ---
-Write-Host "Debug: Checking Bun runtime..." -ForegroundColor DarkGray
 # Note: In bootstrap, we install directly to versions/ and then link to runtime/
 $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR "v$BUN_VER"
 $BUN_EXE_NAME = if ($IsWindows) { "bun.exe" } else { "bun" }
@@ -118,7 +116,6 @@ if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
 }
 
 # Sync to runtime for BVM execution
-Write-Host "Debug: Syncing runtime..." -ForegroundColor DarkGray
 $RUNTIME_VER_DIR = Join-Path $BVM_RUNTIME_DIR "v$BUN_VER"
 if (-not (Test-Path $RUNTIME_VER_DIR)) {
     # Windows Junction (no admin req) or Unix Symlink
@@ -139,7 +136,6 @@ if ($IsWindows) {
 }
 
 # --- 5. Download BVM Source & Shim (Tarball Strategy) ---
-Write-Host "Debug: Downloading BVM source..." -ForegroundColor DarkGray
 $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
 if ($BVM_REGION -eq "cn") {
     $TARBALL_URL = "https://registry.npmmirror.com/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
