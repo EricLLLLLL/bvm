@@ -1,0 +1,8 @@
+{
+  "track_id": "website_and_smart_install_20260118",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-18T00:00:00Z",
+  "updated_at": "2026-01-18T00:00:00Z",
+  "description": "Establish a Cloudflare Pages project for the official BVM website and a smart, content-negotiated installation script."
+}

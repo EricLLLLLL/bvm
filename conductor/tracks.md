@@ -81,15 +81,39 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
- 
 
 
 
- - [x] **Track: Reset and Re-release BVM v1.1.8**
+
+- [x] **Track: Reset and Re-release BVM v1.1.8**
 
 
 
- *Link: [./conductor/tracks/reset_v1_1_8_20260118/](./conductor/tracks/reset_v1_1_8_20260118/)*
+*Link: [./conductor/tracks/reset_v1_1_8_20260118/](./conductor/tracks/reset_v1_1_8_20260118/)*
+
+
+
+
+
+
+
+---
+
+
+
+
+
+
+
+- [ ] **Track: BVM Official Website & Smart Install Script (Cloudflare Pages)**
+
+
+
+*Link: [./conductor/tracks/website_and_smart_install_20260118/](./conductor/tracks/website_and_smart_install_20260118/)*
+
+
+
+
 
 
 
