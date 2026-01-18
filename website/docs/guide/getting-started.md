@@ -1,114 +1,60 @@
 # BVM — Bun Version Manager
 
-BVM is a high-performance environment orchestrator designed for the Bun ecosystem. It leverages an **ArchSense (Self-Bootstrapping)** architecture, delivered via a **Global CDN (jsDelivr)** for instant availability. While providing a near-zero latency terminal experience, it maintains strict physical isolation between environments.
+<div align="center">
+  <a href="https://bvm-core.pages.dev">
+    <img src="https://bvm-core.pages.dev/logo.svg" alt="BVM Logo" width="180" height="180" />
+  </a>
 
-[![Version](https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest)](https://github.com/EricLLLLLL/bvm/releases)
-[![License](https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange)](#)
-[![Platform](https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-blue)](#)
+  <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
 
-<a href="./README.zh-CN.md">🇨🇳 中文文档</a>
+  <p align="center">
+    <a href="https://bvm-core.pages.dev"><strong>Official Website & Documentation »</strong></a>
+    <br />
+    <br />
+    <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
+    ·
+    <a href="https://github.com/EricLLLLLL/bvm/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/EricLLLLLL/bvm/discussions">Request Feature</a>
+  </p>
 
----
-
-## Table of Contents
-
-- [About](#about)
-- [Installation](#installation)
-  - [Install Script](#install-script)
-  - [Verify Installation](#verify-installation)
-  - [Manual Update](#manual-update)
-- [Usage](#usage)
-  - [Basic Commands](#basic-commands)
-  - [Running Commands](#running-commands)
-  - [Aliases](#aliases)
-- [Configuration](#configuration)
-  - [.bvmrc](#bvmrc)
-- [Design Philosophy](#design-philosophy)
-  - [ArchSense (Self-Bootstrapping)](#archsense-self-bootstrapping)
-  - [Smart Registry Racing](#smart-registry-racing)
-  - [Atomic Isolation](#atomic-isolation)
-- [Technical Audit](#technical-audit)
-- [Environment Variables](#environment-variables)
-- [License](#license)
-
----
-
-## About
-
-BVM was engineered to solve the common pitfalls of traditional version managers: shell startup lag and environment leakage. By utilizing **NTFS Junctions/Unix Symlinks** and dynamic path injection, BVM ensures that your global packages and Bun runtimes remain perfectly isolated and instantly available.
+  <p align="center">
+    <a href="https://github.com/EricLLLLLL/bvm/releases">
+      <img src="https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest" alt="Release" />
+    </a>
+    <a href="https://github.com/EricLLLLLL/bvm/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange" alt="License" />
+    </a>
+    <a href="#">
+      <img src="https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-blue" alt="Platform" />
+    </a>
+  </p>
+</div>
 
 ---
 
-## Installation
+## ⚡ Quick Install
 
-BVM provides several installation channels. Choose the one that best fits your network environment:
+BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
 
-### 1. Fast Installation (Recommended for China 🇨🇳)
-Downloads the full package directly from the mirror registry. This method **does not depend on CDN sync** and is available seconds after release.
-
-**macOS / Linux / WSL:**
+### macOS / Linux
 ```bash
-curl -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.9.tgz | tar -xz && bash package/install.sh && rm -rf package
+curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-**Windows (PowerShell):**
+### Windows (PowerShell)
 ```powershell
-curl.exe -L https://registry.npmmirror.com/bvm-core/-/bvm-core-1.1.9.tgz -o bvm.tgz; tar -xf bvm.tgz; ./package/install.ps1; Remove-Item bvm.tgz, package -Recurse -Force
+irm https://bvm-core.pages.dev/install | iex
 ```
 
 ---
 
-### 2. CDN Installation
-Install via global CDNs. Note: there might be a few minutes of cache delay after a new release.
+## Key Features
 
-#### jsDelivr (Recommended)
-**macOS / Linux / WSL:**
-```bash
-curl -fsSL https://cdn.jsdelivr.net/npm/bvm-core/install.sh | bash
-```
-**Windows (PowerShell):**
-```powershell
-irm https://cdn.jsdelivr.net/npm/bvm-core/install.ps1 | iex
-```
-
-#### unpkg
-**macOS / Linux / WSL:**
-```bash
-curl -fsSL https://unpkg.com/bvm-core/install.sh | bash
-```
-**Windows (PowerShell):**
-```powershell
-irm https://unpkg.com/bvm-core/install.ps1 | iex
-```
-
----
-
-### 3. Developer Installation (GitHub Raw)
-Get the latest script directly from the source repository.
-
-**macOS / Linux / WSL:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.sh | bash
-```
-
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.ps1 | iex
-```
-
----
-
-## Verification
-
-After installation, restart your terminal or source your profile, then verify:
-
-
-### Manual Update
-
-If you already have BVM installed, you can upgrade to the latest version using the built-in command:
-```bash
-bvm upgrade
-```
+- **🚀 Zero Latency**: Shim-based design ensures ~0ms shell startup overhead.
+- **🛡️ Atomic Isolation**: Each Bun version has its own global package directory. No more conflicts.
+- **🌏 Smart Mirroring**: Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
+- **📦 Zero Dependency**: BVM bootstraps itself using a private, minimal Bun runtime. No Node.js or Python required.
 
 ---
 
@@ -123,6 +69,7 @@ bvm upgrade
 *   `bvm ls`: List all locally installed versions.
 *   `bvm ls-remote`: List all available versions from the registry.
 *   `bvm uninstall 1.1.0`: Remove a specific version.
+*   `bvm upgrade`: Upgrade BVM itself to the latest version.
 
 ### Running Commands
 
@@ -139,19 +86,13 @@ bvm alias prod 1.1.0
 bvm use prod
 ```
 
----
+### Configuration (.bvmrc)
 
-## Configuration
-
-### .bvmrc
-
-BVM supports automatic version switching via `.bvmrc` files. Create a file named `.bvmrc` in your project root containing the version number:
+BVM supports automatic version switching via `.bvmrc` files. Create a file named `.bvmrc` in your project root:
 
 ```bash
 echo "1.1.0" > .bvmrc
 ```
-
-Once configured, any `bun` command executed within that directory (or its subdirectories) will automatically use the specified version.
 
 ---
 
@@ -160,32 +101,8 @@ Once configured, any `bun` command executed within that directory (or its subdir
 ### ArchSense (Self-Bootstrapping)
 BVM does not ship with heavy pre-compiled binaries. Instead, it uses **Bun to manage Bun**. The installer downloads a minimal Bun runtime to serve as BVM's execution engine, ensuring the manager itself is always running on the most optimized environment.
 
-### Smart Registry Racing
-BVM eliminates the need for manual mirror configuration. It identifies your location via Cloudflare Trace and concurrently "races" multiple registries (Official NPM, Taobao, Tencent) to pick the lowest-latency endpoint for your current network.
-
 ### Atomic Isolation
 Unlike managers that only switch the `PATH`, BVM performs **Filesystem-level Locking**. It dynamically injects a unique `BUN_INSTALL` path for every version, ensuring that global packages installed in one version never conflict with another.
-
----
-
-## Technical Audit
-
-| Metric | **BVM** | **bum** | **nvm** |
-| :--- | :--- | :--- | :--- |
-| **Shell Init Overhead** | **~9ms (Near-Zero)** | < 5ms | ~500ms (Blocking) |
-| **Shim Latency** | **~8ms (Pure Bash/JS)** | ~20ms | ~100ms (Func Trap) |
-| **Core Footprint** | **~50 KB (JS)** | ~5 MB (Binary) | ~100 KB (Scripts) |
-| **Windows Support** | **Native Junctions** | Partial | No (WSL Only) |
-
----
-
-## Environment Variables
-
-BVM respects the following environment variables:
-
-*   `BVM_DIR`: The directory where BVM stores its data (Default: `~/.bvm`).
-*   `BVM_REGISTRY`: Force a specific NPM registry for downloads.
-*   `BVM_MIRROR`: (Legacy) Fallback mirror URL.
 
 ---
 
