@@ -11,6 +11,13 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Architecture', link: '/guide/architecture' },
+      {
+        text: 'Author',
+        items: [
+          { text: '掘金 (Juejin)', link: 'https://juejin.cn/user/4072246800548999/posts' },
+          { text: '公众号 (WeChat)', link: 'https://mp.weixin.qq.com/s/CbO2wybwglEg6D5dh-tSCg' }
+        ]
+      },
       { text: 'GitHub', link: 'https://github.com/EricLLLLLL/bvm' }
     ],
     sidebar: [
