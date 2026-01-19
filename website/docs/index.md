@@ -142,9 +142,9 @@ const copy = (text, type) => {
 }
 
 .code-block button {
-  background: rgba(255, 255, 255, 0.1); /* Semi-transparent white works on dark backgrounds */
+  background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff; /* Explicitly white text for contrast on dark bg */
+  color: #ffffff;
   padding: 0.3rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
@@ -177,45 +177,5 @@ const copy = (text, type) => {
 
 .badge.alternative {
   background: var(--vp-c-text-3);
-}
-</style>
-
-.code-block {
-  padding: 0.75rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  background: #1e1e20; /* Consistent dark code background */
-}
-
-.code-block code {
-  font-family: var(--vp-font-family-mono);
-  color: #3dd68c; /* Terminal green */
-  font-size: 0.9rem;
-  word-break: break-all;
-}
-
-.code-block button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  padding: 0.3rem 0.7rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.code-block button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: var(--vp-c-brand);
-}
-
-.code-block button.copied {
-  background: var(--vp-c-brand);
-  color: white;
-  border-color: var(--vp-c-brand);
 }
 </style>
