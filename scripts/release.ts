@@ -133,8 +133,12 @@ const runGit = (...args: string[]) => run('git', args);
       }
     }
 
+    // --- Sync to Website ---
+    console.log(`\n🌐 Syncing documentation to website...`);
+    run('bun', ['run', 'website/sync-docs.ts']);
+
     // Commit
-    runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1', ...updatedDocs);
+    runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1', 'website/docs/guide', ...updatedDocs);
     runGit('commit', '-m', `chore: release ${tagName}`);
 
     console.log(`\n⬆️  Pushing to main to trigger GitHub Action...`);

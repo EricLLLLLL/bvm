@@ -1,179 +1,135 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { mkdir, writeFile, rm, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
+import { join, dirname } from 'path';
+import { mkdir, rm, writeFile, chmod } from 'fs/promises';
+import { tmpdir } from 'os';
+import { spawnSync } from 'child_process';
+import { existsSync, readFileSync } from 'fs';
 
-describe('Postinstall Logic', () => {
-  let tmpBase: string;
-  let homeDir: string;
-  let packageDir: string;
+const SCRIPT_PATH = join(process.cwd(), 'scripts', 'postinstall.js');
+const MOCK_BIN_DIR = join(process.cwd(), 'test', 'mock-bin');
+
+function runPostinstall(env: Record<string, string>) {
+  return spawnSync('node', [SCRIPT_PATH], {
+    env: { ...process.env, ...env },
+    encoding: 'utf-8',
+    stdio: 'pipe'
+  });
+}
+
+function getNodePath() {
+    const whichNode = spawnSync('which', ['node'], { encoding: 'utf-8' });
+    if (whichNode.status === 0) return dirname(whichNode.stdout.trim());
+    return '/usr/bin'; // Fallback
+}
+
+const NODE_BIN_DIR = getNodePath();
+
+describe('Postinstall Logic (Integration)', () => {
+  let tempBvmDir: string;
+  let tempHome: string;
+  let tempSrcDir: string;
 
   beforeEach(async () => {
-    // Create a sandbox environment
-    tmpBase = join(tmpdir(), `bvm-postinstall-test-${Date.now()}`);
-    homeDir = join(tmpBase, 'home');
-    packageDir = join(tmpBase, 'package');
-
-    await mkdir(homeDir, { recursive: true });
-    await mkdir(join(packageDir, 'scripts'), { recursive: true });
-    await mkdir(join(packageDir, 'dist'), { recursive: true });
-
-    // Mock Package Files
-    await writeFile(join(packageDir, 'dist', 'index.js'), 'console.log("mock bvm");');
-    await writeFile(join(packageDir, 'dist', 'bvm-shim.sh'), '#!/bin/sh\necho shim');
-    await writeFile(join(packageDir, 'dist', 'bvm-shim.js'), 'console.log("shim js");');
+    tempHome = join(tmpdir(), `bvm-test-home-${Date.now()}`);
+    tempBvmDir = join(tempHome, '.bvm');
+    tempSrcDir = join(tempBvmDir, 'src');
     
-    // Copy the actual postinstall script to the mock package
-    const realPostinstallPath = join(process.cwd(), 'scripts', 'postinstall.js');
-    const scriptContent = await Bun.file(realPostinstallPath).text();
-    await writeFile(join(packageDir, 'scripts', 'postinstall.js'), scriptContent);
+    await mkdir(tempHome, { recursive: true });
+    await mkdir(MOCK_BIN_DIR, { recursive: true });
   });
 
   afterEach(async () => {
-    await rm(tmpBase, { recursive: true, force: true });
+    await rm(tempHome, { recursive: true, force: true });
+    await rm(MOCK_BIN_DIR, { recursive: true, force: true });
   });
 
-  it('should copy distribution files to BVM_HOME', async () => {
-    // Execute postinstall.js
-    const result = spawnSync('node', ['scripts/postinstall.js'], {
-      cwd: packageDir,
-      env: {
-        ...process.env,
-        HOME: homeDir,
-        // Ensure we don't accidentally rely on real BVM vars if set
-        BVM_DIR: undefined 
-      },
-      encoding: 'utf-8'
-    });
+  it('should download runtime when no system bun is present', async () => {
+    const env = {
+      HOME: tempHome,
+      BVM_DIR: tempBvmDir,
+      PATH: `/bin:/usr/bin:${NODE_BIN_DIR}`, 
+      BVM_FORCE_INSTALL: 'true'
+    };
 
-    if (result.status !== 0) {
-      console.error('Postinstall stderr:', result.stderr);
-      console.log('Postinstall stdout:', result.stdout);
-    }
-
-    expect(result.status).toBe(0);
-
-    // Verify ~/.bvm/src/index.js
-    const srcIndex = join(homeDir, '.bvm', 'src', 'index.js');
-    expect(await exists(srcIndex)).toBe(true);
+    const result = runPostinstall(env);
     
-    // Verify ~/.bvm/bin/bvm-shim.sh
-    const shimSh = join(homeDir, '.bvm', 'bin', 'bvm-shim.sh');
-    expect(await exists(shimSh)).toBe(true);
-
-    // Verify ~/.bvm/bin/bvm-shim.js
-    const shimJs = join(homeDir, '.bvm', 'bin', 'bvm-shim.js');
-    expect(await exists(shimJs)).toBe(true);
+    const output = result.stdout ? result.stdout.toString() : '';
+    expect(output).toContain('No system Bun detected');
+    expect(output).toContain('Downloading compatible Bun runtime');
   });
 
-  it('should abort if BVM already exists in non-interactive mode', async () => {
-    // Simulate existing install
-    const bvmBin = join(homeDir, '.bvm', 'bin', 'bvm');
-    await mkdir(join(homeDir, '.bvm', 'bin'), { recursive: true });
-    await writeFile(bvmBin, '#!/bin/bash\necho "existing"');
+  it('should reuse system bun if compatible (Smoke Test Passed)', async () => {
+    const mockBunPath = join(MOCK_BIN_DIR, 'bun');
+    const mockScript = `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "1.3.6"
+  exit 0
+fi
+if [ "$2" = "--version" ]; then
+  echo "1.0.0"
+  exit 0
+fi
+`;
+    await writeFile(mockBunPath, mockScript);
+    await chmod(mockBunPath, 0o755);
 
-    // Execute postinstall.js
-    const result = spawnSync('node', ['scripts/postinstall.js'], {
-      cwd: packageDir,
-      env: {
-        ...process.env,
-        HOME: homeDir,
-        BVM_DIR: undefined,
-        CI: 'true' // Enforce non-interactive
-      },
-      encoding: 'utf-8'
-    });
+    const distDir = join(process.cwd(), 'dist');
+    if (!existsSync(distDir)) await mkdir(distDir);
+    if (!existsSync(join(distDir, 'index.js'))) await writeFile(join(distDir, 'index.js'), '// dummy');
+    if (!existsSync(join(distDir, 'bvm-shim.sh'))) await writeFile(join(distDir, 'bvm-shim.sh'), '# dummy');
+    if (!existsSync(join(distDir, 'bvm-shim.js'))) await writeFile(join(distDir, 'bvm-shim.js'), '// dummy');
 
-    // Should fail or warn
-    expect(result.stdout + result.stderr).toContain('Conflict detected');
-    // If it aborts to protect environment, it might exit 1 or 0 with message
-    // Spec says "terminate installation".
-  });
+    const env = {
+      HOME: tempHome,
+      BVM_DIR: tempBvmDir,
+      PATH: `${MOCK_BIN_DIR}:${process.env.PATH}`,
+    };
 
-  it('should overwrite if BVM_FORCE_INSTALL is set', async () => {
-    // Simulate existing install
-    const bvmBin = join(homeDir, '.bvm', 'bin', 'bvm');
-    await mkdir(join(homeDir, '.bvm', 'bin'), { recursive: true });
-    await writeFile(bvmBin, 'old content');
+    const result = runPostinstall(env);
+    const output = result.stdout ? result.stdout.toString() : '';
 
-    // Execute postinstall.js
-    const result = spawnSync('node', ['scripts/postinstall.js'], {
-      cwd: packageDir,
-      env: {
-        ...process.env,
-        HOME: homeDir,
-        BVM_DIR: undefined,
-        CI: 'true',
-        BVM_FORCE_INSTALL: 'true'
-      },
-      encoding: 'utf-8'
-    });
-
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('Overwriting existing installation');
+    expect(output).toContain('Found system Bun');
+    expect(output).toContain('Smoke Test passed');
     
-    // Check if files are copied (e.g. index.js)
-    const srcIndex = join(homeDir, '.bvm', 'src', 'index.js');
-    expect(await exists(srcIndex)).toBe(true);
+    const versionDir = join(tempBvmDir, 'versions', 'v1.3.6');
+    expect(existsSync(join(versionDir, 'bin', 'bun'))).toBe(true);
+    
+    const defaultAlias = join(tempBvmDir, 'aliases', 'default');
+    expect(readFileSync(defaultAlias, 'utf-8')).toBe('v1.3.6');
   });
 
-  it('should create bvm wrapper and trigger setup', async () => {
-     // Mock bun in PATH
-     const binDir = join(tmpBase, 'bin');
-     await mkdir(binDir, { recursive: true });
-     const mockBun = join(binDir, 'bun');
-     await writeFile(mockBun, '#!/bin/sh\necho "bun runtime"');
-     await chmod(mockBun, 0o755);
+  it('should fallback to download if smoke test fails', async () => {
+    const mockBunPath = join(MOCK_BIN_DIR, 'bun');
+    const mockScript = `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "0.1.0"
+  exit 0
+fi
+if [ "$2" = "--version" ]; then
+  exit 1
+fi
+`;
+    await writeFile(mockBunPath, mockScript);
+    await chmod(mockBunPath, 0o755);
 
-     const result = spawnSync('node', ['scripts/postinstall.js'], {
-       cwd: packageDir,
-       env: {
-         ...process.env,
-         HOME: homeDir,
-         BVM_DIR: undefined,
-         PATH: `${binDir}:${process.env.PATH}`,
-         CI: 'true'
-       },
-       encoding: 'utf-8'
-     });
+    const distDir = join(process.cwd(), 'dist');
+    if (!existsSync(distDir)) await mkdir(distDir);
+    if (!existsSync(join(distDir, 'index.js'))) await writeFile(join(distDir, 'index.js'), '// dummy');
 
-     expect(result.status).toBe(0);
-     
-     const bvmExec = join(homeDir, '.bvm', 'bin', 'bvm');
-     expect(await exists(bvmExec)).toBe(true);
-     
-     const content = await Bun.file(bvmExec).text();
-     expect(content).toContain('exec bun');
-     expect(content).toContain('BVM_DIR');
-     expect(content).toContain('export BVM_INSTALL_SOURCE="npm"');
-  });
+    const env = {
+      HOME: tempHome,
+      BVM_DIR: tempBvmDir,
+      PATH: `${MOCK_BIN_DIR}:${process.env.PATH}`,
+    };
 
-  it('should detect bun installation', async () => {
-    const result = spawnSync('node', ['scripts/postinstall.js'], {
-      cwd: packageDir,
-      env: {
-        ...process.env,
-        HOME: homeDir,
-        BVM_DIR: undefined,
-        CI: 'true',
-        npm_config_user_agent: 'bun/1.1.0 npm/? node/v20.0.0 darwin x64'
-      },
-      encoding: 'utf-8'
-    });
+    const result = runPostinstall(env);
+    const output = result.stdout ? result.stdout.toString() : '';
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('Detected Bun installation');
+    expect(output).toContain('Found system Bun');
+    expect(output).toContain('Smoke Test failed');
+    expect(output).toContain('Downloading compatible Bun runtime');
+    
+    const oldVersionDir = join(tempBvmDir, 'versions', 'v0.1.0');
+    expect(existsSync(join(oldVersionDir, 'bin', 'bun'))).toBe(true);
   });
 });
-
-import { chmod } from 'node:fs/promises';
-
-async function exists(path: string) {
-  try {
-    await stat(path);
-    return true;
-  } catch {
-    return false;
-  }
-}

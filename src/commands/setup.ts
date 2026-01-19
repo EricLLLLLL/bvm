@@ -112,20 +112,22 @@ end
     const blockRegex = new RegExp(`${startMarker}[\s\S]*?${endMarker}`, 'g');
 
     if (content.includes(startMarker)) {
-      newContent = content.replace(blockRegex, shellName === 'fish' ? fishConfigBlock : configBlock);
-    } else if (content.includes('export BVM_DIR=') || content.includes('set -Ux BVM_DIR')) {
-      newContent = content + '\n' + (shellName === 'fish' ? fishConfigBlock : configBlock);
-    } else {
-      newContent = content + '\n' + (shellName === 'fish' ? fishConfigBlock : configBlock);
+      // Remove existing block to ensure we can move it to the end
+      newContent = content.replace(blockRegex, '').trim();
     }
+    
+    // Always append to the end to ensure highest priority in PATH
+    const configToAppend = shellName === 'fish' ? fishConfigBlock : configBlock;
+    newContent = (newContent ? newContent + '\n\n' : '') + configToAppend + '\n';
 
     if (newContent !== content) {
       await Bun.write(configFile, newContent);
       if (displayPrompt) {
         console.log(colors.green(`✓ Successfully updated BVM configuration in ${configFile}`));
+        console.log(colors.gray('  (Moved configuration to the end of file to ensure PATH precedence)'));
       }
     } else if (displayPrompt) {
-      console.log(colors.gray('✓ Configuration is already up to date.'));
+
     }
 
     if (displayPrompt) {
@@ -163,8 +165,8 @@ async function recreateShims(displayPrompt: boolean) {
 export BVM_DIR="${BVM_DIR}"
 export BVM_INSTALL_SOURCE="npm"
 # 1. Try internal runtime
-if [ -x "${BVM_DIR}/runtime/current/bin/bun" ]; then
-  exec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"
+if [ -x "${BVM_DIR}/current/bin/bun" ]; then
+  exec "${BVM_DIR}/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"
 # 2. Try global/system bun (fallback)
 elif command -v bun >/dev/null 2>&1; then
   exec bun "${BVM_DIR}/src/index.js" "$@"
@@ -175,7 +177,7 @@ fi
 `;
         } else {
             // Standard Wrapper (Strict Isolation)
-            bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
+            bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
         }
 
         const bvmPath = join(BVM_BIN_DIR, 'bvm');
@@ -270,42 +272,20 @@ async function checkConflicts(): Promise<void> {
             
             if (p === officialBunBin || p === officialBunPath) { 
                  console.log();
-                 console.log(colors.yellow(' CONFLICT DETECTED ')); 
+                 console.log(colors.yellow(' NOTE: OFFICIAL BUN DETECTED ')); 
                  console.log(colors.yellow(`Found existing official Bun installation at: ${bunPath}`));
-                 console.log(colors.yellow(`This will conflict with bvm as it is also in your PATH.`));
-                 
-                 try {
-                    const shouldUninstall = await confirm('Do you want bvm to uninstall the official Bun version (~/.bun) to resolve this?');
-
-                    if (shouldUninstall) {
-                        await uninstallOfficialBun(officialBunPath);
-                    } else {
-                        console.log(colors.dim('Skipping uninstallation. Please ensure bvm path takes precedence.'));
-                    }
-                 } catch (e) {
-                 }
+                 console.log(colors.yellow(`BVM will coexist by taking precedence in your PATH.`));
+                 console.log(colors.dim('No files will be deleted. BVM shims will handle version switching.'));
                  return; 
             } 
             else {
                 console.log();
-                console.log(colors.red(' CONFLICT DETECTED '));
-                console.log(colors.red(`Found another Bun installation at: ${bunPath}`));
-                console.log(colors.yellow(`This might be installed via npm, Homebrew, or another package manager.`));
-                console.log(colors.yellow(`To avoid conflicts, please uninstall it manually (e.g., 'npm uninstall -g bun').`));
+                console.log(colors.yellow(' NOTE: ANOTHER BUN DETECTED '));
+                console.log(colors.yellow(`Found another Bun installation at: ${bunPath}`));
+                console.log(colors.yellow(`BVM will take precedence. To avoid confusion, you may manually manage the other version.`));
                 console.log();
                 return;
             }
         }
-    }
-}
-
-async function uninstallOfficialBun(path: string): Promise<void> {
-    console.log(colors.cyan(`Removing official Bun installation at ${path}...`));
-    try {
-        await removeDir(path);
-        console.log(colors.green('✓ Official Bun uninstalled.'));
-        console.log(colors.yellow('Note: You may still need to remove `.bun/bin` from your PATH manually if it was added in your rc file.'));
-    } catch (error: any) {
-        console.error(colors.red(`Failed to remove official Bun: ${error.message}`));
     }
 }

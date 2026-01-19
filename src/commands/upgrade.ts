@@ -15,19 +15,24 @@ import { runCommand } from '../helpers/process';
 const CURRENT_VERSION = packageJson.version;
 
 export async function upgradeBvm(): Promise<void> {
-  // Check if installed via npm
-  if (process.env.BVM_INSTALL_SOURCE === 'npm' || __dirname.includes('node_modules')) {
-      await withSpinner('Upgrading BVM via npm...', async (spinner) => {
+  // Check if installed via npm or bun
+  const installSource = process.env.BVM_INSTALL_SOURCE;
+  const isPackageInstall = installSource === 'npm' || installSource === 'bun' || __dirname.includes('node_modules');
+  
+  if (isPackageInstall) {
+      await withSpinner(`Upgrading BVM via ${installSource || 'package manager'}...`, async (spinner) => {
           const registry = await getFastestRegistry();
-          spinner.text = `Upgrading BVM via npm using ${registry}...`;
+          // Default to npm if source is unknown but it's in node_modules
+          const pkgManager = installSource === 'bun' ? 'bun' : 'npm';
+          
+          spinner.text = `Upgrading BVM via ${pkgManager} using ${registry}...`;
           
           try {
-              // Execute npm install -g bvm-core --registry <fastest>
-              // We use 'bun x' or 'npm' depending on availability, but 'npm' is safer for global link management
-              await runCommand(['npm', 'install', '-g', 'bvm-core', '--registry', registry]);
-              spinner.succeed(colors.green('BVM upgraded via npm successfully.'));
+              // Execute [pkgManager] install -g bvm-core --registry <fastest>
+              await runCommand([pkgManager, 'install', '-g', 'bvm-core', '--registry', registry]);
+              spinner.succeed(colors.green(`BVM upgraded via ${pkgManager} successfully.`));
           } catch (e: any) {
-              throw new Error(`NPM upgrade failed: ${e.message}`);
+              throw new Error(`${pkgManager} upgrade failed: ${e.message}`);
           }
       });
       return;
