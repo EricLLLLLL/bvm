@@ -48,6 +48,9 @@ const runGit = (...args: string[]) => run('git', args);
     // Run via shell to expand glob pattern, ensuring we only run tests in the root test dir (excluding e2e)
     run('bash', ['-c', 'bun test test/*.test.ts']);
 
+    console.log('\n🛡️ Running E2E NPM Verification...');
+    run('bun', ['run', 'test:e2e:npm']);
+
     // 3. Select Version Bump
     let bumpType = '';
     const args = process.argv.slice(2);
