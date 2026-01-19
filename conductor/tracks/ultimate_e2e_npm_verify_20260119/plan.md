@@ -11,14 +11,14 @@
     - [x] 验证安装后的文件目录结构（bin, src, shims）
 - [x] Task: Conductor - User Manual Verification 'Foundation & Sandbox' (Protocol in workflow.md) (1e339b0)
 
-## Phase 2: 核心功能与自愈验证 (Core & Self-healing)
-- [ ] Task: 编写 TDD 测试验证 Runtime Bootstrap
-    - [ ] **Write Tests**: 模拟无 Bun 环境或旧版 Bun 环境的安装
-    - [ ] **Implement**: 在验证脚本中加入对 `current` 链接指向及 `bvm --version` 的检查
-- [ ] Task: 验证版本管理与切换逻辑
-    - [ ] **Write Tests**: 编写测试用例执行 `bvm install latest` 和 `bvm use`
-    - [ ] **Implement**: 验证执行后的 PATH 更新及 `bun --version` 的实际输出
-- [ ] Task: Conductor - User Manual Verification 'Core & Self-healing' (Protocol in workflow.md)
+## Phase 2: 核心功能与自愈验证 (Core & Self-healing) [checkpoint: b0fd86c]
+- [x] Task: 编写 TDD 测试验证 Runtime Bootstrap (b0fd86c)
+    - [x] **Write Tests**: 模拟无 Bun 环境或旧版 Bun 环境的安装
+    - [x] **Implement**: 在验证脚本中加入对 `current` 链接指向及 `bvm --version` 的检查
+- [x] Task: 验证版本管理与切换逻辑 (b0fd86c)
+    - [x] **Write Tests**: 编写测试用例执行 `bvm install latest` 和 `bvm use`
+    - [x] **Implement**: 验证执行后的 PATH 更新及 `bun --version` 的实际输出
+- [x] Task: Conductor - User Manual Verification 'Core & Self-healing' (Protocol in workflow.md) (b0fd86c)
 
 ## Phase 3: 升级与互斥安全验证 (Upgrade & Safety)
 - [ ] Task: 验证 NPM 自动升级逻辑
