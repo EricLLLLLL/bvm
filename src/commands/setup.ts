@@ -156,7 +156,28 @@ async function recreateShims(displayPrompt: boolean) {
         await chmod(bvmShimShPath, 0o755);
 
         // Create bvm wrapper
-        const bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
+        let bvmWrapper = '';
+        if (process.env.BVM_INSTALL_SOURCE === 'npm') {
+            // NPM-Compatible Wrapper (Preserve Source & Fallback)
+            bvmWrapper = `#!/bin/bash
+export BVM_DIR="${BVM_DIR}"
+export BVM_INSTALL_SOURCE="npm"
+# 1. Try internal runtime
+if [ -x "${BVM_DIR}/runtime/current/bin/bun" ]; then
+  exec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"
+# 2. Try global/system bun (fallback)
+elif command -v bun >/dev/null 2>&1; then
+  exec bun "${BVM_DIR}/src/index.js" "$@"
+else
+  echo "Error: BVM requires Bun. Please install Bun or ensure it is in your PATH."
+  exit 1
+fi
+`;
+        } else {
+            // Standard Wrapper (Strict Isolation)
+            bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
+        }
+
         const bvmPath = join(BVM_BIN_DIR, 'bvm');
         await Bun.write(bvmPath, bvmWrapper);
         await chmod(bvmPath, 0o755);

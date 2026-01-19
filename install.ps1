@@ -8,33 +8,47 @@ try {
     # If TLS1.2 isn't available, we can't download anyway, but let's not crash here.
 }
 
-# --- Platform Detection (Compatible with PS 5.1 & Core) ---
-$IsWindows = $false
-$IsMacOS = $false
-$IsLinux = $false
+# --- Platform Detection (Compatible with PS 5.1 & Core - Robust Version) ---
+$bvmIsWindows = $false
+$bvmIsMac = $false
+$bvmIsLinux = $false
 
-if ($PSVersionTable.PSVersion.Major -ge 6) {
-    # PowerShell Core (Cross-platform) - Safe to use modern APIs
-    $IsWindows = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Windows)
-    $IsMacOS = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)
-    $IsLinux = [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Linux)
-} else {
-    # Windows PowerShell 5.1 (Legacy) - Almost certainly Windows
-    # We use a fallback check just in case
-    if ($env:OS -like "*Windows*" -or $env:windir) {
-        $IsWindows = $true
+# Detect OS using $PSVersionTable (preferred for PowerShell 6+ and some 5.1)
+if ($PSVersionTable.ContainsKey('OS')) {
+    $osName = $PSVersionTable.OS.ToString()
+    if ($osName -like '*Windows*') { $bvmIsWindows = $true }
+    elseif ($osName -like '*macOS*' -or $osName -like '*Darwin*') { $bvmIsMac = $true }
+    elseif ($osName -like '*Linux*') { $bvmIsLinux = $true }
+}
+
+# Fallback for older PS versions or where $PSVersionTable.OS is not descriptive enough
+if (-not ($bvmIsWindows -or $bvmIsMac -or $bvmIsLinux)) {
+    try {
+        $osCaption = (Get-CimInstance -ClassName Win32_OperatingSystem).Caption
+        if ($osCaption -like "*macOS*") {
+            $bvmIsMac = $true
+        } elseif ($osCaption -like "*Linux*") {
+            $bvmIsLinux = $true
+        } elseif ($osCaption -like "*Windows*") {
+            $bvmIsWindows = $true
+        }
+    } catch {
+        # If CimInstance also fails, assume Windows (most common PS environment for this script)
+        $bvmIsWindows = $true
     }
 }
 
-if (-not $IsWindows -and -not $IsMacOS -and -not $IsLinux) {
-    # Final fallback
-    $IsWindows = $env:OS -like "*Windows*"
+# Allow forcing Windows mode for testing purposes (e.g. running this script on macOS/Linux CI)
+if ($env:BVM_FORCE_WINDOWS) {
+    $bvmIsWindows = $true
 }
 
-if (-not $IsWindows) {
+# The rest of the script should now use $bvmIsWindows, $bvmIsMac, $bvmIsLinux
+if (-not $bvmIsWindows) {
     Write-Error "BVM install.ps1 is intended for Windows. For Unix-like systems, please use install.sh."
     exit 1
 }
+
 
 # --- Dependency Check: tar ---
 if (-not (Get-Command "tar" -ErrorAction SilentlyContinue)) {
@@ -55,6 +69,19 @@ $BVM_SRC_DIR = Join-Path $BVM_DIR "src"
 $BVM_RUNTIME_DIR = Join-Path $BVM_DIR "runtime"
 $BVM_ALIAS_DIR = Join-Path $BVM_DIR "aliases"
 $BVM_VERSIONS_DIR = Join-Path $BVM_DIR "versions"
+
+# --- 0. Conflict Detection ---
+$BVM_BIN_PATH = Join-Path $BVM_DIR "bin\bvm"
+if (Test-Path $BVM_BIN_PATH) {
+    $content = Get-Content $BVM_BIN_PATH -Raw
+    if ($content -like '*BVM_INSTALL_SOURCE="npm"*') {
+        Write-Error "BVM was installed via npm. Please use 'npm update -g bvm-core' to upgrade."
+        Write-Error "If you want to switch to native installation, uninstall the npm version first."
+        exit 1
+    }
+}
+
+Write-Host -NoNewline "ℹ Resolving versions... " -ForegroundColor Blue
 
 # --- 0. Smart Network Detection (CN vs Global) ---
 function Detect-NetworkZone {
@@ -121,7 +148,7 @@ foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory 
 # --- 4. Download & Extract Bun ---
 # Note: In bootstrap, we install directly to versions/ and then link to runtime/
 $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR "v$BUN_VER"
-$BUN_EXE_NAME = if ($IsWindows) { "bun.exe" } else { "bun" }
+$BUN_EXE_NAME = if ($bvmIsWindows) { "bun.exe" } else { "bun" }
 
 if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
     Write-Host "Downloading Bun v$BUN_VER..."
@@ -154,7 +181,7 @@ if (-not (Test-Path (Join-Path $TARGET_DIR "bin\$BUN_EXE_NAME"))) {
 $RUNTIME_VER_DIR = Join-Path $BVM_RUNTIME_DIR "v$BUN_VER"
 if (-not (Test-Path $RUNTIME_VER_DIR)) {
     # Windows Junction (no admin req) or Unix Symlink
-    if ($IsWindows) {
+    if ($bvmIsWindows) {
         New-Item -ItemType Junction -Path $RUNTIME_VER_DIR -Value $TARGET_DIR | Out-Null
     } else {
         New-Item -ItemType SymbolicLink -Path $RUNTIME_VER_DIR -Value $TARGET_DIR | Out-Null
@@ -164,7 +191,7 @@ $CURRENT_LINK = Join-Path $BVM_RUNTIME_DIR "current"
 if (Test-Path $CURRENT_LINK) {
     Remove-Item -Recurse -Force $CURRENT_LINK | Out-Null
 }
-if ($IsWindows) {
+if ($bvmIsWindows) {
     New-Item -ItemType Junction -Path $CURRENT_LINK -Value $RUNTIME_VER_DIR -Force | Out-Null
 } else {
     New-Item -ItemType SymbolicLink -Path $CURRENT_LINK -Value $RUNTIME_VER_DIR -Force | Out-Null
@@ -212,7 +239,8 @@ Write-Host "Initializing shims..." -ForegroundColor Gray
 
 $CMD_NAMES = @("bun", "bunx")
 foreach ($name in $CMD_NAMES) {
-    $tpl = "@echo off`r`nset `"BVM_DIR=%USERPROFILE%\.bvm`"`r`n`r`n"
+    $WinBvmDir = $BVM_DIR.Replace('/', '\')
+    $tpl = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`r`n"
     $tpl += ":: Fast-path: If no .bvmrc in current directory, run default directly`r`n"
     $tpl += "if not exist `".bvmrc`" (`r`n"
     $tpl += "    `"%BVM_DIR%\runtime\current\bin\bun.exe`" %*`r`n"
@@ -229,7 +257,8 @@ foreach ($name in $CMD_NAMES) {
 }
 
 # Create bvm.cmd
-$BvmWrapper = "@echo off`r`nset `"BVM_DIR=%USERPROFILE%\.bvm`"`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\src\index.js`" %*"
+$WinBvmDir = $BVM_DIR.Replace('/', '\')
+$BvmWrapper = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\src\index.js`" %*"
 Set-Content -Path (Join-Path $BVM_BIN_DIR "bvm.cmd") -Value $BvmWrapper -Encoding Ascii
 
 # Set initial default alias
@@ -254,7 +283,7 @@ $FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($NewPathList -join ';')
 # Update Current Session
 $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
 
-if ([Environment]::OSVersion.Platform -eq "Win32NT") {
+if ($bvmIsWindows) {
     & (Join-Path (Join-Path $BVM_RUNTIME_DIR "current\bin") "bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent
 }
 

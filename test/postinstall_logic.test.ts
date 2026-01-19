@@ -146,6 +146,24 @@ describe('Postinstall Logic', () => {
      const content = await Bun.file(bvmExec).text();
      expect(content).toContain('exec bun');
      expect(content).toContain('BVM_DIR');
+     expect(content).toContain('export BVM_INSTALL_SOURCE="npm"');
+  });
+
+  it('should detect bun installation', async () => {
+    const result = spawnSync('node', ['scripts/postinstall.js'], {
+      cwd: packageDir,
+      env: {
+        ...process.env,
+        HOME: homeDir,
+        BVM_DIR: undefined,
+        CI: 'true',
+        npm_config_user_agent: 'bun/1.1.0 npm/? node/v20.0.0 darwin x64'
+      },
+      encoding: 'utf-8'
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Detected Bun installation');
   });
 });
 

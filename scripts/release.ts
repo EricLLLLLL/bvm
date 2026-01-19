@@ -84,6 +84,10 @@ const runGit = (...args: string[]) => run('git', args);
     const newVersion = pkg.version;
     const tagName = `v${newVersion}`;
 
+    // --- Build with new version ---
+    console.log(`\n🏗️  Building BVM v${newVersion}...`);
+    run('bun', ['run', 'build']);
+
     // --- Update hardcoded default version in install scripts (Cross-platform) ---
     console.log(`\n📝 Updating hardcoded default version to ${tagName}...`);
     

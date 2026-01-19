@@ -164,14 +164,35 @@ echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_REGION})${RESET}"
 echo -e ""
 
 # 1. Resolve BVM and Bun Versions
+# --- 0. Conflict Detection ---
+BVM_BIN_PATH="${BVM_DIR}/bin/bvm"
+if [ -f "$BVM_BIN_PATH" ]; then
+    if grep -q 'BVM_INSTALL_SOURCE="npm"' "$BVM_BIN_PATH"; then
+        error "BVM was installed via npm. Please use 'npm update -g bvm-core' to upgrade."
+        error "If you want to switch to native installation, uninstall the npm version first."
+        exit 1
+    fi
+fi
+
 echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
 
 # Resolve BVM Version dynamically if not provided
 if [ -z "$BVM_SRC_VERSION" ]; then
     if [ -f "./dist/index.js" ] && [ -f "./package.json" ]; then
-        # Use version from local package.json
-        BVM_SRC_VERSION="v$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4 || echo "0.0.0")"
-        info "Using local version from package.json: $BVM_SRC_VERSION"
+        # Check actual version of the binary if possible
+        if command -v bun >/dev/null 2>&1; then
+            ACTUAL_VER=$(bun ./dist/index.js --version 2>/dev/null || echo "")
+            if [ -n "$ACTUAL_VER" ]; then
+                BVM_SRC_VERSION="v$ACTUAL_VER"
+                info "Using local BVM binary: $BVM_SRC_VERSION"
+            fi
+        fi
+        
+        if [ -z "$BVM_SRC_VERSION" ]; then
+            # Fallback to package.json
+            BVM_SRC_VERSION="v$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4 || echo "0.0.0")"
+            info "Using local version from package.json: $BVM_SRC_VERSION"
+        fi
     else
         BVM_LATEST=$(curl -s https://${REGISTRY}/bvm-core | grep -oE '"dist-tags":\{"latest":"[^"]+"\}' | cut -d'"' -f6 || echo "")
         if [ -n "$BVM_LATEST" ]; then

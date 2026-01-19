@@ -2,7 +2,7 @@ import { colors } from '../utils/ui';
 import { valid, gt } from '../utils/semver-lite';
 import { IS_TEST_MODE, BVM_DIR, OS_PLATFORM, BVM_FINGERPRINTS_FILE } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
-import { fetchWithTimeout } from '../utils/network-utils';
+import { fetchWithTimeout, getFastestRegistry } from '../utils/network-utils';
 import packageJson from '../../package.json';
 import { withSpinner } from '../command-runner';
 import { join } from 'path';
@@ -16,9 +16,21 @@ const CURRENT_VERSION = packageJson.version;
 
 export async function upgradeBvm(): Promise<void> {
   // Check if installed via npm
-  // If BVM_INSTALL_SOURCE is set (by wrapper), or if the file is running from within node_modules (direct link)
   if (process.env.BVM_INSTALL_SOURCE === 'npm' || __dirname.includes('node_modules')) {
-      throw new Error('BVM was installed via npm. Please run "npm install -g bvm-core" to update.');
+      await withSpinner('Upgrading BVM via npm...', async (spinner) => {
+          const registry = await getFastestRegistry();
+          spinner.text = `Upgrading BVM via npm using ${registry}...`;
+          
+          try {
+              // Execute npm install -g bvm-core --registry <fastest>
+              // We use 'bun x' or 'npm' depending on availability, but 'npm' is safer for global link management
+              await runCommand(['npm', 'install', '-g', 'bvm-core', '--registry', registry]);
+              spinner.succeed(colors.green('BVM upgraded via npm successfully.'));
+          } catch (e: any) {
+              throw new Error(`NPM upgrade failed: ${e.message}`);
+          }
+      });
+      return;
   }
 
   try {

@@ -98,22 +98,70 @@ async function main() {
         }
     }
     
-    // --- 3. Create Wrapper ---
-    log('Creating BVM wrapper...');
-    const wrapperContent = `#!/bin/bash
-export BVM_DIR="${BVM_DIR}"
-export BVM_INSTALL_SOURCE="npm"
-# 1. Try internal runtime
-if [ -x "${BVM_DIR}/runtime/current/bin/bun" ]; then
-  exec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_SRC_DIR}/index.js" "$@"
-# 2. Try global/system bun
-elif command -v bun >/dev/null 2>&1; then
-  exec bun "${BVM_SRC_DIR}/index.js" "$@"
-else
-  echo "Error: BVM requires Bun. Please install Bun or ensure it is in your PATH."
-  exit 1
-fi
-`;
+    // --- 4. Runtime Bootstrapping (Scenario 2) ---
+    const currentRuntime = path.join(BVM_DIR, 'runtime', 'current');
+    
+    if (isBun) {
+        log('Fixing environment runtime...');
+        try {
+            // A. Migrate Host Bun (Preserve user's version)
+            const sysBun = process.execPath;
+            const hostVer = process.version.replace(/^v/, ''); 
+            const hostVerDir = path.join(BVM_DIR, 'versions', hostVer);
+            const hostVerBinDir = path.join(hostVerDir, 'bin');
+            
+            if (!fs.existsSync(hostVerBinDir)) {
+                fs.mkdirSync(hostVerBinDir, { recursive: true });
+                fs.copyFileSync(sysBun, path.join(hostVerBinDir, 'bun'));
+                fs.chmodSync(path.join(hostVerBinDir, 'bun'), 0o755);
+                log(`Migrated host Bun (v${hostVer}) to ${hostVerDir}`);
+            }
+
+            // B. Try to Setup Latest (Goal: Use new version)
+            let setupSuccess = false;
+            let usedVersion = hostVer;
+
+            log('Attempting to install latest Bun version for BVM...');
+            // We use the host bun to run our newly copied CLI to install latest
+            const installCmd = spawnSync(sysBun, [path.join(BVM_SRC_DIR, 'index.js'), 'install', 'latest'], {
+                env: { ...process.env, BVM_DIR },
+                stdio: 'inherit'
+            });
+
+            if (installCmd.status === 0) {
+                const useCmd = spawnSync(sysBun, [path.join(BVM_SRC_DIR, 'index.js'), 'use', 'latest', '--silent'], {
+                    env: { ...process.env, BVM_DIR }
+                });
+                
+                if (useCmd.status === 0) {
+                    setupSuccess = true;
+                    try {
+                        const target = fs.readlinkSync(currentRuntime);
+                        usedVersion = path.basename(target);
+                    } catch(e) {}
+                }
+            }
+
+            if (setupSuccess) {
+                log(`Setup complete. Using Bun v${usedVersion} as default.`);
+                if (usedVersion !== hostVer) {
+                     log(`Your previous version (v${hostVer}) has been saved. Run "bvm use ${hostVer}" to restore it.`);
+                }
+            } else {
+                log('Warning: Failed to auto-install latest Bun. Falling back to host version.');
+                const runtimeDir = path.join(BVM_DIR, 'runtime');
+                fs.mkdirSync(runtimeDir, { recursive: true });
+                try { fs.unlinkSync(currentRuntime); } catch(e) {}
+                fs.symlinkSync(hostVerDir, currentRuntime, 'dir');
+                log(`Using Bun v${hostVer} as default.`);
+            }
+
+        } catch (e) {
+            log(`Warning: Runtime fixup failed: ${e.message}`);
+        }
+    }
+
+    // --- 5. Create Wrapper ---
     fs.writeFileSync(BVM_EXEC, wrapperContent);
     try { fs.chmodSync(BVM_EXEC, 0o755); } catch (e) {}
 
