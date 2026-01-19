@@ -33,60 +33,23 @@
 
 ---
 
----
-title: 快速开始
----
+## ⚡ 一键极速安装
 
-# 快速开始
+BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用户会自动切换至淘宝镜像源，海外用户使用官方源，无需手动配置。
 
-BVM 提供了多种安装方式，能够根据您的操作系统和网络环境自动选择最优配置。
-
-## 安装
-
-### 方式 1: NPM (推荐)
-
-如果您已经安装了 Node.js，这是最简单的方式：
-
+### 方式 1: NPM (推荐 Node.js 用户)
 ```bash
 npm install -g bvm-core
 ```
 
-### 方式 2: macOS / Linux
-
-使用终端运行以下命令：
-
+### 方式 2: Shell 脚本 (macOS / Linux)
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### 方式 3: Windows (PowerShell)
-
-打开 PowerShell 并运行：
-
+### 方式 3: PowerShell (Windows)
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
-```
-
-## 环境变量配置
-
-安装脚本会自动尝试修改您的 Shell 配置文件（如 `.zshrc`, `.bashrc` 或 PowerShell `$PROFILE`）。
-
-**安装完成后，请务必重启终端或运行以下命令使配置生效：**
-
-```bash
-# Zsh
-source ~/.zshrc
-
-# Bash
-source ~/.bashrc
-```
-
-## 验证安装
-
-运行以下命令验证 BVM 是否安装成功：
-
-```bash
-bvm --version
 ```
 
 ---
@@ -94,9 +57,10 @@ bvm --version
 ## 核心特性
 
 - **🚀 零延迟启动**：采用 Shim 架构设计，Shell 启动耗时约为 0ms。
+- **🛡️ 地堡架构 (Bunker Architecture)**：BVM 拥有独立的私有运行环境，即使卸载系统 Bun，BVM 依然能稳定工作并自愈。
 - **🛡️ 原子化隔离**：每个 Bun 版本拥有独立的全局包目录，彻底告别依赖冲突。
 - **🌏 智能镜像加速**：基于 GeoIP 自动识别地理位置，智能选择 NPM 官方源或淘宝镜像，下载飞快。
-- **📦 零依赖自举**：BVM 自身由一个私有的微型 Bun 运行时驱动，安装无需 Node.js 或 Python 环境。
+- **📦 零依赖自举**：BVM 自身能够实现环境自举。安装无需预设环境（它会自动复用系统 Bun 或按需下载）。
 
 ---
 
