@@ -163,18 +163,24 @@ function main() {
     if (checkBun.status === 0 && checkBun.stdout) {
         const binPath = checkBun.stdout.trim().split('\n')[0].trim();
         log(`System Bun detected at: ${binPath}. Running Smoke Test...`);
+        
+        const verRes = run(binPath, ['--version']);
+        const ver = 'v' + (verRes.stdout || '1.3.6').trim().replace(/^v/, '');
+        const verDir = path.join(BVM_DIR, 'versions', ver);
+        
+        // Register anyway to preserve user's version
+        if (!fs.existsSync(path.join(verDir, 'bin'))) {
+            fs.mkdirSync(path.join(verDir, 'bin'), { recursive: true });
+            fs.copyFileSync(binPath, path.join(verDir, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun'));
+        }
+
         const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
         if (test.status === 0) {
             log('Smoke test passed. Reusing system Bun.');
-            const verRes = run(binPath, ['--version']);
-            const ver = 'v' + (verRes.stdout || '1.3.6').trim().replace(/^v/, '');
-            const verDir = path.join(BVM_DIR, 'versions', ver);
-            if (!fs.existsSync(path.join(verDir, 'bin'))) {
-                fs.mkdirSync(path.join(verDir, 'bin'), { recursive: true });
-                fs.copyFileSync(binPath, path.join(verDir, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun'));
-            }
             setupRuntimeLink(verDir, ver);
             hasValidBun = true;
+        } else {
+            log('Smoke test failed. System Bun is incompatible with BVM core.');
         }
     }
 
