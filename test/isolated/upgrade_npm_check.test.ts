@@ -5,18 +5,18 @@ import { mkdir, rm } from 'fs/promises';
 
 // Mock dependencies BEFORE importing the module under test
 const mockRunCommand = mock(() => Promise.resolve(0));
-mock.module('../src/helpers/process', () => ({
+mock.module('../../src/helpers/process', () => ({
     runCommand: mockRunCommand
 }));
 
 const mockGetFastestRegistry = mock(() => Promise.resolve('https://registry.mock'));
-mock.module('../src/utils/network-utils', () => ({
+mock.module('../../src/utils/network-utils', () => ({
     getFastestRegistry: mockGetFastestRegistry,
     fetchWithTimeout: mock(() => Promise.resolve({ ok: true }))
 }));
 
 // Now import module under test
-import { upgradeBvm } from '../src/commands/upgrade';
+import { upgradeBvm } from '../../src/commands/upgrade';
 
 describe('Upgrade Logic - NPM Auto Upgrade', () => {
     let tmpHome: string;
