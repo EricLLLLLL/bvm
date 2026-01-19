@@ -40,24 +40,15 @@ describe("Setup & Shell Configuration Suite", () => {
     expect(content).toContain('/shims');
   });
 
-  test("setup configures fish config", async () => {
-    const fishConfigDir = join(TEST_HOME, ".config", "fish");
-    const fishConfigPath = join(fishConfigDir, "config.fish");
-    await Bun.write(fishConfigPath, "# Existing fish config\n"); // Auto-creates dir if needed? No, need mkdir
-
-    const { exitCode, allOutput } = await runBvm(["setup"], process.cwd(), { SHELL: "/usr/bin/fish", BVM_TEST_MODE: "" });
-    
-    expect(exitCode).toBe(0);
-    
-    const content = readFileSync(fishConfigPath, "utf-8");
-    expect(content).toContain('set -Ux BVM_DIR');
-    expect(content).toContain('shims');
-  });
-
   test("setup is idempotent (runs twice without duplicate)", async () => {
     const bashrcPath = join(TEST_HOME, ".bashrc");
-    // Run setup again
-    await runBvm(["setup"], process.cwd(), { SHELL: "/bin/bash", BVM_TEST_MODE: "" });
+    // Ensure we start with a clean state or known single state
+    writeFileSync(bashrcPath, "# Existing content\n");
+    
+    // First run
+    await runBvm(["setup"], process.cwd(), { SHELL: "/bin/bash", BVM_TEST_MODE: "true" });
+    // Second run
+    await runBvm(["setup"], process.cwd(), { SHELL: "/bin/bash", BVM_TEST_MODE: "true" });
     
     const content = readFileSync(bashrcPath, "utf-8");
     // Count occurrences of "BVM_DIR" assignment

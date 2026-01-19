@@ -109,10 +109,13 @@ end
 
   try {
     let newContent = content;
-    const blockRegex = new RegExp(`${startMarker}[\s\S]*?${endMarker}`, 'g');
+    // Escaping special characters in markers for safe regex usage
+    const escapedStart = startMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedEnd = endMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const blockRegex = new RegExp(`${escapedStart}[\\s\\S]*?${escapedEnd}`, 'g');
 
     if (content.includes(startMarker)) {
-      // Remove existing block to ensure we can move it to the end
+      // Remove all existing blocks to ensure we can move the latest one to the end
       newContent = content.replace(blockRegex, '').trim();
     }
     
