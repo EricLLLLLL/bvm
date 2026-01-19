@@ -29,7 +29,7 @@ features:
 <script setup>
 import { ref } from 'vue'
 
-const npmCommand = "npm install -g bvm-core"
+const npmCommand = "npm install -g bvm-core@latest"
 const unixCommand = "curl -fsSL https://bvm-core.pages.dev/install | bash"
 const winCommand = "irm https://bvm-core.pages.dev/install | iex"
 const copied = ref('')
@@ -46,20 +46,8 @@ const copy = (text, type) => {
 
   <div class="command-box recommended">
     <div class="header">
-      <span class="os">NPM (Recommended)</span>
-      <span class="badge">Node.js Users</span>
-    </div>
-    <div class="code-block">
-      <code>{{ npmCommand }}</code>
-      <button @click="copy(npmCommand, 'npm')" :class="{ copied: copied === 'npm' }">
-        {{ copied === 'npm' ? 'Copied!' : 'Copy' }}
-      </button>
-    </div>
-  </div>
-  
-  <div class="command-box">
-    <div class="header">
-      <span class="os">macOS / Linux</span>
+      <span class="os">macOS / Linux (Recommended)</span>
+      <span class="badge">Universal</span>
     </div>
     <div class="code-block">
       <code>{{ unixCommand }}</code>
@@ -80,6 +68,19 @@ const copy = (text, type) => {
       </button>
     </div>
   </div>
+
+  <div class="command-box">
+    <div class="header">
+      <span class="os">NPM</span>
+      <span class="badge alternative">Alternative</span>
+    </div>
+    <div class="code-block">
+      <code>{{ npmCommand }}</code>
+      <button @click="copy(npmCommand, 'npm')" :class="{ copied: copied === 'npm' }">
+        {{ copied === 'npm' ? 'Copied!' : 'Copy' }}
+      </button>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -94,25 +95,25 @@ const copy = (text, type) => {
 .command-box {
   width: 100%;
   max-width: 600px;
-  background: var(--vp-code-block-bg);
+  background: var(--vp-c-bg-alt); /* Light mode will use a slight grey */
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   overflow: hidden;
-  transition: border-color 0.3s;
+  transition: all 0.3s;
 }
 
 .command-box.recommended {
   border-color: var(--vp-c-brand-1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .header {
   padding: 0.6rem 1rem;
-  background: var(--vp-c-bg-alt);
+  background: var(--vp-c-bg-soft);
   border-bottom: 1px solid var(--vp-c-divider);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--vp-c-text-2);
+  color: var(--vp-c-text-1);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -124,18 +125,18 @@ const copy = (text, type) => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  background: var(--vp-code-block-bg) !important;
+  background: var(--vp-code-block-bg) !important; /* Forces standard code background */
 }
 
 .code-block code {
   font-family: var(--vp-font-family-mono);
-  color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1); /* Use brand color for visibility */
   font-size: 0.95rem;
   word-break: break-all;
 }
 
 .code-block button {
-  background: var(--vp-c-default-soft);
+  background: var(--vp-c-bg-mute);
   border: 1px solid var(--vp-c-divider);
   color: var(--vp-c-text-1);
   padding: 0.3rem 0.8rem;
@@ -147,6 +148,10 @@ const copy = (text, type) => {
   white-space: nowrap;
 }
 
+.dark .code-block button {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .code-block button:hover {
   background: var(--vp-c-brand-soft);
   border-color: var(--vp-c-brand-1);
@@ -155,7 +160,7 @@ const copy = (text, type) => {
 
 .code-block button.copied {
   background: var(--vp-c-brand-1);
-  color: #fff;
+  color: #fff !important;
   border-color: var(--vp-c-brand-1);
 }
 
@@ -167,6 +172,11 @@ const copy = (text, type) => {
   border-radius: 4px;
   text-transform: uppercase;
 }
+
+.badge.alternative {
+  background: var(--vp-c-text-3);
+}
+</style>
 
 .code-block {
   padding: 0.75rem 1rem;

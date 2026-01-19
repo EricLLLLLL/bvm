@@ -39,7 +39,7 @@ BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用
 
 ### 方式 1: NPM (推荐 Node.js 用户)
 ```bash
-npm install -g bvm-core
+npm install -g bvm-core@latest
 ```
 
 ### 方式 2: Shell 脚本 (macOS / Linux)
