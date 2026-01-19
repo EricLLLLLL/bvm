@@ -20,14 +20,14 @@
     - [x] **Implement**: 验证执行后的 PATH 更新及 `bun --version` 的实际输出
 - [x] Task: Conductor - User Manual Verification 'Core & Self-healing' (Protocol in workflow.md) (b0fd86c)
 
-## Phase 3: 升级与互斥安全验证 (Upgrade & Safety)
-- [ ] Task: 验证 NPM 自动升级逻辑
-    - [ ] **Write Tests**: 在已有 NPM 安装的沙盒中再次运行 `npm install -g .`
-    - [ ] **Implement**: 验证 `postinstall` 是否能识别 `BVM_INSTALL_SOURCE="npm"` 并自动覆盖
-- [ ] Task: 验证原生 BVM 冲突保护
-    - [ ] **Write Tests**: 模拟一个带有原生 BVM (无 NPM 标记) 的环境运行 `npm install`
-    - [ ] **Implement**: 验证安装是否被正确阻断并提示使用 `bvm upgrade`
-- [ ] Task: Conductor - User Manual Verification 'Upgrade & Safety' (Protocol in workflow.md)
+## Phase 3: 升级与互斥安全验证 (Upgrade & Safety) [checkpoint: 0ba4988]
+- [x] Task: 验证 NPM 自动升级逻辑 (0ba4988)
+    - [x] **Write Tests**: 在已有 NPM 安装的沙盒中再次运行 `npm install -g .`
+    - [x] **Implement**: 验证 `postinstall` 是否能识别 `BVM_INSTALL_SOURCE="npm"` 并自动覆盖
+- [x] Task: 验证原生 BVM 冲突保护 (0ba4988)
+    - [x] **Write Tests**: 模拟一个带有原生 BVM (无 NPM 标记) 的环境运行 `npm install`
+    - [x] **Implement**: 验证安装是否被正确阻断并提示使用 `bvm upgrade`
+- [x] Task: Conductor - User Manual Verification 'Upgrade & Safety' (Protocol in workflow.md) (0ba4988)
 
 ## Phase 4: 集成与 CI 接入 (Integration & CI)
 - [ ] Task: 完善脚本输出与错误处理
