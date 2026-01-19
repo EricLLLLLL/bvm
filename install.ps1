@@ -165,7 +165,7 @@ foreach ($name in $CMD_NAMES) {
 $RawPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $PathList = if ($RawPath) { $RawPath.Split(';') } else { @() }
 $NewPathList = @()
-foreach ($p in $PathList) { if ($p -notlike "*\.bvm\shims*" -and $p -notlike "*\.bvm\bin*" -and [string]::IsNotNullOrEmpty($p)) { $NewPathList += $p } }
+foreach ($p in $PathList) { if ($p -notlike "*\.bvm\shims*" -and $p -notlike "*\.bvm\bin*" -and -not [string]::IsNullOrEmpty($p)) { $NewPathList += $p } }
 $FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($NewPathList -join ';')
 [Environment]::SetEnvironmentVariable("Path", $FinalPath, "User")
 $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
