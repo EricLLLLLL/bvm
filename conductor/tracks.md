@@ -249,7 +249,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
-- [ ] **Track: Fix install.ps1 Compatibility for Windows PowerShell 5.1**
+- [x] **Track: Fix install.ps1 Compatibility for Windows PowerShell 5.1**
 
 
 
