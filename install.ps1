@@ -46,12 +46,13 @@ function Detect-NetworkZone {
 $BVM_REGION = Detect-NetworkZone
 $REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
 
+$DEFAULT_BVM_VER = "v1.1.13"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
     try {
         $Resp = Invoke-RestMethod -Uri "https://$REGISTRY/bvm-core" -TimeoutSec 5
         $BVM_VER = "v" + $Resp."dist-tags".latest
-    } catch { $BVM_VER = "v1.1.13" }
+    } catch { $BVM_VER = $DEFAULT_BVM_VER }
 }
 Write-Host "BVM Installer ($BVM_REGION) - Resolving $BVM_VER..." -ForegroundColor Cyan
 

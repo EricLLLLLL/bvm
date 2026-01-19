@@ -110,7 +110,7 @@ const runGit = (...args: string[]) => run('git', args);
     const installPs1Path = 'install.ps1';
     let installPs1Content = await Bun.file(installPs1Path).text();
     const oldInstallPs1Content = installPs1Content;
-    installPs1Content = installPs1Content.replace(/\$DEFAULT_BVM_VER = "v[^\"]*"/, `$DEFAULT_BVM_VER = "${tagName}"`);
+    installPs1Content = installPs1Content.replace(/\$DEFAULT_BVM_VER\s*=\s*"v[^\"]*"/, `$DEFAULT_BVM_VER = "${tagName}"`);
     if (installPs1Content === oldInstallPs1Content && !oldInstallPs1Content.includes(tagName)) {
         throw new Error(`Failed to find or update \$DEFAULT_BVM_VER in ${installPs1Path}`);
     }
