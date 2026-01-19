@@ -267,3 +267,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 *Link: [./conductor/tracks/fix_ps5_compatibility_20260118/](./conductor/tracks/fix_ps5_compatibility_20260118/)*
 \n---\n\n- [x] **Track: 支持 npm i -g 下载**\n*Link: [./conductor/tracks/npm_global_install_20260118/](./conductor/tracks/npm_global_install_20260118/)*
+\n---\n\n- [~] **Track: 做一个完整的验证，可以和 npm i 安装合并**\n*Link: [./conductor/tracks/ultimate_e2e_npm_verify_20260119/](./conductor/tracks/ultimate_e2e_npm_verify_20260119/)*
