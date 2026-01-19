@@ -4,7 +4,7 @@
   "description": "The native version manager for Bun. Cross-platform, shell-agnostic, and zero-dependency.",
   "main": "dist/index.js",
   "bin": {
-    "bvm": "dist/index.js"
+    "bvm": "bin/bvm-npm.js"
   },
   "publishConfig": {
     "access": "public"
@@ -40,6 +40,7 @@
     "dist/index.js",
     "dist/bvm-shim.sh",
     "dist/bvm-shim.js",
+    "bin/bvm-npm.js",
     "scripts/postinstall.js",
     "install.sh",
     "install.ps1",
