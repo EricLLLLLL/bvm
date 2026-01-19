@@ -2,14 +2,14 @@
 
 本计划旨在实现一个端到端的验证脚本，模拟物理安装流程并检查 BVM 的核心功能及自愈能力。
 
-## Phase 1: 基础架构与沙盒环境 (Foundation & Sandbox)
-- [ ] Task: 创建验证脚本基础框架 `scripts/verify-e2e-npm.ts`
-    - [ ] 定义沙盒目录常量及环境变量隔离逻辑
-    - [ ] 实现沙盒创建与自动清理（Cleanup Hook）
-- [ ] Task: 实现 NPM 本地安装模拟逻辑
-    - [ ] 在沙盒中执行 `npm install -g .`
-    - [ ] 验证安装后的文件目录结构（bin, src, shims）
-- [ ] Task: Conductor - User Manual Verification 'Foundation & Sandbox' (Protocol in workflow.md)
+## Phase 1: 基础架构与沙盒环境 (Foundation & Sandbox) [checkpoint: 1e339b0]
+- [x] Task: 创建验证脚本基础框架 `scripts/verify-e2e-npm.ts` (1e339b0)
+    - [x] 定义沙盒目录常量及环境变量隔离逻辑
+    - [x] 实现沙盒创建与自动清理（Cleanup Hook）
+- [x] Task: 实现 NPM 本地安装模拟逻辑 (1e339b0)
+    - [x] 在沙盒中执行 `npm install -g .`
+    - [x] 验证安装后的文件目录结构（bin, src, shims）
+- [x] Task: Conductor - User Manual Verification 'Foundation & Sandbox' (Protocol in workflow.md) (1e339b0)
 
 ## Phase 2: 核心功能与自愈验证 (Core & Self-healing)
 - [ ] Task: 编写 TDD 测试验证 Runtime Bootstrap
