@@ -15,6 +15,12 @@ import { runCommand } from '../helpers/process';
 const CURRENT_VERSION = packageJson.version;
 
 export async function upgradeBvm(): Promise<void> {
+  // Check if installed via npm
+  // If BVM_INSTALL_SOURCE is set (by wrapper), or if the file is running from within node_modules (direct link)
+  if (process.env.BVM_INSTALL_SOURCE === 'npm' || __dirname.includes('node_modules')) {
+      throw new Error('BVM was installed via npm. Please run "npm install -g bvm-core" to update.');
+  }
+
   try {
     await withSpinner(
       'Checking for BVM updates...',

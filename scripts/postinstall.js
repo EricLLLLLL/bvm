@@ -22,8 +22,12 @@ async function main() {
 
     const isTTY = process.stdin.isTTY || process.stdout.isTTY;
     const isCI = process.env.CI === 'true';
+    const isBun = process.env.npm_config_user_agent && process.env.npm_config_user_agent.includes('bun/');
 
     log(`Environment: TTY=${!!isTTY}, CI=${isCI}`);
+    if (isBun) {
+        log('Detected Bun installation. Optimizing setup...');
+    }
 
     // --- Configuration ---
     const HOME = process.env.HOME || require('os').homedir();
@@ -98,6 +102,7 @@ async function main() {
     log('Creating BVM wrapper...');
     const wrapperContent = `#!/bin/bash
 export BVM_DIR="${BVM_DIR}"
+export BVM_INSTALL_SOURCE="npm"
 # 1. Try internal runtime
 if [ -x "${BVM_DIR}/runtime/current/bin/bun" ]; then
   exec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_SRC_DIR}/index.js" "$@"

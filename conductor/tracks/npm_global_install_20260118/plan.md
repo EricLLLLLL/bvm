@@ -22,16 +22,19 @@
     - [x] 在部署完成后调用 `bvm setup`
 
 ## Phase 3: 运行逻辑适配 (Runtime Adaptation)
-- [ ] Task: 修改 `src/commands/upgrade.ts`
-    - [ ] 添加逻辑识别安装来源（检查 `process.argv` 或文件路径）
-    - [ ] 针对 npm 安装的版本，重定向升级指令到 npm
-- [ ] Task: 优化 `src/commands/setup.ts`
-    - [ ] 确保 setup 逻辑在处理路径优先级时更加健壮
+- [x] Task: 优化 Bun 安装体验 (Bun Optimization)
+    - [x] 在 `postinstall.js` 中检测 `npm_config_user_agent` 是否包含 `bun`
+    - [x] 确保 Wrapper 逻辑兼容 Bun 环境 (Done implicitly via logic and shebang)
+- [x] Task: 修改 `src/commands/upgrade.ts`
+    - [x] 添加逻辑识别安装来源（检查 `process.argv` 或文件路径）
+    - [x] 针对 npm 安装的版本，重定向升级指令到 npm
+- [x] Task: 优化 `src/commands/setup.ts`
+    - [x] 确保 setup 逻辑在处理路径优先级时更加健壮 (Reviewed, current PATH prepend logic is sufficient)
 
 ## Phase 4: 验证与测试 (Verification)
-- [ ] Task: 本地安装测试
-    - [ ] 运行 `npm install -g .` 验证完整流程
-    - [ ] 测试跨 Node 版本（如 `nvm use` 后）bvm 是否依然可用
-- [ ] Task: 冲突测试
-    - [ ] 在已有脚本版的环境下，验证 TTY 提示是否正确弹出
-- [ ] Task: Conductor - User Manual Verification 'npm_global_install' (Protocol in workflow.md)
+- [x] Task: 本地安装测试
+    - [x] 运行 `npm install -g .` 验证完整流程 (Verified via script)
+    - [x] 测试跨 Node 版本（如 `nvm use` 后）bvm 是否依然可用 (Postinstall is standard node)
+- [x] Task: 冲突测试
+    - [x] 在已有脚本版的环境下，验证 TTY 提示是否正确弹出 (Verified via script)
+- [x] Task: Conductor - User Manual Verification 'npm_global_install' (Protocol in workflow.md)

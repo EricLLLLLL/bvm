@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { parseArgs } from 'util';
 import packageJson from '../package.json';
 import { installBunVersion } from './commands/install';
