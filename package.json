@@ -1,6 +1,6 @@
 {
   "name": "bvm-core",
-  "version": "1.1.16",
+  "version": "1.1.17",
   "description": "The native version manager for Bun. Cross-platform, shell-agnostic, and zero-dependency.",
   "main": "dist/index.js",
   "bin": {
