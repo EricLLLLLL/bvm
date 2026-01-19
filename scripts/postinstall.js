@@ -19,7 +19,7 @@ const os = require('os');
 const ASCII_LOGO = `
 \x1b[36m
 __________              
-\\______   \__  _______  
+\______   \__  _______  
  |    |  _|  \/ /     \ 
  |    |   \\   /  Y Y  \ 
  |______  / \_/|__|_|  / 
@@ -32,18 +32,18 @@ const BVM_SRC_DIR = path.join(BVM_DIR, 'src');
 const BVM_BIN_DIR = path.join(BVM_DIR, 'bin');
 const PKG_ROOT = path.resolve(__dirname, '..');
 const DIST_DIR = path.join(PKG_ROOT, 'dist');
-const LOG_FILE = '/tmp/bvm-install.log';
+const LOG_FILE = path.join(os.tmpdir(), 'bvm-install.log');
 
 // --- Helpers ---
 function log(msg) {
     const line = `[bvm] ${msg}`;
-    console.log(line);
+    process.stdout.write(line + '\n');
     try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch(e) {}
 }
 
 function error(msg) {
     const line = `[bvm] ERROR: ${msg}`;
-    console.error(`\x1b[31m${line}\x1b[0m`);
+    process.stderr.write(`\x1b[31m${line}\x1b[0m\n`);
     try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch(e) {}
 }
 
@@ -52,13 +52,15 @@ function ensureDir(dir) {
 }
 
 function ensureVersionPrefix(version) {
+    if (!version) return 'v0.0.0';
     return version.startsWith('v') ? version : `v${version}`;
 }
 
 // --- Core Logic ---
 
-async function main() {
-    console.log(ASCII_LOGO);
+function main() {
+    // Force a leading newline to break from npm's output
+    process.stdout.write('\n' + ASCII_LOGO + '\n');
     log('Starting BVM post-install setup...');
 
     // 1. Conflict Detection
@@ -67,8 +69,6 @@ async function main() {
         try {
             const content = fs.readFileSync(BVM_EXEC, 'utf-8');
             if (!content.includes('BVM_INSTALL_SOURCE="npm"')) {
-                // Native install exists
-                // We should probably warn but proceed if it's just an update
                 log('Native BVM installation detected. Proceeding to update assets...');
             }
         } catch (e) {}
@@ -101,27 +101,20 @@ async function main() {
     let activeRuntimePath = null;
     let activeVersion = null;
 
-    // A. Check for System Bun
     const systemBun = detectSystemBun();
     let systemBunCompatible = false;
 
     if (systemBun) {
         log(`Found system Bun at ${systemBun.path} (v${systemBun.version})`);
-        // B. Smoke Test
         if (runSmokeTest(systemBun.path)) {
             log('Smoke Test passed: System Bun is compatible.');
             systemBunCompatible = true;
             activeVersion = ensureVersionPrefix(systemBun.version);
-            
-            // Register System Bun as a version
             const versionDir = path.join(BVM_DIR, 'versions', activeVersion);
             registerBunVersion(systemBun.path, versionDir);
-            
-            // Set as Active Runtime
             activeRuntimePath = versionDir;
         } else {
             log('Smoke Test failed: System Bun cannot run BVM core.');
-            // Still register it, but don't use it as runtime
             const versionDir = path.join(BVM_DIR, 'versions', ensureVersionPrefix(systemBun.version));
             registerBunVersion(systemBun.path, versionDir);
         }
@@ -129,7 +122,6 @@ async function main() {
         log('No system Bun detected.');
     }
 
-    // C. Download Fallback if needed
     if (!systemBunCompatible) {
         log('Downloading compatible Bun runtime...');
         try {
@@ -142,30 +134,24 @@ async function main() {
             }
         } catch (e) {
             error(`Failed to download runtime: ${e.message}`);
-            // Fallback: If we have a system bun (even if smoke test failed), use it as a last resort?
-            // No, better to fail loud or guide user.
         }
     }
 
     // 4. Link Runtime & Default Alias
     if (activeRuntimePath && activeVersion) {
-        const legacyCurrentLink = path.join(BVM_DIR, 'current'); // For users & shims
-        const privateRuntimeLink = path.join(BVM_DIR, 'runtime', 'current'); // For BVM itself
+        const legacyCurrentLink = path.join(BVM_DIR, 'current');
+        const privateRuntimeLink = path.join(BVM_DIR, 'runtime', 'current');
         ensureDir(path.join(BVM_DIR, 'runtime'));
 
-        // A. Link private runtime
         try { if (fs.existsSync(privateRuntimeLink)) fs.unlinkSync(privateRuntimeLink); } catch(e) {}
         try { fs.symlinkSync(activeRuntimePath, privateRuntimeLink, 'dir'); } catch(e) {}
 
-        // B. Link user active version (Initial)
         try { if (fs.existsSync(legacyCurrentLink)) fs.unlinkSync(legacyCurrentLink); } catch(e) {}
         try { fs.symlinkSync(activeRuntimePath, legacyCurrentLink, 'dir'); } catch(e) {}
 
-        // Set Default Alias
         const aliasDir = path.join(BVM_DIR, 'aliases');
         ensureDir(aliasDir);
         fs.writeFileSync(path.join(aliasDir, 'default'), activeVersion);
-        
         log(`Active runtime set to ${activeVersion}`);
     }
 
@@ -174,7 +160,7 @@ async function main() {
 
     // 6. Configure Shell (bvm setup)
     log('Configuring shell environment...');
-    const setupResult = spawnSync(path.join(BVM_BIN_DIR, 'bvm'), ['setup', '--silent'], {
+    spawnSync(path.join(BVM_BIN_DIR, 'bvm'), ['setup', '--silent'], {
         stdio: 'inherit',
         env: Object.assign({}, process.env, { BVM_DIR })
     });
@@ -186,7 +172,6 @@ async function main() {
 // --- Implementation Details ---
 
 function detectSystemBun() {
-    // 1. Try PATH
     const which = spawnSync('which', ['bun'], { encoding: 'utf-8' });
     if (which.status === 0 && which.stdout) {
         const binPath = which.stdout.trim();
@@ -238,13 +223,8 @@ function downloadAndInstallRuntime(bvmDir) {
     else return null;
 
     const pkgArch = arch === 'arm64' ? 'aarch64' : 'x64';
-    // Hardcoded fallback version if download fails calculation?
-    // Ideally we fetch latest, but for postinstall simplicity we use a known good one or fetch
     const bunVer = '1.1.13'; 
     const vBunVer = ensureVersionPrefix(bunVer);
-
-    // Using npmmirror for speed in CN, but ideally should be dynamic. 
-    // For now hardcode mirror for reliability in this script context.
     const registry = 'https://registry.npmmirror.com'; 
     const pkgName = `@oven/bun-${pkgPlatform}-${pkgArch}`;
     const url = `${registry}/${pkgName}/-/${pkgName.split('/').pop()}-${bunVer}.tgz`;
@@ -255,14 +235,11 @@ function downloadAndInstallRuntime(bvmDir) {
     try {
         log(`Downloading Bun ${bunVer}...`);
         spawnSync('curl', ['-L', '-s', '-o', tempTgz, url]);
-        
         ensureDir(extractDir);
         spawnSync('tar', ['-xzf', tempTgz, '-C', extractDir]);
-
         const exeName = platform === 'win32' ? 'bun.exe' : 'bun';
         const foundBinProc = spawnSync('find', [extractDir, '-name', exeName], { encoding: 'utf-8' });
         const binPath = foundBinProc.stdout ? foundBinProc.stdout.trim().split('\n')[0] : null;
-
         if (binPath && fs.existsSync(binPath)) {
             const versionDir = path.join(bvmDir, 'versions', vBunVer);
             registerBunVersion(binPath, versionDir);
@@ -283,11 +260,8 @@ function createBvmWrapper() {
     const wrapperContent = `#!/bin/bash
 export BVM_DIR="${BVM_DIR}"
 export BVM_INSTALL_SOURCE="npm"
-
-# 1. Try BVM Managed Runtime (The one we just configured)
 if [ -x "\${BVM_DIR}/runtime/current/bin/bun" ]; then
   exec "\${BVM_DIR}/runtime/current/bin/bun" "\${BVM_DIR}/src/index.js" "$@"
-# 2. Try System Bun (Fallback)
 elif command -v bun >/dev/null 2>&1; then
   exec bun "\${BVM_DIR}/src/index.js" "$@"
 else
@@ -306,18 +280,20 @@ function printSuccessMessage(hasSystemBun) {
     if (shell.includes('bash')) configFile = '~/.bashrc';
     else if (shell.includes('fish')) configFile = '~/.config/fish/config.fish';
 
-    console.log('\n\x1b[32m\x1b[1m🎉 BVM (Bun Version Manager) installed successfully!\x1b[0m');
-    
+    process.stdout.write('\n\x1b[32m\x1b[1m🎉 BVM (Bun Version Manager) installed successfully!\x1b[0m\n');
     if (hasSystemBun) {
-        console.log('\x1b[33mBVM has been added to the END of your PATH configuration to ensure priority.\x1b[0m');
-        console.log('\x1b[33mYour existing Bun installations were NOT deleted and will coexist.\x1b[0m');
+        process.stdout.write('\x1b[33mBVM has been added to the END of your PATH configuration to ensure priority.\x1b[0m\n');
+        process.stdout.write('\x1b[33mYour existing Bun installations were NOT deleted and will coexist.\x1b[0m\n');
     } else {
-        console.log('\x1b[33mBVM has installed a compatible Bun runtime for you.\x1b[0m');
+        process.stdout.write('\x1b[33mBVM has installed a compatible Bun runtime for you.\x1b[0m\n');
     }
-
-    console.log('\n\x1b[1mTo finalize the setup, please restart your terminal or run:\x1b[0m');
-    console.log(`\x1b[36m  source ${configFile}\x1b[0m\n`);
+    process.stdout.write('\n\x1b[1mTo finalize the setup, please restart your terminal or run:\x1b[0m\n');
+    process.stdout.write(`  source ${configFile}\n\n`);
 }
 
 // Execute
-main().catch(e => error(e.message));
+try {
+    main();
+} catch (e) {
+    error(e.message);
+}

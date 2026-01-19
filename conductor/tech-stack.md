@@ -8,6 +8,9 @@
 ## Scripts & Installation
 - **Unix:** Bash (`install.sh`)
 - **Windows:** PowerShell (`install.ps1`)
+- **NPM:** Node.js (`scripts/postinstall.js`)
+- **Workflow:** Standardized "Deploy -> Detect -> Smoke Test -> Link" sequence.
+- **Versioning:** Strict `vX.Y.Z` formatting for all internal paths and aliases.
 
 ## Dependencies
 - **Production:** Zero-dependency (Utilizes native Bun APIs)
