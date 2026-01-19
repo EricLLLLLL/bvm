@@ -2,10 +2,10 @@ import { describe, it, expect } from "bun:test";
 import packageJson from "../package.json";
 
 describe("NPM Global Install Configuration", () => {
-    it("should have bin field pointing to dist/index.js", () => {
+    it("should have bin field pointing to bin/bvm-npm.js", () => {
         expect(packageJson.bin).toBeDefined();
         // @ts-ignore
-        expect(packageJson.bin.bvm).toBe("dist/index.js");
+        expect(packageJson.bin.bvm).toBe("bin/bvm-npm.js");
     });
 
     it("should include necessary files in files field", () => {

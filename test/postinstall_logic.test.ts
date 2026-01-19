@@ -54,8 +54,8 @@ describe('Postinstall Logic (Integration)', () => {
     const result = runPostinstall(env);
     
     const output = result.stdout ? result.stdout.toString() : '';
-    expect(output).toContain('No system Bun detected');
-    expect(output).toContain('Downloading compatible Bun runtime');
+    expect(output).toContain('No compatible system Bun found');
+    expect(output).toContain('Downloading Bun');
   });
 
   it('should reuse system bun if compatible (Smoke Test Passed)', async () => {
@@ -88,8 +88,8 @@ fi
     const result = runPostinstall(env);
     const output = result.stdout ? result.stdout.toString() : '';
 
-    expect(output).toContain('Found system Bun');
-    expect(output).toContain('Smoke Test passed');
+    expect(output).toContain('System Bun detected at');
+    expect(output).toContain('Smoke test passed');
     
     const versionDir = join(tempBvmDir, 'versions', 'v1.3.6');
     expect(existsSync(join(versionDir, 'bin', 'bun'))).toBe(true);
@@ -125,9 +125,9 @@ fi
     const result = runPostinstall(env);
     const output = result.stdout ? result.stdout.toString() : '';
 
-    expect(output).toContain('Found system Bun');
-    expect(output).toContain('Smoke Test failed');
-    expect(output).toContain('Downloading compatible Bun runtime');
+    expect(output).toContain('System Bun detected at');
+    expect(output).toContain('No compatible system Bun found');
+    expect(output).toContain('Downloading Bun');
     
     const oldVersionDir = join(tempBvmDir, 'versions', 'v0.1.0');
     expect(existsSync(join(oldVersionDir, 'bin', 'bun'))).toBe(true);
