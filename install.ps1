@@ -75,7 +75,7 @@ $BVM_BIN_PATH = Join-Path $BVM_DIR "bin\bvm"
 if (Test-Path $BVM_BIN_PATH) {
     $content = Get-Content $BVM_BIN_PATH -Raw
     if ($content -like '*BVM_INSTALL_SOURCE="npm"*') {
-        Write-Error "BVM was installed via npm. Please use 'npm update -g bvm-core' to upgrade."
+        Write-Error "BVM was installed via npm. Please use 'npm update -g bvm-core' or 'bvm upgrade' to upgrade."
         Write-Error "If you want to switch to native installation, uninstall the npm version first."
         exit 1
     }

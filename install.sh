@@ -168,7 +168,7 @@ echo -e ""
 BVM_BIN_PATH="${BVM_DIR}/bin/bvm"
 if [ -f "$BVM_BIN_PATH" ]; then
     if grep -q 'BVM_INSTALL_SOURCE="npm"' "$BVM_BIN_PATH"; then
-        error "BVM was installed via npm. Please use 'npm update -g bvm-core' to upgrade."
+        error "BVM was installed via npm. Please use 'npm update -g bvm-core' or 'bvm upgrade' to upgrade."
         error "If you want to switch to native installation, uninstall the npm version first."
         exit 1
     fi
