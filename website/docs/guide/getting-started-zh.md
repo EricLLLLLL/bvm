@@ -33,18 +33,60 @@
 
 ---
 
-## ⚡ 一键极速安装
+---
+title: 快速开始
+---
 
-BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用户会自动切换至淘宝镜像源，海外用户使用官方源，无需手动配置。
+# 快速开始
 
-### macOS / Linux
+BVM 提供了多种安装方式，能够根据您的操作系统和网络环境自动选择最优配置。
+
+## 安装
+
+### 方式 1: NPM (推荐)
+
+如果您已经安装了 Node.js，这是最简单的方式：
+
+```bash
+npm install -g bvm-core
+```
+
+### 方式 2: macOS / Linux
+
+使用终端运行以下命令：
+
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### Windows (PowerShell)
+### 方式 3: Windows (PowerShell)
+
+打开 PowerShell 并运行：
+
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
+```
+
+## 环境变量配置
+
+安装脚本会自动尝试修改您的 Shell 配置文件（如 `.zshrc`, `.bashrc` 或 PowerShell `$PROFILE`）。
+
+**安装完成后，请务必重启终端或运行以下命令使配置生效：**
+
+```bash
+# Zsh
+source ~/.zshrc
+
+# Bash
+source ~/.bashrc
+```
+
+## 验证安装
+
+运行以下命令验证 BVM 是否安装成功：
+
+```bash
+bvm --version
 ```
 
 ---

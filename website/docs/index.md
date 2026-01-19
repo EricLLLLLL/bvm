@@ -19,8 +19,8 @@ hero:
 features:
   - title: 🚀 Zero Latency
     details: Shim-based design ensures ~0ms shell startup overhead. No more slow terminal inits.
-  - title: 🛡️ Atomic Isolation
-    details: Each Bun version has its own global package directory. No more conflicts between projects.
+  - title: 🛡️ Bunker Architecture
+    details: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
   - title: 🌏 Smart Mirroring
     details: Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
 
@@ -29,6 +29,7 @@ features:
 <script setup>
 import { ref } from 'vue'
 
+const npmCommand = "npm install -g bvm-core"
 const unixCommand = "curl -fsSL https://bvm-core.pages.dev/install | bash"
 const winCommand = "irm https://bvm-core.pages.dev/install | iex"
 const copied = ref('')
@@ -41,7 +42,20 @@ const copy = (text, type) => {
 </script>
 
 <div class="install-section">
-  <h2>One-Line Installation</h2>
+  <h2>Quick Installation</h2>
+
+  <div class="command-box recommended">
+    <div class="header">
+      <span class="os">NPM (Recommended)</span>
+      <span class="badge">Node.js Users</span>
+    </div>
+    <div class="code-block">
+      <code>{{ npmCommand }}</code>
+      <button @click="copy(npmCommand, 'npm')" :class="{ copied: copied === 'npm' }">
+        {{ copied === 'npm' ? 'Copied!' : 'Copy' }}
+      </button>
+    </div>
+  </div>
   
   <div class="command-box">
     <div class="header">
@@ -80,19 +94,28 @@ const copy = (text, type) => {
 .command-box {
   width: 100%;
   max-width: 600px;
-  background: var(--vp-c-bg-soft);
+  background: var(--vp-code-block-bg);
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.command-box.recommended {
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .header {
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1rem;
   background: var(--vp-c-bg-alt);
   border-bottom: 1px solid var(--vp-c-divider);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--vp-c-text-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .code-block {
@@ -101,29 +124,81 @@ const copy = (text, type) => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  background: var(--vp-code-block-bg) !important;
 }
 
 .code-block code {
   font-family: var(--vp-font-family-mono);
-  color: var(--vp-c-brand);
+  color: var(--vp-c-brand-1);
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
+.code-block button {
+  background: var(--vp-c-default-soft);
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-1);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.code-block button:hover {
+  background: var(--vp-c-brand-soft);
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.code-block button.copied {
+  background: var(--vp-c-brand-1);
+  color: #fff;
+  border-color: var(--vp-c-brand-1);
+}
+
+.badge {
+  font-size: 0.7rem;
+  background: var(--vp-c-brand-1);
+  color: #fff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.code-block {
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: #1e1e20; /* Consistent dark code background */
+}
+
+.code-block code {
+  font-family: var(--vp-font-family-mono);
+  color: #3dd68c; /* Terminal green */
   font-size: 0.9rem;
   word-break: break-all;
 }
 
 .code-block button {
-  background: var(--vp-c-bg-alt);
-  border: 1px solid var(--vp-c-divider);
-  padding: 0.4rem 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 0.3rem 0.7rem;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 
 .code-block button:hover {
+  background: rgba(255, 255, 255, 0.2);
   border-color: var(--vp-c-brand);
-  color: var(--vp-c-brand);
 }
 
 .code-block button.copied {

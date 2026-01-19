@@ -37,12 +37,17 @@
 
 BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用户会自动切换至淘宝镜像源，海外用户使用官方源，无需手动配置。
 
-### macOS / Linux
+### 方式 1: NPM (推荐 Node.js 用户)
+```bash
+npm install -g bvm-core
+```
+
+### 方式 2: Shell 脚本 (macOS / Linux)
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### Windows (PowerShell)
+### 方式 3: PowerShell (Windows)
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
 ```
@@ -52,9 +57,10 @@ irm https://bvm-core.pages.dev/install | iex
 ## 核心特性
 
 - **🚀 零延迟启动**：采用 Shim 架构设计，Shell 启动耗时约为 0ms。
+- **🛡️ 地堡架构 (Bunker Architecture)**：BVM 拥有独立的私有运行环境，即使卸载系统 Bun，BVM 依然能稳定工作并自愈。
 - **🛡️ 原子化隔离**：每个 Bun 版本拥有独立的全局包目录，彻底告别依赖冲突。
 - **🌏 智能镜像加速**：基于 GeoIP 自动识别地理位置，智能选择 NPM 官方源或淘宝镜像，下载飞快。
-- **📦 零依赖自举**：BVM 自身由一个私有的微型 Bun 运行时驱动，安装无需 Node.js 或 Python 环境。
+- **📦 零依赖自举**：BVM 自身能够实现环境自举。安装无需预设环境（它会自动复用系统 Bun 或按需下载）。
 
 ---
 

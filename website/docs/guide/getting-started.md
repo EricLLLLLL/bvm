@@ -1,48 +1,25 @@
-# BVM — Bun Version Manager
-
-<div align="center">
-  <a href="https://bvm-core.pages.dev">
-    <img src="https://bvm-core.pages.dev/logo.svg" alt="BVM Logo" width="180" height="180" />
-  </a>
-
-  <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
-
-  <p align="center">
-    <a href="https://bvm-core.pages.dev"><strong>Official Website & Documentation »</strong></a>
-    <br />
-    <br />
-    <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
-    ·
-    <a href="https://github.com/EricLLLLLL/bvm/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/EricLLLLLL/bvm/discussions">Request Feature</a>
-  </p>
-
-  <p align="center">
-    <a href="https://github.com/EricLLLLLL/bvm/releases">
-      <img src="https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest" alt="Release" />
-    </a>
-    <a href="https://github.com/EricLLLLLL/bvm/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange" alt="License" />
-    </a>
-    <a href="#">
-      <img src="https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-blue" alt="Platform" />
-    </a>
-  </p>
-</div>
-
+---
+title: Getting Started
 ---
 
-## ⚡ Quick Install
+# Getting Started
 
-BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
+BVM provides multiple installation methods tailored to your OS and network environment.
 
-### macOS / Linux
+## Quick Install
+
+### Method 1: NPM (Recommended)
+If you have Node.js installed, this is the easiest way:
+```bash
+npm install -g bvm-core
+```
+
+### Method 2: macOS / Linux
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### Windows (PowerShell)
+### Method 3: Windows (PowerShell)
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
 ```
@@ -52,9 +29,10 @@ irm https://bvm-core.pages.dev/install | iex
 ## Key Features
 
 - **🚀 Zero Latency**: Shim-based design ensures ~0ms shell startup overhead.
+- **🛡️ Bunker Architecture**: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
 - **🛡️ Atomic Isolation**: Each Bun version has its own global package directory. No more conflicts.
 - **🌏 Smart Mirroring**: Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
-- **📦 Zero Dependency**: BVM bootstraps itself using a private, minimal Bun runtime. No Node.js or Python required.
+- **📦 Zero Dependency**: BVM bootstraps itself. No pre-requisites required (it can reuse your system Bun or download its own).
 
 ---
 
