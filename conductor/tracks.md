@@ -217,54 +217,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
----
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- [x] **Track: Fix install.ps1 Compatibility for Windows PowerShell 5.1**
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-*Link: [./conductor/tracks/fix_ps5_compatibility_20260118/](./conductor/tracks/fix_ps5_compatibility_20260118/)*
 \n---\n\n- [x] **Track: 支持 npm i -g 下载**\n*Link: [./conductor/tracks/npm_global_install_20260118/](./conductor/tracks/npm_global_install_20260118/)*
 
