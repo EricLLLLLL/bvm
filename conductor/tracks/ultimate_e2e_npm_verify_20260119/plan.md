@@ -29,11 +29,11 @@
     - [x] **Implement**: 验证安装是否被正确阻断并提示使用 `bvm upgrade`
 - [x] Task: Conductor - User Manual Verification 'Upgrade & Safety' (Protocol in workflow.md) (0ba4988)
 
-## Phase 4: 集成与 CI 接入 (Integration & CI)
-- [ ] Task: 完善脚本输出与错误处理
-    - [ ] 实现极简的 Fail-Fast 输出模式
-    - [ ] 确保在非 TTY 环境下的稳定表现
-- [ ] Task: 将脚本集成到发布流程中
-    - [ ] 更新 `package.json` 中的 `scripts`，添加 `npm run test:e2e:npm`
-    - [ ] (可选) 在 GitHub Actions 的 release workflow 中加入该步骤
-- [ ] Task: Conductor - User Manual Verification 'Integration & CI' (Protocol in workflow.md)
+## Phase 4: 集成与 CI 接入 (Integration & CI) [checkpoint: e7654ec]
+- [x] Task: 完善脚本输出与错误处理 (e7654ec)
+    - [x] 实现极简的 Fail-Fast 输出模式
+    - [x] 确保在非 TTY 环境下的稳定表现
+- [x] Task: 将脚本集成到发布流程中 (e7654ec)
+    - [x] 更新 `package.json` 中的 `scripts`，添加 `npm run test:e2e:npm`
+    - [x] (可选) 在 GitHub Actions 的 release workflow 中加入该步骤
+- [x] Task: Conductor - User Manual Verification 'Integration & CI' (Protocol in workflow.md) (e7654ec)
