@@ -33,24 +33,24 @@
 
 ---
 
-## ⚡ Quick Install
+## Quick Install
 
-BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
-
-### Method 1: NPM (Recommended for Node.js users)
-```bash
-npm install -g bvm-core@latest
-```
-
-### Method 2: Shell Script (macOS / Linux)
+### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### Method 3: PowerShell (Windows)
+### Method 2: PowerShell (Recommended - Windows)
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
 ```
+
+### Method 3: NPM (Optional)
+If you already have Node.js installed:
+```bash
+npm install -g bvm-core@latest
+```
+
 
 ---
 

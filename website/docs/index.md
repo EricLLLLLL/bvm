@@ -42,7 +42,7 @@ const copy = (text, type) => {
 </script>
 
 <div class="install-section">
-  <h2>Quick Installation</h2>
+  <h2>One-Line Installation</h2>
 
   <div class="command-box recommended">
     <div class="header">
@@ -57,9 +57,10 @@ const copy = (text, type) => {
     </div>
   </div>
 
-  <div class="command-box">
+  <div class="command-box recommended">
     <div class="header">
-      <span class="os">Windows (PowerShell)</span>
+      <span class="os">Windows (Recommended)</span>
+      <span class="badge">PowerShell</span>
     </div>
     <div class="code-block">
       <code>{{ winCommand }}</code>
@@ -69,10 +70,9 @@ const copy = (text, type) => {
     </div>
   </div>
 
-  <div class="command-box">
+  <div class="command-box optional">
     <div class="header">
-      <span class="os">NPM</span>
-      <span class="badge alternative">Alternative</span>
+      <span class="os">NPM (Optional)</span>
     </div>
     <div class="code-block">
       <code>{{ npmCommand }}</code>
@@ -95,7 +95,7 @@ const copy = (text, type) => {
 .command-box {
   width: 100%;
   max-width: 600px;
-  background: var(--vp-c-bg-alt); /* Light mode will use a slight grey */
+  background: var(--vp-c-bg-alt);
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   overflow: hidden;
@@ -105,6 +105,12 @@ const copy = (text, type) => {
 .command-box.recommended {
   border-color: var(--vp-c-brand-1);
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.command-box.optional {
+  opacity: 0.85;
+  transform: scale(0.98);
+  margin-top: 1rem;
 }
 
 .header {
@@ -125,20 +131,20 @@ const copy = (text, type) => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  background: var(--vp-code-block-bg) !important; /* Forces standard code background */
+  background: var(--vp-code-block-bg) !important;
 }
 
 .code-block code {
   font-family: var(--vp-font-family-mono);
-  color: var(--vp-c-brand-1); /* Use brand color for visibility */
+  color: var(--vp-c-brand-1);
   font-size: 0.95rem;
   word-break: break-all;
 }
 
 .code-block button {
-  background: var(--vp-c-bg-mute);
-  border: 1px solid var(--vp-c-divider);
-  color: var(--vp-c-text-1);
+  background: rgba(255, 255, 255, 0.1); /* Semi-transparent white works on dark backgrounds */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff; /* Explicitly white text for contrast on dark bg */
   padding: 0.3rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
@@ -148,14 +154,10 @@ const copy = (text, type) => {
   white-space: nowrap;
 }
 
-.dark .code-block button {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .code-block button:hover {
-  background: var(--vp-c-brand-soft);
+  background: rgba(255, 255, 255, 0.2);
   border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-brand-1);
+  color: #ffffff;
 }
 
 .code-block button.copied {

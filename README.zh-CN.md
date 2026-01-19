@@ -37,19 +37,19 @@
 
 BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用户会自动切换至淘宝镜像源，海外用户使用官方源，无需手动配置。
 
-### 方式 1: NPM (推荐 Node.js 用户)
-```bash
-npm install -g bvm-core@latest
-```
-
-### 方式 2: Shell 脚本 (macOS / Linux)
+### 方式 1: Shell 脚本 (推荐 - macOS / Linux)
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### 方式 3: PowerShell (Windows)
+### 方式 2: PowerShell (推荐 - Windows)
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
+```
+
+### 方式 3: NPM (可选)
+```bash
+npm install -g bvm-core@latest
 ```
 
 ---
