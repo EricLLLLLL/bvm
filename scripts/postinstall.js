@@ -124,6 +124,8 @@ function main() {
             const versionDir = path.join(BVM_DIR, 'versions', ensureVersionPrefix(systemBun.version));
             registerBunVersion(systemBun.path, versionDir);
         }
+    } else {
+        log('No system Bun detected.');
     }
 
     if (!systemBunCompatible) {
