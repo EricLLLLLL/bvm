@@ -23,6 +23,7 @@ const runGit = (...args: string[]) => run('git', args);
 
 // --- Main Script ---
 (async function main() {
+  const BUN_EXE = process.execPath; // Use current running bun
   try {
     console.log('🚀 Starting Local Release Trigger...');
 
@@ -38,7 +39,7 @@ const runGit = (...args: string[]) => run('git', args);
 
     // 2. Sync & Test (Ensure we don't push broken code)
     console.log('\n🔄 Syncing Runtime & Running Tests...');
-    run('bun', ['run', 'scripts/sync-runtime.ts']);
+    run(BUN_EXE, ['run', 'scripts/sync-runtime.ts']);
     if (git('status', '--porcelain')) {
       runGit('add', '.');
       runGit('commit', '-m', 'chore: update runtime dependencies');
@@ -46,13 +47,13 @@ const runGit = (...args: string[]) => run('git', args);
     
     console.log('\n🧪 Running Unit & Integration Tests...');
     // Run main test suite (excludes test/isolated/ and test/e2e/ by default glob behavior)
-    run('bash', ['-c', 'bun test test/*.test.ts']);
+    run('bash', ['-c', `${BUN_EXE} test test/*.test.ts`]);
     
     console.log('\n🧪 Running Isolated Tests...');
-    run('bash', ['-c', 'bun test test/isolated/*.test.ts']);
+    run('bash', ['-c', `${BUN_EXE} test test/isolated/*.test.ts`]);
 
     console.log('\n🛡️ Running E2E NPM Verification...');
-    run('bun', ['run', 'test:e2e:npm']);
+    run(BUN_EXE, ['run', 'test:e2e:npm']);
 
     // 3. Select Version Bump
     let bumpType = '';
