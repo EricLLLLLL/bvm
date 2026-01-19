@@ -37,8 +37,7 @@
 
 BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
 
-### Method 1: NPM (Recommended)
-If you have Node.js installed, this is the easiest way:
+### Method 1: NPM (Recommended for Node.js users)
 ```bash
 npm install -g bvm-core@latest
 ```
