@@ -26,6 +26,7 @@ __________
         \/           \/ 
 \x1b[0m`;
 
+const IS_WINDOWS = process.platform === 'win32';
 const HOME = process.env.HOME || os.homedir();
 const BVM_DIR = process.env.BVM_DIR || path.join(HOME, '.bvm');
 const BVM_SRC_DIR = path.join(BVM_DIR, 'src');
@@ -56,25 +57,30 @@ function ensureVersionPrefix(version) {
     return version.startsWith('v') ? version : `v${version}`;
 }
 
+function findFileSync(dir, name) {
+    try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+            const fullPath = path.join(dir, file);
+            const stat = fs.statSync(fullPath);
+            if (stat.isDirectory()) {
+                const found = findFileSync(fullPath, name);
+                if (found) return found;
+            } else if (file.toLowerCase() === name.toLowerCase() || file.toLowerCase() === (name + '.exe').toLowerCase()) {
+                return fullPath;
+            }
+        }
+    } catch(e) {}
+    return null;
+}
+
 // --- Core Logic ---
 
 function main() {
-    // Force a leading newline to break from npm's output
     process.stdout.write('\n' + ASCII_LOGO + '\n');
     log('Starting BVM post-install setup...');
 
-    // 1. Conflict Detection
-    const BVM_EXEC = path.join(BVM_BIN_DIR, 'bvm');
-    if (fs.existsSync(BVM_EXEC) && !process.env.BVM_FORCE_INSTALL) {
-        try {
-            const content = fs.readFileSync(BVM_EXEC, 'utf-8');
-            if (!content.includes('BVM_INSTALL_SOURCE="npm"')) {
-                log('Native BVM installation detected. Proceeding to update assets...');
-            }
-        } catch (e) {}
-    }
-
-    // 2. Deploy Assets
+    // 1. Deploy Assets
     log(`Deploying to ${BVM_DIR}...`);
     ensureDir(BVM_SRC_DIR);
     ensureDir(BVM_BIN_DIR);
@@ -92,12 +98,12 @@ function main() {
         if (fs.existsSync(srcPath)) {
             fs.copyFileSync(srcPath, destPath);
             if (file.mode) fs.chmodSync(destPath, file.mode);
-        } else {
-            error(`Source file not found: ${srcPath}`);
+        } else if (!IS_WINDOWS || !file.name.endsWith('.sh')) {
+            error(`Source asset missing: ${srcPath}`);
         }
     }
 
-    // 3. Detect & Configure Runtime
+    // 2. Detect & Configure Runtime
     let activeRuntimePath = null;
     let activeVersion = null;
 
@@ -105,7 +111,7 @@ function main() {
     let systemBunCompatible = false;
 
     if (systemBun) {
-        log(`Found system Bun at ${systemBun.path} (v${systemBun.version})`);
+        log(`Found system Bun at ${systemBun.path} (v${systemBun.version}). Running Smoke Test...`);
         if (runSmokeTest(systemBun.path)) {
             log('Smoke Test passed: System Bun is compatible.');
             systemBunCompatible = true;
@@ -118,8 +124,6 @@ function main() {
             const versionDir = path.join(BVM_DIR, 'versions', ensureVersionPrefix(systemBun.version));
             registerBunVersion(systemBun.path, versionDir);
         }
-    } else {
-        log('No system Bun detected.');
     }
 
     if (!systemBunCompatible) {
@@ -130,24 +134,26 @@ function main() {
                 activeVersion = installedVersion;
                 activeRuntimePath = path.join(BVM_DIR, 'versions', activeVersion);
             } else {
-                throw new Error('Download failed');
+                throw new Error('Download or installation failed');
             }
         } catch (e) {
             error(`Failed to download runtime: ${e.message}`);
         }
     }
 
-    // 4. Link Runtime & Default Alias
+    // 3. Link Runtime & Default Alias
     if (activeRuntimePath && activeVersion) {
         const legacyCurrentLink = path.join(BVM_DIR, 'current');
         const privateRuntimeLink = path.join(BVM_DIR, 'runtime', 'current');
         ensureDir(path.join(BVM_DIR, 'runtime'));
 
+        const linkType = IS_WINDOWS ? 'junction' : 'dir';
+
         try { if (fs.existsSync(privateRuntimeLink)) fs.unlinkSync(privateRuntimeLink); } catch(e) {}
-        try { fs.symlinkSync(activeRuntimePath, privateRuntimeLink, 'dir'); } catch(e) {}
+        try { fs.symlinkSync(activeRuntimePath, privateRuntimeLink, linkType); } catch(e) {}
 
         try { if (fs.existsSync(legacyCurrentLink)) fs.unlinkSync(legacyCurrentLink); } catch(e) {}
-        try { fs.symlinkSync(activeRuntimePath, legacyCurrentLink, 'dir'); } catch(e) {}
+        try { fs.symlinkSync(activeRuntimePath, legacyCurrentLink, linkType); } catch(e) {}
 
         const aliasDir = path.join(BVM_DIR, 'aliases');
         ensureDir(aliasDir);
@@ -155,26 +161,33 @@ function main() {
         log(`Active runtime set to ${activeVersion}`);
     }
 
-    // 5. Create BVM Wrapper
+    // 4. Create BVM Wrapper
     createBvmWrapper();
 
-    // 6. Configure Shell (bvm setup)
+    // 5. Configure Shell (bvm setup)
     log('Configuring shell environment...');
-    spawnSync(path.join(BVM_BIN_DIR, 'bvm'), ['setup', '--silent'], {
-        stdio: 'inherit',
-        env: Object.assign({}, process.env, { BVM_DIR })
-    });
+    // CRITICAL: On Windows, use 'node <index.js> setup' directly to avoid wrapper popup/issues
+    const bunPath = path.join(BVM_DIR, 'runtime', 'current', 'bin', IS_WINDOWS ? 'bun.exe' : 'bun');
+    const indexJs = path.join(BVM_SRC_DIR, 'index.js');
+    
+    if (fs.existsSync(bunPath)) {
+        spawnSync(bunPath, [indexJs, 'setup', '--silent'], {
+            stdio: 'inherit',
+            env: Object.assign({}, process.env, { BVM_DIR }),
+            shell: IS_WINDOWS // Essential for Windows stability
+        });
+    }
 
-    // 7. Final Success Message
     printSuccessMessage(!!systemBun);
 }
 
 // --- Implementation Details ---
 
 function detectSystemBun() {
-    const which = spawnSync('which', ['bun'], { encoding: 'utf-8' });
+    const cmd = IS_WINDOWS ? 'where' : 'which';
+    const which = spawnSync(cmd, ['bun'], { encoding: 'utf-8', shell: IS_WINDOWS });
     if (which.status === 0 && which.stdout) {
-        const binPath = which.stdout.trim();
+        const binPath = which.stdout.trim().split('\n')[0].trim();
         const ver = getBunVersion(binPath);
         if (ver) return { path: binPath, version: ver };
     }
@@ -183,7 +196,7 @@ function detectSystemBun() {
 
 function getBunVersion(binPath) {
     try {
-        const proc = spawnSync(binPath, ['--version'], { encoding: 'utf-8' });
+        const proc = spawnSync(binPath, ['--version'], { encoding: 'utf-8', shell: IS_WINDOWS });
         if (proc.status === 0) return proc.stdout.trim().replace(/^v/, '');
     } catch (e) {}
     return null;
@@ -194,7 +207,8 @@ function runSmokeTest(binPath) {
         const indexJs = path.join(BVM_SRC_DIR, 'index.js');
         const proc = spawnSync(binPath, [indexJs, '--version'], { 
             encoding: 'utf-8',
-            env: Object.assign({}, process.env, { BVM_DIR })
+            env: Object.assign({}, process.env, { BVM_DIR }),
+            shell: IS_WINDOWS
         });
         return proc.status === 0;
     } catch (e) {
@@ -203,12 +217,17 @@ function runSmokeTest(binPath) {
 }
 
 function registerBunVersion(sourceBin, targetDir) {
+    const exeName = IS_WINDOWS ? 'bun.exe' : 'bun';
     const targetBinDir = path.join(targetDir, 'bin');
     ensureDir(targetBinDir);
-    const targetBin = path.join(targetBinDir, 'bun');
+    const targetBin = path.join(targetBinDir, exeName);
     if (!fs.existsSync(targetBin)) {
-        fs.copyFileSync(sourceBin, targetBin);
-        fs.chmodSync(targetBin, 0o755);
+        try {
+            fs.copyFileSync(sourceBin, targetBin);
+            fs.chmodSync(targetBin, 0o755);
+        } catch(e) {
+            error(`Failed to register version: ${e.message}`);
+        }
     }
 }
 
@@ -229,17 +248,22 @@ function downloadAndInstallRuntime(bvmDir) {
     const pkgName = `@oven/bun-${pkgPlatform}-${pkgArch}`;
     const url = `${registry}/${pkgName}/-/${pkgName.split('/').pop()}-${bunVer}.tgz`;
 
-    const tempTgz = path.join(os.tmpdir(), `bun-${Date.now()}.tgz`);
-    const extractDir = path.join(os.tmpdir(), `bun-ext-${Date.now()}`);
+    const tempTgz = path.join(os.tmpdir(), `bun-rt-${Date.now()}.tgz`);
+    const extractDir = path.join(os.tmpdir(), `bun-rt-ext-${Date.now()}`);
 
     try {
-        log(`Downloading Bun ${bunVer}...`);
-        spawnSync('curl', ['-L', '-s', '-o', tempTgz, url]);
+        log(`Downloading compatible Bun runtime v${bunVer}...`);
+        const curl = IS_WINDOWS ? 'curl.exe' : 'curl';
+        const dl = spawnSync(curl, ['-L', '-s', '-o', tempTgz, url], { shell: IS_WINDOWS });
+        if (dl.status !== 0) throw new Error('Download failed');
+        
         ensureDir(extractDir);
-        spawnSync('tar', ['-xzf', tempTgz, '-C', extractDir]);
-        const exeName = platform === 'win32' ? 'bun.exe' : 'bun';
-        const foundBinProc = spawnSync('find', [extractDir, '-name', exeName], { encoding: 'utf-8' });
-        const binPath = foundBinProc.stdout ? foundBinProc.stdout.trim().split('\n')[0] : null;
+        const ex = spawnSync('tar', ['-xzf', tempTgz, '-C', extractDir], { shell: IS_WINDOWS });
+        if (ex.status !== 0) throw new Error('Extraction failed');
+
+        const exeName = IS_WINDOWS ? 'bun.exe' : 'bun';
+        const binPath = findFileSync(extractDir, exeName);
+
         if (binPath && fs.existsSync(binPath)) {
             const versionDir = path.join(bvmDir, 'versions', vBunVer);
             registerBunVersion(binPath, versionDir);
@@ -257,36 +281,47 @@ function downloadAndInstallRuntime(bvmDir) {
 }
 
 function createBvmWrapper() {
-    const wrapperContent = `#!/bin/bash
+    if (IS_WINDOWS) {
+        const bvmDirWin = BVM_DIR.replace(/\//g, '\\');
+        // Standard bvm.cmd
+        const bvmCmd = `@echo off\r\nset "BVM_DIR=${bvmDirWin}"\r\nset "BVM_INSTALL_SOURCE=npm"\r\n"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\src\\index.js" %*`;
+        fs.writeFileSync(path.join(BVM_BIN_DIR, 'bvm.cmd'), bvmCmd);
+        // extensionless 'bvm' for mingw/git-bash users
+        const bvmUnix = `#!/bin/sh\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
+        fs.writeFileSync(path.join(BVM_BIN_DIR, 'bvm'), bvmUnix);
+    } else {
+        const wrapperContent = `#!/bin/bash
 export BVM_DIR="${BVM_DIR}"
 export BVM_INSTALL_SOURCE="npm"
-if [ -x "\${BVM_DIR}/runtime/current/bin/bun" ]; then
-  exec "\${BVM_DIR}/runtime/current/bin/bun" "\${BVM_DIR}/src/index.js" "$@"
+if [ -x "${BVM_DIR}/runtime/current/bin/bun" ]; then
+  exec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_DIR}/src/index.js" "\$@"
 elif command -v bun >/dev/null 2>&1; then
-  exec bun "\${BVM_DIR}/src/index.js" "$@"
+  exec bun "${BVM_DIR}/src/index.js" "\$@"
 else
   echo "Error: BVM requires Bun. Please ensure setup completed correctly."
   exit 1
 fi
 `;
-    const bvmExec = path.join(BVM_BIN_DIR, 'bvm');
-    fs.writeFileSync(bvmExec, wrapperContent);
-    fs.chmodSync(bvmExec, 0o755);
+        const bvmExec = path.join(BVM_BIN_DIR, 'bvm');
+        fs.writeFileSync(bvmExec, wrapperContent);
+        fs.chmodSync(bvmExec, 0o755);
+    }
 }
 
 function printSuccessMessage(hasSystemBun) {
+    if (IS_WINDOWS) {
+        process.stdout.write('\n\x1b[32m\x1b[1m🎉 BVM (Bun Version Manager) installed successfully!\x1b[0m\n');
+        process.stdout.write('\x1b[33mBVM has been added to your user PATH via Windows Environment.\x1b[0m\n');
+        process.stdout.write('\n\x1b[1mPlease RESTART your terminal to start using BVM.\x1b[0m\n');
+        return;
+    }
+
     const shell = process.env.SHELL || '';
     let configFile = '~/.zshrc';
     if (shell.includes('bash')) configFile = '~/.bashrc';
     else if (shell.includes('fish')) configFile = '~/.config/fish/config.fish';
 
     process.stdout.write('\n\x1b[32m\x1b[1m🎉 BVM (Bun Version Manager) installed successfully!\x1b[0m\n');
-    if (hasSystemBun) {
-        process.stdout.write('\x1b[33mBVM has been added to the END of your PATH configuration to ensure priority.\x1b[0m\n');
-        process.stdout.write('\x1b[33mYour existing Bun installations were NOT deleted and will coexist.\x1b[0m\n');
-    } else {
-        process.stdout.write('\x1b[33mBVM has installed a compatible Bun runtime for you.\x1b[0m\n');
-    }
     process.stdout.write('\n\x1b[1mTo finalize the setup, please restart your terminal or run:\x1b[0m\n');
     process.stdout.write(`  source ${configFile}\n\n`);
 }
