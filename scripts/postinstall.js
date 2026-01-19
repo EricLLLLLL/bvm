@@ -22,9 +22,13 @@ async function main() {
 
     const isTTY = process.stdin.isTTY || process.stdout.isTTY;
     const isCI = process.env.CI === 'true';
-    const isBun = process.env.npm_config_user_agent && process.env.npm_config_user_agent.includes('bun/');
+    
+    // Improved Bun detection
+    const isBun = (process.env.npm_config_user_agent && process.env.npm_config_user_agent.includes('bun/')) || 
+                  (process.versions && process.versions.bun) ||
+                  process.isBun;
 
-    log(`Environment: TTY=${!!isTTY}, CI=${isCI}`);
+    log(`Environment: TTY=${!!isTTY}, CI=${isCI}, isBun=${!!isBun}`);
     if (isBun) {
         log('Detected Bun installation. Optimizing setup...');
     }
@@ -40,30 +44,26 @@ async function main() {
     const BVM_EXEC = path.join(BVM_BIN_DIR, 'bvm');
 
     // --- 1. Conflict Detection ---
+    let forceInstall = process.env.BVM_FORCE_INSTALL === 'true';
+
     if (fs.existsSync(BVM_EXEC)) {
-        if (!process.env.BVM_FORCE_INSTALL) {
-            if (!isTTY) {
-                error(`Conflict detected: ${BVM_EXEC} already exists.`);
-                error('Run with BVM_FORCE_INSTALL=true to overwrite, or install interactively.');
-                process.exit(1);
+        // Check if existing installation is from npm
+        let isNpmInstall = false;
+        try {
+            const content = fs.readFileSync(BVM_EXEC, 'utf-8');
+            if (content.includes('export BVM_INSTALL_SOURCE="npm"')) {
+                isNpmInstall = true;
             }
+        } catch (e) {}
 
-            // Interactive TTY Check
-            const readline = require('readline');
-            const rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-
-            const answer = await new Promise(resolve => {
-                rl.question('[bvm] Detected existing BVM installation. Overwrite? (y/N) ', resolve);
-            });
-            rl.close();
-
-            if (!answer || !answer.trim().toLowerCase().startsWith('y')) {
-                log('Installation cancelled by user.');
-                process.exit(0);
-            }
+        if (isNpmInstall) {
+            log('Detected existing npm installation. Proceeding with update...');
+            forceInstall = true;
+        } else if (!forceInstall) {
+            error(`Conflict detected: ${BVM_EXEC} already exists (Native installation).`);
+            error('Please run "bvm upgrade" to update your native BVM installation.');
+            error('To force overwrite, run with BVM_FORCE_INSTALL=true');
+            process.exit(1);
         } else {
             log('BVM_FORCE_INSTALL set. Overwriting existing installation.');
         }
@@ -74,7 +74,7 @@ async function main() {
     fs.mkdirSync(BVM_SRC_DIR, { recursive: true });
     fs.mkdirSync(BVM_BIN_DIR, { recursive: true });
 
-    // --- 2. Copy Files ---
+    // --- 3. Copy Files ---
     const filesToCopy = [
         { src: 'index.js', destDir: BVM_SRC_DIR, name: 'index.js' },
         { src: 'bvm-shim.sh', destDir: BVM_BIN_DIR, name: 'bvm-shim.sh', mode: 0o755 },
@@ -93,63 +93,52 @@ async function main() {
             }
         } else {
             error(`Source file not found: ${srcPath}`);
-            // In dev/test, files might not exist if not built. Warn but don't fail hard?
-            // Actually, for postinstall, we expect them.
         }
     }
     
     // --- 4. Runtime Bootstrapping (Scenario 2) ---
-    const currentRuntime = path.join(BVM_DIR, 'runtime', 'current');
+    const currentRuntime = path.join(BVM_DIR, 'current');
     
-    // Define wrapper content early
     const wrapperContent = `#!/bin/bash
 export BVM_DIR="${BVM_DIR}"
 export BVM_INSTALL_SOURCE="npm"
 # 1. Try internal runtime
-if [ -x "${BVM_DIR}/runtime/current/bin/bun" ]; then
-  exec "${BVM_DIR}/runtime/current/bin/bun" "${BVM_SRC_DIR}/index.js" "$@"
+if [ -x "\${BVM_DIR}/current/bin/bun" ]; then
+  exec "\${BVM_DIR}/current/bin/bun" "\${BVM_DIR}/src/index.js" "$@"
 # 2. Try global/system bun
 elif command -v bun >/dev/null 2>&1; then
-  exec bun "${BVM_SRC_DIR}/index.js" "$@"
+  exec bun "\${BVM_DIR}/src/index.js" "$@"
 else
   echo "Error: BVM requires Bun. Please install Bun or ensure it is in your PATH."
   exit 1
 fi
 `;
 
-    if (isBun) {
-        log('Fixing environment runtime...');
+    if (!fs.existsSync(currentRuntime)) {
+        log('Current runtime missing. Attempting to bootstrap...');
         try {
-            // A. Migrate Host Bun (Preserve user's version)
-            // CRITICAL: process.execPath might be 'node' even if isBun=true (npm install lifecycle).
-            // We must find the actual 'bun' binary.
-            let sysBun = process.execPath;
-            let hostVer = process.version.replace(/^v/, '');
+            // A. Find a Bun binary to use for bootstrapping
+            let sysBun = null;
+            let hostVer = null;
             
-            // Check if current process is actually Node
-            const isNode = process.execPath.endsWith('node') || process.execPath.endsWith('node.exe');
-            
-            if (isNode) {
-                // Try to find bun in PATH
-                try {
-                    const whichBun = spawnSync('which', ['bun'], { encoding: 'utf-8' });
-                    if (whichBun.status === 0 && whichBun.stdout) {
-                        sysBun = whichBun.stdout.trim();
-                        // Get version of this bun
-                        const verOut = spawnSync(sysBun, ['--version'], { encoding: 'utf-8' });
-                        if (verOut.status === 0) {
-                            hostVer = verOut.stdout.trim().replace(/^v/, '');
-                        }
-                    } else {
-                        throw new Error('Could not locate "bun" binary in PATH.');
+            // Check if current process is Bun
+            if (process.versions && process.versions.bun) {
+                sysBun = process.execPath;
+                hostVer = process.versions.bun;
+            } else {
+                // Try PATH
+                const whichBun = spawnSync('which', ['bun'], { encoding: 'utf-8' });
+                if (whichBun.status === 0 && whichBun.stdout) {
+                    sysBun = whichBun.stdout.trim();
+                    const verOut = spawnSync(sysBun, ['--version'], { encoding: 'utf-8' });
+                    if (verOut.status === 0) {
+                        hostVer = verOut.stdout.trim().replace(/^v/, '');
                     }
-                } catch (e) {
-                    log(`Warning: Could not resolve system bun path: ${e.message}`);
-                    sysBun = null;
                 }
             }
 
             if (sysBun && fs.existsSync(sysBun)) {
+                log(`Bootstrapping using system Bun v${hostVer}...`);
                 const hostVerDir = path.join(BVM_DIR, 'versions', hostVer);
                 const hostVerBinDir = path.join(hostVerDir, 'bin');
                 
@@ -157,53 +146,37 @@ fi
                     fs.mkdirSync(hostVerBinDir, { recursive: true });
                     fs.copyFileSync(sysBun, path.join(hostVerBinDir, 'bun'));
                     fs.chmodSync(path.join(hostVerBinDir, 'bun'), 0o755);
-                    log(`Migrated host Bun (v${hostVer}) to ${hostVerDir}`);
                 }
 
-                // B. Try to Setup Latest (Goal: Use new version)
-                let setupSuccess = false;
-                let usedVersion = hostVer;
+                // Always set as fallback first
+                try { fs.unlinkSync(currentRuntime); } catch(e) {}
+                fs.symlinkSync(hostVerDir, currentRuntime, 'dir');
 
+                // B. Try to Setup Latest (Upgrading to newest)
                 log('Attempting to install latest Bun version for BVM...');
-                // We use the host bun to run our newly copied CLI to install latest
                 const installCmd = spawnSync(sysBun, [path.join(BVM_SRC_DIR, 'index.js'), 'install', 'latest'], {
-                    env: { ...process.env, BVM_DIR },
+                    env: Object.assign({}, process.env, { BVM_DIR }),
                     stdio: 'inherit'
                 });
 
                 if (installCmd.status === 0) {
                     const useCmd = spawnSync(sysBun, [path.join(BVM_SRC_DIR, 'index.js'), 'use', 'latest', '--silent'], {
-                        env: { ...process.env, BVM_DIR }
+                        env: Object.assign({}, process.env, { BVM_DIR })
                     });
                     
                     if (useCmd.status === 0) {
-                        setupSuccess = true;
-                        try {
-                            const target = fs.readlinkSync(currentRuntime);
-                            usedVersion = path.basename(target);
-                        } catch(e) {}
-                    }
-                }
-
-                if (setupSuccess) {
-                    log(`Setup complete. Using Bun v${usedVersion} as default.`);
-                    if (usedVersion !== hostVer) {
-                         log(`Your previous version (v${hostVer}) has been saved. Run "bvm use ${hostVer}" to restore it.`);
+                        const target = fs.readlinkSync(currentRuntime);
+                        const usedVersion = path.basename(target);
+                        log(`Setup complete. Using Bun v${usedVersion} as default.`);
                     }
                 } else {
-                    log('Warning: Failed to auto-install latest Bun. Falling back to host version.');
-                    const runtimeDir = path.join(BVM_DIR, 'runtime');
-                    fs.mkdirSync(runtimeDir, { recursive: true });
-                    try { fs.unlinkSync(currentRuntime); } catch(e) {}
-                    fs.symlinkSync(hostVerDir, currentRuntime, 'dir');
-                    log(`Using Bun v${hostVer} as default.`);
+                    log(`Warning: Failed to install latest. Stayed with Bun v${hostVer}.`);
                 }
             } else {
-                log('Warning: Skipping Runtime fixup - Could not find system Bun.');
+                log('Warning: Skipping bootstrap - No system Bun found.');
             }
-
         } catch (e) {
-            log(`Warning: Runtime fixup failed: ${e.message}`);
+            log(`Warning: Bootstrap failed: \${e.message}`);
         }
     }
 
@@ -211,18 +184,15 @@ fi
     fs.writeFileSync(BVM_EXEC, wrapperContent);
     try { fs.chmodSync(BVM_EXEC, 0o755); } catch (e) {}
 
-    // --- 4. Trigger Setup ---
+    // --- 6. Trigger Setup ---
     log('Configuring environment...');
-    // We attempt to run 'bvm setup' using the wrapper we just created.
-    // This relies on 'bun' being available in the environment (which it should be for npm install).
     const setupResult = spawnSync(BVM_EXEC, ['setup', '--silent'], {
         stdio: 'inherit',
-        env: { ...process.env, BVM_DIR }
+        env: Object.assign({}, process.env, { BVM_DIR })
     });
 
     if (setupResult.status !== 0) {
-        // Warning only, don't fail install if setup fails (e.g. read-only fs)
-        log('Warning: "bvm setup" failed. You may need to run "bvm setup" manually.');
+        log('Warning: "bvm setup" failed.');
     } else {
         log('BVM installed successfully.');
     }

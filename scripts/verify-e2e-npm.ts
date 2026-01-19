@@ -1,7 +1,7 @@
-
-import { join, resolve } from 'path';
-import { mkdirSync, existsSync, rmSync, mkdtempSync } from 'fs';
+import { join, resolve, basename } from 'path';
+import { mkdirSync, existsSync, rmSync, mkdtempSync, readlinkSync } from 'fs';
 import { tmpdir } from 'os';
+import { spawnSync } from 'child_process';
 
 /**
  * E2E NPM Verification Script
@@ -11,19 +11,17 @@ import { tmpdir } from 'os';
 const LOG_PREFIX = '[E2E-NPM]';
 const PKG_ROOT = process.cwd();
 
-import { spawnSync } from 'child_process';
-
 // --- Utils ---
-function log(msg: string) { console.log(`${colors.cyan(LOG_PREFIX)} ${msg}`); }
-function error(msg: string) { console.error(`${colors.red(LOG_PREFIX)} ERROR: ${msg}`); process.exit(1); }
-function success(msg: string) { console.log(`${colors.green(LOG_PREFIX)} SUCCESS: ${msg}`); }
-
 const colors = {
   cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
   red: (s: string) => `\x1b[31m${s}\x1b[0m`,
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
   yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
 };
+
+function log(msg: string) { console.log(`${colors.cyan(LOG_PREFIX)} ${msg}`); }
+function error(msg: string) { console.error(`${colors.red(LOG_PREFIX)} ERROR: ${msg}`); process.exit(1); }
+function success(msg: string) { console.log(`${colors.green(LOG_PREFIX)} SUCCESS: ${msg}`); }
 
 // --- Foundation Class ---
 export class E2ESandbox {
@@ -54,6 +52,11 @@ export class E2ESandbox {
         env.BVM_DIR = this.bvmDir;
         env.NPM_CONFIG_PREFIX = this.npmGlobal; // Force npm to use sandbox prefix
         
+        // Ensure PATH includes the sandbox bin directory AND shims directory at the front
+        const sandboxBin = join(this.bvmDir, 'bin');
+        const sandboxShims = join(this.bvmDir, 'shims');
+        env.PATH = `${sandboxShims}:${sandboxBin}:${process.env.PATH}`;
+        
         // Remove BVM related env vars from host
         delete env.BVM_INSTALL_SOURCE;
         delete env.BVM_FORCE_INSTALL;
@@ -62,18 +65,29 @@ export class E2ESandbox {
     }
     
     public installLocal() {
-        log('Executing: npm install -g .');
-        // We use 'npm' from PATH. 
-        // Note: ensure we are in PKG_ROOT
+        this.runInstall('npm');
+    }
+
+    public installWithBun() {
+        this.runInstall('bun');
+    }
+
+    private runInstall(tool: 'npm' | 'bun') {
+        log(`Executing: ${tool} install -g .`);
+        const env = this.getEnv();
         
-        const result = spawnSync('npm', ['install', '-g', '.'], {
+        // Debug: Check if tool is reachable
+        const checkTool = spawnSync('which', [tool], { env, encoding: 'utf-8' });
+        log(`Debug Sandbox ${tool} Path: ${checkTool.stdout?.trim() || 'NOT FOUND'}`);
+
+        const result = spawnSync(tool, ['install', '-g', '.'], {
             cwd: PKG_ROOT,
-            env: this.getEnv(),
+            env,
             stdio: 'inherit'
         });
         
         if (result.status !== 0) {
-            throw new Error(`npm install failed with code ${result.status}`);
+            throw new Error(`${tool} install failed with code ${result.status}`);
         }
         
         this.verifyInstall();
@@ -92,6 +106,19 @@ export class E2ESandbox {
         success('Installation structure verified.');
     }
     
+    public runBvmCommand(args: string[]) {
+        const bvmBin = join(this.bvmDir, 'bin', 'bvm');
+        log(`Executing: bvm ${args.join(' ')}`);
+        
+        const result = spawnSync(bvmBin, args, {
+            env: this.getEnv(),
+            encoding: 'utf-8',
+            stdio: 'inherit'
+        });
+        
+        return result;
+    }
+
     public cleanup() {
         log(`Cleaning up sandbox...`);
         try {
@@ -107,13 +134,45 @@ if (import.meta.main) {
     const sandbox = new E2ESandbox();
     
     try {
-        log('Foundation Check: Sandbox created successfully.');
-        log(`HOME: ${sandbox.home}`);
+        log('Starting Comprehensive E2E Verification...');
         
-        // Phase 1: Local Install
+        // 1. Initial Local Install
         sandbox.installLocal();
         
-        success('Phase 1 (Foundation & Install) passed.');
+        // 2. Verify Bootstrapping (Scenario 2)
+        const currentLink = join(sandbox.bvmDir, 'current');
+        if (!existsSync(currentLink)) {
+            throw new Error('Bootstrap failed: current runtime link missing.');
+        }
+        log(`Bootstrap verified: current -> ${readlinkSync(currentLink)}`);
+        
+        // 3. Verify Version Switching
+        const targetVer = '1.1.0';
+        log(`Testing Version Switching to v${targetVer}...`);
+        
+        const installRes = sandbox.runBvmCommand(['install', targetVer]);
+        if (installRes.status !== 0) throw new Error('bvm install failed');
+        
+        const useRes = sandbox.runBvmCommand(['use', targetVer]);
+        if (useRes.status !== 0) throw new Error('bvm use failed');
+        
+        const linkTarget = readlinkSync(currentLink);
+        if (!linkTarget.includes(targetVer)) {
+            throw new Error(`Link update failed. Expected ${targetVer}, got ${linkTarget}`);
+        }
+        success(`Version switching verified: ${targetVer} is now active.`);
+        
+        // 4. Verify Execution (Path Check)
+        // We simulate a new shell by using sandbox env
+        const env = sandbox.getEnv();
+        const bunVerCheck = spawnSync('bun', ['--version'], { env, encoding: 'utf-8' });
+        log(`Active Bun version: ${bunVerCheck.stdout?.trim()}`);
+        if (!bunVerCheck.stdout?.includes(targetVer)) {
+            throw new Error(`Execution check failed. PATH didn't pick up Bun ${targetVer}`);
+        }
+        success('Execution path verified.');
+
+        success('Phase 2 (Core & Self-healing) passed.');
     } catch (e: any) {
         error(e.message);
     } finally {
