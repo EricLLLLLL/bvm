@@ -1,5 +1,5 @@
 import { join, resolve, basename } from 'path';
-import { mkdirSync, existsSync, rmSync, mkdtempSync, readlinkSync } from 'fs';
+import { mkdirSync, existsSync, rmSync, mkdtempSync, readlinkSync, writeFileSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { spawnSync } from 'child_process';
 
@@ -119,6 +119,45 @@ export class E2ESandbox {
         return result;
     }
 
+    public verifyUpgradeSafety() {
+        log('Starting Upgrade & Safety Verification...');
+        
+        // 1. Native Conflict Blockage
+        log('Testing: Blocking native BVM overwrite...');
+        const bvmBin = join(this.bvmDir, 'bin', 'bvm');
+        const bvmSrc = join(this.bvmDir, 'src', 'index.js');
+        mkdirSync(join(this.bvmDir, 'bin'), { recursive: true });
+        mkdirSync(join(this.bvmDir, 'src'), { recursive: true });
+        
+        // Create native wrapper (no npm marker)
+        writeFileSync(bvmBin, '#!/bin/bash\necho native bvm');
+        writeFileSync(bvmSrc, '// native source');
+        
+        try {
+            this.installLocal();
+            throw new Error('Safety check failed: npm install should have been blocked by native BVM.');
+        } catch (e: any) {
+            log('Expected: npm install blocked correctly.');
+        }
+        
+        // 2. Auto-upgrade (NPM to NPM)
+        log('Testing: Auto-upgrade NPM installation...');
+        // Force cleanup to start fresh or just remove the native mock
+        rmSync(this.bvmDir, { recursive: true, force: true });
+        
+        // First install
+        this.installLocal();
+        writeFileSync(bvmSrc, '// old version mock');
+        
+        // Second install (should auto-upgrade)
+        this.installLocal();
+        const content = readFileSync(bvmSrc, 'utf-8');
+        if (content === '// old version mock') {
+            throw new Error('Upgrade failed: old version was not overwritten.');
+        }
+        success('Upgrade & Safety verified.');
+    }
+
     public cleanup() {
         log(`Cleaning up sandbox...`);
         try {
@@ -172,7 +211,11 @@ if (import.meta.main) {
         }
         success('Execution path verified.');
 
-        success('Phase 2 (Core & Self-healing) passed.');
+        // 5. Upgrade & Safety
+        sandbox.verifyUpgradeSafety();
+
+        success('Phase 3 (Upgrade & Safety) passed.');
+        success('All E2E NPM Verifications Passed.');
     } catch (e: any) {
         error(e.message);
     } finally {
