@@ -1,4 +1,5 @@
 #!/bin/bash
+# Unified Installation Logic: strict isolation, idempotency.
 set -e
 
 # --- Configuration ---
@@ -74,6 +75,10 @@ detect_shell() {
   esac
 }
 
+# --- Checks ---
+command -v curl >/dev/null || error "curl is required."
+command -v tar >/dev/null || error "tar is required."
+
 # --- Main Script ---
 BVM_REGION=$(detect_network_zone)
 if [ "$BVM_REGION" == "cn" ]; then
@@ -82,12 +87,11 @@ else
     REGISTRY="registry.npmjs.org"
 fi
 
-echo -e "${CYAN}__________              \n\______   \__  _______  \n |    |  _|  \/ /     \ \n |    |   \\   /  Y Y  \ \n |______  / \_/|__|_|  / \n        \/           \/ ${RESET}
-"
+echo -e "${CYAN}__________              \n\______   \__  _______  \n |    |  _|  \/ /     \ \n |    |   \\   /  Y Y  \ \n |______  / \_/|__|_|  / \n        \/           \/ ${RESET}"
 echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_REGION})${RESET}
 "
 
-# 1. Conflict Detection
+# 1. Self-Conflict Detection (Ensure consistent install source)
 BVM_BIN_PATH="${BVM_BIN_DIR}/bvm"
 if [ -f "$BVM_BIN_PATH" ]; then
     if grep -q 'BVM_INSTALL_SOURCE="npm"' "$BVM_BIN_PATH"; then
@@ -108,7 +112,7 @@ echo -e "${GREEN}${BVM_SRC_VERSION}${RESET}"
 # 3. Setup Directories
 mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR" "$BVM_VERSIONS_DIR"
 
-# 4. Download BVM Source (Needed for Smoke Test)
+# 4. Download BVM Source
 if [ "$BVM_REGION" == "cn" ]; then
     TARBALL_URL="https://registry.npmmirror.com/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
 else
@@ -127,7 +131,7 @@ else
 fi
 chmod +x "${BVM_BIN_DIR}/bvm-shim.sh"
 
-# 5. Detect System Bun & Runtime Selection
+# 5. Bootstrapping Runtime (Using system bun if available, READ-ONLY)
 SYSTEM_BUN_BIN=$(command -v bun || echo "")
 SYSTEM_BUN_VER=""
 [ -n "$SYSTEM_BUN_BIN" ] && SYSTEM_BUN_VER=$(bun --version | sed 's/^v//')
@@ -136,20 +140,21 @@ USE_SYSTEM_AS_RUNTIME=false
 BUN_VER=""
 
 if [ -n "$SYSTEM_BUN_BIN" ]; then
-    info "Found system Bun v${SYSTEM_BUN_VER} at ${SYSTEM_BUN_BIN}"
-    # Register system bun in versions
+    # We copy detected system bun to BVM internal versions for bootstrapping
+    # We never modify the system installation.
+    info "Bootstrapping with detected system Bun v${SYSTEM_BUN_VER}..."
     SYS_VER_DIR="${BVM_VERSIONS_DIR}/v${SYSTEM_BUN_VER}"
     mkdir -p "${SYS_VER_DIR}/bin"
     cp "$SYSTEM_BUN_BIN" "${SYS_VER_DIR}/bin/bun"
     chmod +x "${SYS_VER_DIR}/bin/bun"
     
     # Smoke Test
-    if "$SYSTEM_BUN_BIN" "${BVM_SRC_DIR}/index.js" --version >/dev/null 2>&1; then
-        success "Smoke Test passed: System Bun is compatible."
+    if "${SYS_VER_DIR}/bin/bun" "${BVM_SRC_DIR}/index.js" --version >/dev/null 2>&1; then
+        success "Smoke Test passed."
         USE_SYSTEM_AS_RUNTIME=true
         BUN_VER="v${SYSTEM_BUN_VER}"
     else
-        warn "Smoke Test failed: System Bun cannot run BVM core."
+        warn "Smoke Test failed. Will download fresh runtime."
     fi
 fi
 
@@ -180,7 +185,7 @@ else
     fi
 fi
 
-# 6. Configure Runtime & Aliases
+# 6. Link Runtime
 rm -rf "${BVM_RUNTIME_DIR}/current"
 ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
 
@@ -209,7 +214,7 @@ EOF
 done
 success "Shims initialized."
 
-# 8. Setup Environment
+# 8. Setup Environment (Self-Repair)
 if ! "${BVM_BIN_DIR}/bvm" setup --silent >/dev/null 2>&1; then
     warn "Environment setup failed. You may need to manually add BVM to your PATH."
 fi

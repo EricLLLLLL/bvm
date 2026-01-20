@@ -1,4 +1,5 @@
 # BVM Installer for Windows (PowerShell)
+# Unified Installation Logic: strict isolation, idempotency, and path precedence.
 $ErrorActionPreference = "Stop"
 
 # --- Fix: Enforce TLS 1.2 ---
@@ -26,14 +27,6 @@ $BVM_RUNTIME_DIR = Join-Path $BVM_DIR "runtime"
 $BVM_ALIAS_DIR = Join-Path $BVM_DIR "aliases"
 $BVM_VERSIONS_DIR = Join-Path $BVM_DIR "versions"
 
-# --- 0. Conflict Detection ---
-$BVM_BIN_PATH = Join-Path $BVM_BIN_DIR "bvm.cmd"
-if (Test-Path $BVM_BIN_PATH) {
-    $content = Get-Content $BVM_BIN_PATH -Raw
-    if ($content -like '*BVM_INSTALL_SOURCE="npm"*') { Write-Error "BVM was installed via npm."; exit 1 }
-    elseif ($content -like '*BVM_INSTALL_SOURCE="bun"*') { Write-Error "BVM was installed via bun."; exit 1 }
-}
-
 # --- 1. Resolve Network & BVM Version ---
 function Detect-NetworkZone {
     if ($env:BVM_REGION) { return $env:BVM_REGION }
@@ -56,11 +49,15 @@ if (-not $BVM_VER) {
 }
 Write-Host "BVM Installer ($BVM_REGION) - Resolving $BVM_VER..." -ForegroundColor Cyan
 
-# --- 2. Setup Directories ---
+# --- 2. Setup Directories (Idempotent) ---
 $Dirs = @($BVM_DIR, $BVM_SRC_DIR, $BVM_RUNTIME_DIR, $BVM_BIN_DIR, $BVM_SHIMS_DIR, $BVM_ALIAS_DIR, $BVM_VERSIONS_DIR)
-foreach ($d in $Dirs) { if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null } }
+foreach ($d in $Dirs) { 
+    if (-not (Test-Path $d)) { 
+        New-Item -ItemType Directory -Force -Path $d | Out-Null 
+    }
+}
 
-# --- 3. Download BVM Source (Needed for Smoke Test) ---
+# --- 3. Download BVM Source ---
 $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
 $TARBALL_URL = "https://$REGISTRY/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
 $CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
@@ -81,7 +78,7 @@ if (Test-Path "dist\index.js") {
     Remove-Item $EXT_DIR -Recurse -Force
 }
 
-# --- 4. Detect System Bun & Runtime Selection ---
+# --- 4. Bootstrap Runtime (Using System Bun if available, READ-ONLY) ---
 $SYSTEM_BUN_BIN = Get-Command "bun" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
 $SYSTEM_BUN_VER = ""
 if ($SYSTEM_BUN_BIN) { try { $SYSTEM_BUN_VER = (bun --version) -replace "^v", "" } catch {} }
@@ -90,22 +87,20 @@ $USE_SYSTEM_AS_RUNTIME = $false
 $BUN_VER = ""
 
 if ($SYSTEM_BUN_BIN) {
-    Write-Host "Found system Bun v$SYSTEM_BUN_VER at $SYSTEM_BUN_BIN" -ForegroundColor Gray
+    # We copy the system bun to BVM's internal version store for bootstrapping.
+    # We do NOT touch the system installation.
+    Write-Host "Bootstrapping with detected system Bun v$SYSTEM_BUN_VER..." -ForegroundColor Gray
     $SYS_VER_DIR = Join-Path $BVM_VERSIONS_DIR "v$SYSTEM_BUN_VER"
     $SYS_BIN_DIR = Join-Path $SYS_VER_DIR "bin"
     if (-not (Test-Path $SYS_BIN_DIR)) { New-Item -ItemType Directory -Path $SYS_BIN_DIR -Force | Out-Null }
     Copy-Item $SYSTEM_BUN_BIN (Join-Path $SYS_BIN_DIR "bun.exe") -Force
     
     # Smoke Test
-    Write-Host "Running Smoke Test..." -ForegroundColor Gray
     $BvmIndex = Join-Path $BVM_SRC_DIR "index.js"
     & $SYSTEM_BUN_BIN $BvmIndex --version | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "[OK] Smoke Test passed." -ForegroundColor Green
         $USE_SYSTEM_AS_RUNTIME = $true
         $BUN_VER = "v$SYSTEM_BUN_VER"
-    } else {
-        Write-Host "[!] Smoke Test failed." -ForegroundColor Yellow
     }
 }
 
@@ -119,7 +114,7 @@ if ($USE_SYSTEM_AS_RUNTIME) {
     $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR $BUN_VER
     
     if (-not (Test-Path (Join-Path $TARGET_DIR "bin\bun.exe"))) {
-        Write-Host "Downloading Compatible Runtime (bun@$($BUN_VER.TrimStart('v')))..."
+        Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
         $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$($BUN_VER.TrimStart('v')).tgz"
         $TMP = Join-Path $BVM_DIR "bun-runtime.tgz"
         & $CURL_CMD "-#SfLo" "$TMP" "$URL"
@@ -136,7 +131,7 @@ if ($USE_SYSTEM_AS_RUNTIME) {
     }
 }
 
-# --- 5. Configure Runtime & Aliases ---
+# --- 5. Link Runtime ---
 $PRIVATE_RUNTIME_LINK = Join-Path $BVM_RUNTIME_DIR "current"
 if (Test-Path $PRIVATE_RUNTIME_LINK) { Remove-Item -Recurse -Force $PRIVATE_RUNTIME_LINK | Out-Null }
 New-Item -ItemType Junction -Path $PRIVATE_RUNTIME_LINK -Value $TARGET_DIR | Out-Null
@@ -147,21 +142,23 @@ New-Item -ItemType Junction -Path $USER_CURRENT_LINK -Value $TARGET_DIR | Out-Nu
 
 Set-Content -Path (Join-Path $BVM_ALIAS_DIR "default") -Value $BUN_VER -Encoding Ascii
 
-# --- 6. Create Shims & Wrappers ---
-Write-Host "Initializing shims..." -ForegroundColor Gray
+# --- 6. Create Shims ---
+Write-Host "Updating shims..." -ForegroundColor Gray
 $WinBvmDir = $BVM_DIR.Replace('/', '\')
-$BvmWrapper = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\src\index.js`" %*"
+$BvmWrapper = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe" `"%BVM_DIR%\src\index.js" %*"
 Set-Content -Path (Join-Path $BVM_BIN_DIR "bvm.cmd") -Value $BvmWrapper -Encoding Ascii
 
 $CMD_NAMES = @("bun", "bunx")
 foreach ($name in $CMD_NAMES) {
     $tpl = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`r`n"
-    $tpl += "if not exist `".bvmrc`" (`r`n    `"%BVM_DIR%\runtime\current\bin\bun.exe`" %*`r`n    exit /b %errorlevel%`r`n)`r`n"
-    $tpl += "`"%BVM_DIR%\runtime\current\bin\bun.exe`" `"%BVM_DIR%\bin\bvm-shim.js`" `"$name`" %*"
+    # Fast path: use direct runtime if no .bvmrc
+    $tpl += "if not exist `".bvmrc`" (`r`n    `"%BVM_DIR%\runtime\current\bin\bun.exe" %*`r`n    exit /b %errorlevel%`r`n)`r`n"
+    # Fallback: use shim
+    $tpl += "`"%BVM_DIR%\runtime\current\bin\bun.exe" `"%BVM_DIR%\bin\bvm-shim.js`" `"$name`" %*"
     Set-Content -Path (Join-Path $BVM_SHIMS_DIR "$name.cmd") -Value $tpl -Encoding Ascii
 }
 
-# --- 7. Finalize Environment ---
+# --- 7. Configure Path (Prepend for Priority) ---
 $RawPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $PathList = if ($RawPath) { $RawPath.Split(';') } else { @() }
 $NewPathList = @()
@@ -170,7 +167,8 @@ $FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($NewPathList -join ';')
 [Environment]::SetEnvironmentVariable("Path", $FinalPath, "User")
 $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
 
+# --- 8. Initialize BVM (Self-Repair) ---
 & (Join-Path $TARGET_DIR "bin\bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent
 
 Write-Host "`n[OK] BVM installed successfully!" -ForegroundColor Green
-Write-Host "IMPORTANT: Please close this terminal and open a NEW one." -ForegroundColor Yellow
+Write-Host "IMPORTANT: Please close this terminal and open a NEW one to apply changes." -ForegroundColor Cyan

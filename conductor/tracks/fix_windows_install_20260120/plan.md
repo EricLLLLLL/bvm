@@ -2,7 +2,7 @@
 
 本计划旨在通过清理侵入性逻辑、增强脚本鲁棒性以及统一三端（Shell, PowerShell, NPM）的安装行为，解决 Windows 上的冲突并简化共存策略。
 
-## 阶段 1：核心逻辑重构 (Core Logic Refactor)
+## 阶段 1：核心逻辑重构 (Core Logic Refactor) [checkpoint: 6c21847]
 重点在于清理 TypeScript 源码中试图干预官方 Bun 的逻辑，并确保 PATH 优先级正确。
 
 - [x] **任务 1.1: 重构 `src/commands/setup.ts`**
@@ -19,11 +19,8 @@
 ## 阶段 2：安装脚本硬化 (Installer Scripts Hardening)
 更新前端安装脚本，确保其作为“第一入口”时表现稳定且符合新策略。
 
-- [ ] **任务 2.1: 更新 `install.ps1` (Windows)**
-    - [ ] 使用 `New-Item -Force` 确保创建目录时不会因为 `EEXIST` 报错。
-    - [ ] 移除所有尝试检测并移动 `$HOME\.bun` 目录的代码。
-    - [ ] 优化路径设置逻辑，确保 BVM 路径具有最高优先级。
-- [ ] **任务 2.2: 更新 `install.sh` (Unix)**
+- [x] **任务 2.1: 更新 `install.ps1` (Windows)**
+- [x] **任务 2.2: 更新 `install.sh` (Unix)**
     - [ ] 确保 `mkdir -p` 的一致使用。
     - [ ] 移除任何针对官方 Bun 的侵入性逻辑。
 - [ ] **任务: Conductor - User Manual Verification '阶段 2：安装脚本硬化' (Protocol in workflow.md)**
