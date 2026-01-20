@@ -232,7 +232,12 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     }
 
     if (!profilePath) return;
-    await mkdir(dirname(profilePath), { recursive: true });
+    try {
+        await mkdir(dirname(profilePath), { recursive: true });
+    } catch (e: any) {
+        // Ignore EEXIST, proceed to try writing file
+        if (e.code !== 'EEXIST') console.error(colors.red(`Warning: Failed to ensure profile directory: ${e.message}`));
+    }
     await updatePowerShellProfile(profilePath, displayPrompt);
 }
 
