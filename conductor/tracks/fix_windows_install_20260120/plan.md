@@ -21,7 +21,7 @@
 
 - [x] **任务 2.1: 更新 `install.ps1` (Windows)**
 - [x] **任务 2.2: 更新 `install.sh` (Unix)**
-    - [ ] 确保 `mkdir -p` 的一致使用。
+    - [x] 确保 `mkdir -p` 的一致使用。 [0f63e4a]
     - [ ] 移除任何针对官方 Bun 的侵入性逻辑。
 - [ ] **任务: Conductor - User Manual Verification '阶段 2：安装脚本硬化' (Protocol in workflow.md)**
 
