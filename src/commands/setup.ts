@@ -155,6 +155,13 @@ end
 
 async function recreateShims(displayPrompt: boolean) {
     if (displayPrompt) console.log(colors.cyan('Refreshing shims and wrappers...'));
+    
+    // Debug: Log the paths we are trying to create
+    if (!displayPrompt) {
+        console.log(`[DEBUG] BIN_DIR: ${BVM_BIN_DIR}`);
+        console.log(`[DEBUG] SHIMS_DIR: ${BVM_SHIMS_DIR}`);
+    }
+
     await mkdir(BVM_BIN_DIR, { recursive: true }); // Use mkdir
     await mkdir(BVM_SHIMS_DIR, { recursive: true }); // Use mkdir
 
@@ -225,7 +232,7 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     }
 
     if (!profilePath) return;
-    await ensureDir(dirname(profilePath));
+    await mkdir(dirname(profilePath), { recursive: true });
     await updatePowerShellProfile(profilePath, displayPrompt);
 }
 
