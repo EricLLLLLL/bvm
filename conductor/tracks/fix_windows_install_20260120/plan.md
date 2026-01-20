@@ -36,8 +36,8 @@
 ## 阶段 4：端到端验证 (E2E Verification)
 通过自动化测试和手动验证确保“严格隔离”和“路径优先级”生效。
 
-- [ ] **任务 4.1: 编写/更新 TDD 测试用例**
-    - [ ] 增加测试用例：模拟存在官方 Bun 环境下的安装。
-    - [ ] 增加测试用例：验证 `which bun` / `Get-Command bun` 的输出。
+- [x] **任务 4.1: 编写/更新 TDD 测试用例** [00813b2]
+    - [x] 增加测试用例：模拟存在官方 Bun 环境下的安装。
+    - [x] 增加测试用例：验证 `which bun` / `Get-Command bun` 的输出。
 - [ ] **任务 4.2: 执行全平台冒烟测试**
 - [ ] **任务: Conductor - User Manual Verification '阶段 4：端到端验证' (Protocol in workflow.md)**
