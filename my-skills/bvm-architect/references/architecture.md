@@ -2,83 +2,83 @@
 
 > **定位**: 本文档是 BVM 内部架构、安装流程和发布机制的单一真实来源。它既设计为供 AI 代理阅读（作为 Knowledge Base），也供人类贡献者参考。
 
-## 1. 安装逻辑 (`install.sh` & `install.ps1`)
+## 1. 安装逻辑 (`install.sh`, `install.ps1`, `postinstall.js`)
 
-BVM 采用“自引导（Bootstrap）”安装模式。安装脚本（Shell/PowerShell）负责环境的初始设置和运行时的下载，而不是分发一个打包好的二进制可执行文件。
+BVM 采用“自引导（Bootstrap）”安装模式，并引入了“地堡架构 (Bunker Architecture)”：BVM 拥有自己专用的、隔离的 Bun 运行时，不依赖于用户当前正在使用的 Bun 版本。
 
-### 1.1 Unix 安装流程 (`install.sh`)
+### 1.1 标准安装流水线 (所有脚本通用)
+
+无论通过何种方式安装，BVM 都遵循以下标准流程：
+
+1.  **资产部署**: 下载并提取 BVM 核心源码 (`index.js`) 和 Shims。
+2.  **系统 Bun 探测**: 检查系统 `PATH` 中是否已有 `bun` 可执行文件。
+3.  **冒烟测试 (Smoke Test)**:
+    *   若存在系统 Bun，尝试运行 `bun index.js --version`。
+    *   **通过**: 说明该 Bun 兼容，可直接复用。
+    *   **失败**: 说明该 Bun 无法驱动 BVM（版本过旧或不兼容）。
+4.  **运行时配置**:
+    *   **复用模式**: 若通过测试，将系统 Bun 注册到 `versions/vX.Y.Z`。
+    *   **下载模式**: 若未通过测试或无系统 Bun，下载官方推荐的稳定版并安装到 `versions/vLatest`。
+5.  **地堡激活 (Bunker Setup)**:
+    *   设置 `runtime/current` 指向选定的 Bun 版本（私有运行时）。
+    *   设置 `current` 软链接指向该版本（初始用户版本）。
+    *   设置 `default` 别名。
+6.  **环境对齐**: 运行 `bvm setup` 将 BVM 路径追加到用户 Profile **末尾**，确保 BVM 优先级最高。
+
+### 1.2 NPM 全局安装 (`postinstall.js`)
+
+当用户运行 `npm install -g bvm-core` 时触发。
+
+*   **品牌化输出**: 显示 ASCII Logo 和安装进度。
+*   **自检逻辑**: 自动执行上述 1.1 的流程。
+*   **零配置使用**: 安装后自动提示 `source ~/.zshrc` 以立即生效。
+
+### 1.3 Unix 安装流程 (`install.sh`)
 
 ```mermaid
 graph TD
-    Start(用户运行 install.sh) --> Geo{IP 探测 (1.1.1.1)}
-    Geo -- loc=CN --> Race_CN[竞速: npmmirror, tencent, npmjs]
-    Geo -- loc=Other --> Race_Global[竞速: npmjs, npmmirror]
-    Geo -- Timeout --> Race_Global
+    Start(用户运行 install.sh) --> Geo{IP 探测}
+    Geo --> SetRegistry[选定最快源]
+    SetRegistry --> DownloadBVM[下载 BVM 源码]
+    DownloadBVM --> SmokeTest{系统 Bun 冒烟测试?}
     
-    Race_CN --> SetRegistry[选定最快源]
-    Race_Global --> SetRegistry
+    SmokeTest -- 通过 --> Reuse[复用系统 Bun]
+    SmokeTest -- 失败 --> DownloadRuntime[下载兼容版 Bun]
     
-    SetRegistry --> ResolveVer[解析 Bun 版本]
+    Reuse --> LinkBunker[建立地堡: runtime/current]
+    DownloadRuntime --> LinkBunker
     
-    ResolveVer --> CheckRuntime{Runtime 已安装?}
-    CheckRuntime -- 是 --> LinkCurrent[链接 runtime/current]
-    CheckRuntime -- 否 --> DownloadRuntime[下载 bun-runtime.tgz]
-    DownloadRuntime --> ExtractRuntime[解压至 versions/vX.Y.Z]
-    ExtractRuntime --> LinkCurrent
-    
-    LinkCurrent --> DownloadBVM[下载 BVM 源码 (index.js)]
-    DownloadBVM --> DownloadShim[下载 Shim 逻辑 (bvm-shim.sh)]
-    DownloadShim --> CreateWrappers[创建 'bvm' 包装器 & Shims]
-    
-    CreateWrappers --> FirstInit[将 'default' 别名链接到当前版本]
-    FirstInit --> RunSetup[运行 'bvm setup']
-    
-    RunSetup --> DetectShell[检测 Shell (zsh/bash/fish)]
-    DetectShell --> ModProfile[修改 Profile (.zshrc/.bashrc/config.fish)]
-    ModProfile --> End(安装完成)
+    LinkBunker --> CreateWrappers[创建包装器 & Shims]
+    CreateWrappers --> RunSetup[运行 'bvm setup' 覆盖 PATH]
+    RunSetup --> End(安装完成)
 ```
 
-**关键实现细节:**
-*   **文件:** `install.sh`
-*   **智能源选择:** 结合 IP 地理位置检测（Cloudflare Trace）与实时竞速策略（Race Strategy），在 Official、Taobao、Tencent 源中选择最快的一个。
-*   **运行时解析:** 从 Registry 获取 `dist-tags` 以确定兼容的最新 Bun 版本。
-*   **无依赖:** 脚本仅依赖系统自带的 `curl` 和 `tar`。
-*   **Shim 生成:** 静态生成 `bvm` (CLI 入口) 和 `bun/bunx` (Shims) 脚本文件，指向正确的路径。
-
-### 1.2 Windows 安装流程 (`install.ps1`)
+### 1.4 Windows 安装流程 (`install.ps1`)
 
 ```mermaid
 graph TD
     Start(用户运行 install.ps1) --> PreClean[清理旧 Shims]
-    PreClean --> Geo{IP 探测}
-    Geo -- loc=CN --> Race_CN[竞速: npmmirror, tencent, npmjs]
-    Geo -- Other --> Race_Global[竞速: npmjs, npmmirror]
+    PreClean --> DownloadSrc[下载 BVM 核心资产]
+    DownloadSrc --> SmokeTest{系统 Bun 兼容性测试?}
     
-    Race_CN --> SetRegistry[选定最快源]
-    Race_Global --> SetRegistry
+    SmokeTest -- 成功 --> Reuse[复用系统 Bun (Junction)]
+    SmokeTest -- 失败 --> DownloadBun[下载 Windows 版 Bun]
     
-    SetRegistry --> ResolveVer[解析 Bun 版本]
+    Reuse --> LinkBunker[建立地堡: runtime/current]
+    DownloadBun --> LinkBunker
     
-    ResolveVer --> CheckRuntime{Runtime 已安装?}
-    CheckRuntime -- 否 --> DownloadRuntime[下载 bun-windows-x64.tgz]
-    DownloadRuntime --> Extract[解压至 .bvm/versions/vX]
-    Extract --> LinkRuntime[创建 Junction: runtime/current -> versions/vX]
-    CheckRuntime -- 是 --> LinkRuntime
-    
-    LinkRuntime --> DownloadSrc[下载 dist/index.js & bvm-shim.js]
-    DownloadSrc --> CreateShims[创建 .cmd Shims]
-    
-    CreateShims --> ModPath[更新用户 PATH 环境变量]
-    ModPath --> RunSetup[运行 'bvm setup' (PowerShell Profile 更新)]
+    LinkBunker --> CreateShims[创建 .cmd Shims]
+    CreateShims --> ModPath[更新用户 PATH (末尾追加)]
+    ModPath --> RunSetup[Profile 对齐]
     RunSetup --> End(安装完成)
 ```
 
-**关键实现细节:**
-*   **文件:** `install.ps1`
-*   **原生 Powershell:** 使用 `Invoke-WebRequest` 和 `Invoke-RestMethod`。
-*   **兼容性:** 针对 PowerShell 5.1 做了专门适配（处理 `$IsWindows` 缺失问题）。
-*   **Junctions:** 使用 Windows Junctions (`New-Item -ItemType Junction`) 代替软链接，以获得更好的兼容性且无需管理员权限。
-*   **环境变量:** 直接修改 `[Environment]::SetEnvironmentVariable("Path", ...)` 以确保持久化。
+**关键架构变更:**
+*   **版本前缀**: 强制使用 `vX.Y.Z` 格式（如 `v1.3.6`）。
+*   **双重链接**: 
+    *   `~/.bvm/runtime/current` -> 私有宿主 (Private Host)。
+    *   `~/.bvm/current` -> 用户当前活跃版本 (Active Version)。
+*   **隔离性**: BVM 自身的命令现在优先使用 `runtime/current` 运行，实现了管理器与被管理版本的完全解耦。
 
 ---
 
@@ -234,22 +234,3 @@ graph TD
 *   **现状:** `bvm upgrade` 目前仅更新 `dist/index.js` (CLI 核心逻辑)。
 *   **问题:** 它**不会**更新 `bvm-shim.js` 或 Shim 包装器脚本。如果 Shim 逻辑发生变更，用户升级后可能遇到不兼容问题。
 *   **规避:** 建议用户在遇到奇怪问题时，重新运行安装脚本进行“覆盖安装”以更新所有组件。
-
-## 7. 跨平台验证方法论 (Cross-Platform Verification)
-
-BVM 的核心原则之一是“跨平台一致性”。为了在单一操作系统（如 macOS）上验证所有平台的 Installer 和 Shims，必须遵循以下规程：
-
-### 7.1 Windows 逻辑验证 (在 macOS 上)
-*   **工具链**: 使用 Homebrew 安装的 `pwsh` (PowerShell Core)。
-*   **E2E 规程**: 
-    1.  利用 `test/e2e/install-ps1.test.ts` 进行全量安装测试。
-    2.  **隔离性**: 必须通过 `$env:BVM_DIR` 环境变量重定向安装路径，避免污染宿主机环境。
-    3.  **模板同步**: 任何对 `src/templates` 的修改，必须同步更新至 `install.ps1` 内部的硬编码模板。
-
-### 7.2 Unix 逻辑验证
-*   **工具链**: 纯 `bash`。
-*   **E2E 规程**: 使用 `scripts/verify-install.ts` 或 `test/e2e/install.test.ts`。
-*   **性能审计**: 修改 `bvm-shim.sh` 后，应运行 `scripts/audit-bench.ts` 确保初始化开销控制在 10ms 以内。
-
-### 7.3 模板一致性
-*   **原则**: BVM CLI (`setup` 命令) 与外部 Installer (`install.sh/ps1`) 生成的产物必须具备 **二进制级别的等效性**。

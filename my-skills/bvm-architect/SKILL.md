@@ -24,6 +24,18 @@ You are the Lead Architect for BVM. Your goal is to guide the user and the AI th
 *   **Smart Distribution**: Always prioritize the fastest registry using the Race Strategy & Geo-Location (Cloudflare Trace).
 *   **Release Discipline**: NEVER manually tag or push version tags. The CI (`auto-release.yml`) owns the release lifecycle. Pushing a tag manually will cause CI to skip publishing to NPM. Just bump `package.json` and push to `main`.
 
+## Knowledge Base (Lessons Learned)
+
+### Windows & OneDrive Compatibility
+*   **The OneDrive Trap**: `fs.mkdir` with `{ recursive: true }` can throw `EEXIST` on OneDrive folders even if they exist as directories.
+*   **Robust Setup**: Use PowerShell's `[Environment]::SetEnvironmentVariable` to modify Registry directly. This is the only way to bypass OneDrive-synced Document folder instability.
+*   **Force Creation**: Use PowerShell's `New-Item -Force` for directory creation when dealing with `$PROFILE` paths.
+
+### NPM Post-install Environment
+*   **Env Missing**: `process.env.SHELL` is unreliable in NPM child processes.
+*   **Fallback Strategy**: Always implement fallback detection based on file existence (`.zshrc`, `.bashrc`) if environment variables are missing.
+*   **Exit Status**: Always check `spawnSync` exit codes in `postinstall.js`. NPM silences script errors unless foreground-scripts is used.
+
 ## Bun CLI Reference (Use with npx prefix)
 
 Follow the official [Bun Package Manager Guide](https://bun.com/docs/pm/cli/install):
