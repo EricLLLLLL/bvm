@@ -14,7 +14,7 @@
     - [ ] 确保 `installBunVersion` 在版本已存在时能够静默处理或仅做必要更新。
 - [x] **任务 1.3: 增强 `src/utils.ts` 中的文件操作**
     - [ ] 确保 `ensureDir` 等工具函数在 Windows 上对已存在文件/目录的处理更加健壮。
-- [ ] **任务: Conductor - User Manual Verification '阶段 1：核心逻辑重构' (Protocol in workflow.md)**
+- [x] **任务: Conductor - User Manual Verification '阶段 1：核心逻辑重构' (Protocol in workflow.md)
 
 ## 阶段 2：安装脚本硬化 (Installer Scripts Hardening) [checkpoint: e4606a0]
 更新前端安装脚本，确保其作为“第一入口”时表现稳定且符合新策略。
@@ -23,15 +23,15 @@
 - [x] **任务 2.2: 更新 `install.sh` (Unix)**
     - [x] 确保 `mkdir -p` 的一致使用。 [0f63e4a]
     - [x] 移除任何针对官方 Bun 的侵入性逻辑。 [2e592b3]
-- [x] **任务: Conductor - User Manual Verification '阶段 2：安装脚本硬化' (Protocol in workflow.md)**
+- [x] **任务: Conductor - User Manual Verification '阶段 2：安装脚本硬化' (Protocol in workflow.md)
 
-## 阶段 3：NPM 安装流程优化 (NPM Post-install Refinement)
+## 阶段 3：NPM 安装流程优化 (NPM Post-install Refinement) [checkpoint: 782d942]
 确保通过 `npm install -g bvm` 安装时逻辑一致。
 
 - [x] **任务 3.1: 更新 `scripts/postinstall.js`** [ef7f148]
     - [x] 同步移除侵入性逻辑。
     - [x] 修复可能导致 NPM 环境下安装路径权限问题的潜在 bug。
-- [ ] **任务: Conductor - User Manual Verification '阶段 3：NPM 安装流程优化' (Protocol in workflow.md)**
+- [x] **任务: Conductor - User Manual Verification '阶段 3：NPM 安装流程优化' (Protocol in workflow.md)**
 
 ## 阶段 4：端到端验证 (E2E Verification)
 通过自动化测试和手动验证确保“严格隔离”和“路径优先级”生效。
