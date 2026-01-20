@@ -142,21 +142,20 @@ const copy = (text, type) => {
 }
 
 .code-block button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
   padding: 0.3rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .code-block button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-1);
   color: #ffffff;
 }
 
