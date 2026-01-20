@@ -1,6 +1,7 @@
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import { pathExists, ensureDir, removeDir } from '../utils';
+import { pathExists, removeDir } from '../utils';
+import { mkdir } from 'fs/promises'; // Import mkdir
 import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR } from '../constants';
 import { colors, confirm } from '../utils/ui';
 import { chmod } from 'fs/promises';
@@ -154,8 +155,8 @@ end
 
 async function recreateShims(displayPrompt: boolean) {
     if (displayPrompt) console.log(colors.cyan('Refreshing shims and wrappers...'));
-    await ensureDir(BVM_BIN_DIR);
-    await ensureDir(BVM_SHIMS_DIR);
+    await mkdir(BVM_BIN_DIR, { recursive: true }); // Use mkdir
+    await mkdir(BVM_SHIMS_DIR, { recursive: true }); // Use mkdir
 
     const isWindows = process.platform === 'win32';
 
