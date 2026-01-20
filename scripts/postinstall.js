@@ -173,9 +173,17 @@ function main() {
         const verDir = path.join(BVM_DIR, 'versions', ver);
         
         // Register anyway to preserve user's version
-        if (!fs.existsSync(path.join(verDir, 'bin'))) {
-            fs.mkdirSync(path.join(verDir, 'bin'), { recursive: true });
-            fs.copyFileSync(binPath, path.join(verDir, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun'));
+        const binDir = path.join(verDir, 'bin');
+        if (!fs.existsSync(binDir)) {
+            fs.mkdirSync(binDir, { recursive: true });
+            const destBin = path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun');
+            try {
+                if (path.resolve(binPath) !== path.resolve(destBin)) {
+                    fs.copyFileSync(binPath, destBin);
+                }
+            } catch (e) {
+                error(`Failed to copy system Bun: ${e.message}`);
+            }
         }
 
         const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
