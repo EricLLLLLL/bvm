@@ -50,10 +50,25 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
     shellName = 'fish';
     configFile = join(homedir(), '.config', 'fish', 'config.fish');
   } else {
-    if (displayPrompt) {
-        console.log(colors.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
+    // Fallback: Detect based on config file existence
+    if (await pathExists(join(homedir(), '.zshrc'))) {
+        shellName = 'zsh';
+        configFile = join(homedir(), '.zshrc');
+    } else if (await pathExists(join(homedir(), '.config', 'fish', 'config.fish'))) {
+        shellName = 'fish';
+        configFile = join(homedir(), '.config', 'fish', 'config.fish');
+    } else if (await pathExists(join(homedir(), '.bashrc'))) {
+        shellName = 'bash';
+        configFile = join(homedir(), '.bashrc');
+    } else if (await pathExists(join(homedir(), '.bash_profile'))) {
+        shellName = 'bash';
+        configFile = join(homedir(), '.bash_profile');
+    } else {
+        if (displayPrompt) {
+            console.log(colors.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
+        }
+        return;
     }
-    return;
   }
 
   // Copy bvm-init.sh
