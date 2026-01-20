@@ -28,7 +28,7 @@
 ## 阶段 3：NPM 安装流程优化 (NPM Post-install Refinement) [checkpoint: 782d942]
 确保通过 `npm install -g bvm` 安装时逻辑一致。
 
-- [x] **任务 3.1: 更新 `scripts/postinstall.js`** [ef7f148, 175b5de, 73f3587]
+- [x] **任务 3.1: 更新 `scripts/postinstall.js`** [ef7f148, 175b5de, 73f3587, da327ee]
     - [x] 同步移除侵入性逻辑。
     - [x] 修复可能导致 NPM 环境下安装路径权限问题的潜在 bug。
 - [x] **任务: Conductor - User Manual Verification '阶段 3：NPM 安装流程优化' (Protocol in workflow.md)**
