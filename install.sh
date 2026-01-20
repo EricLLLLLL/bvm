@@ -16,7 +16,7 @@ else
 fi
 
 # --- Directories ---
-BVM_DIR="${HOME}/.bvm"
+BVM_DIR="${BVM_DIR:-${HOME}/.bvm}"
 BVM_SRC_DIR="${BVM_DIR}/src"
 BVM_RUNTIME_DIR="${BVM_DIR}/runtime"
 BVM_BIN_DIR="${BVM_DIR}/bin"
@@ -145,7 +145,9 @@ if [ -n "$SYSTEM_BUN_BIN" ]; then
     info "Bootstrapping with detected system Bun v${SYSTEM_BUN_VER}..."
     SYS_VER_DIR="${BVM_VERSIONS_DIR}/v${SYSTEM_BUN_VER}"
     mkdir -p "${SYS_VER_DIR}/bin"
-    cp "$SYSTEM_BUN_BIN" "${SYS_VER_DIR}/bin/bun"
+    if [ "$SYSTEM_BUN_BIN" != "${SYS_VER_DIR}/bin/bun" ]; then
+        cp "$SYSTEM_BUN_BIN" "${SYS_VER_DIR}/bin/bun"
+    fi
     chmod +x "${SYS_VER_DIR}/bin/bun"
     
     # Smoke Test
