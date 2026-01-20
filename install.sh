@@ -133,6 +133,10 @@ chmod +x "${BVM_BIN_DIR}/bvm-shim.sh"
 
 # 5. Bootstrapping Runtime (Using system bun if available, READ-ONLY)
 SYSTEM_BUN_BIN=$(command -v bun || echo "")
+# Guard: Do not use BVM's own shims as the bootstrap runtime
+if [[ "$SYSTEM_BUN_BIN" == *".bvm/shims"* ]] || [[ "$SYSTEM_BUN_BIN" == *".bvm/bin"* ]]; then
+    SYSTEM_BUN_BIN=""
+fi
 SYSTEM_BUN_VER=""
 [ -n "$SYSTEM_BUN_BIN" ] && SYSTEM_BUN_VER=$(bun --version | sed 's/^v//')
 

@@ -80,6 +80,9 @@ if (Test-Path "dist\index.js") {
 
 # --- 4. Bootstrap Runtime (Using System Bun if available, READ-ONLY) ---
 $SYSTEM_BUN_BIN = Get-Command "bun" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+if ($SYSTEM_BUN_BIN -and ($SYSTEM_BUN_BIN -like "*\.bvm\shims*" -or $SYSTEM_BUN_BIN -like "*\.bvm\bin*")) {
+    $SYSTEM_BUN_BIN = $null
+}
 $SYSTEM_BUN_VER = ""
 if ($SYSTEM_BUN_BIN) { try { $SYSTEM_BUN_VER = (bun --version) -replace "^v", "" } catch {} }
 
