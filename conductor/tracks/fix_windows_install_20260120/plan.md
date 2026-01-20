@@ -16,14 +16,14 @@
     - [ ] 确保 `ensureDir` 等工具函数在 Windows 上对已存在文件/目录的处理更加健壮。
 - [ ] **任务: Conductor - User Manual Verification '阶段 1：核心逻辑重构' (Protocol in workflow.md)**
 
-## 阶段 2：安装脚本硬化 (Installer Scripts Hardening)
+## 阶段 2：安装脚本硬化 (Installer Scripts Hardening) [checkpoint: e4606a0]
 更新前端安装脚本，确保其作为“第一入口”时表现稳定且符合新策略。
 
 - [x] **任务 2.1: 更新 `install.ps1` (Windows)**
 - [x] **任务 2.2: 更新 `install.sh` (Unix)**
     - [x] 确保 `mkdir -p` 的一致使用。 [0f63e4a]
     - [x] 移除任何针对官方 Bun 的侵入性逻辑。 [2e592b3]
-- [ ] **任务: Conductor - User Manual Verification '阶段 2：安装脚本硬化' (Protocol in workflow.md)**
+- [x] **任务: Conductor - User Manual Verification '阶段 2：安装脚本硬化' (Protocol in workflow.md)**
 
 ## 阶段 3：NPM 安装流程优化 (NPM Post-install Refinement)
 确保通过 `npm install -g bvm` 安装时逻辑一致。
