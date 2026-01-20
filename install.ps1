@@ -145,16 +145,26 @@ Set-Content -Path (Join-Path $BVM_ALIAS_DIR "default") -Value $BUN_VER -Encoding
 # --- 6. Create Shims ---
 Write-Host "Updating shims..." -ForegroundColor Gray
 $WinBvmDir = $BVM_DIR.Replace('/', '\')
-$BvmWrapper = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`"%BVM_DIR%\runtime\current\bin\bun.exe" `"%BVM_DIR%\src\index.js" %*"
+$BvmWrapper = @"
+@echo off
+set "BVM_DIR=$WinBvmDir"
+"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\src\index.js" %*
+"@
 Set-Content -Path (Join-Path $BVM_BIN_DIR "bvm.cmd") -Value $BvmWrapper -Encoding Ascii
 
 $CMD_NAMES = @("bun", "bunx")
 foreach ($name in $CMD_NAMES) {
-    $tpl = "@echo off`r`nset `"BVM_DIR=$WinBvmDir`"`r`n`r`n"
-    # Fast path: use direct runtime if no .bvmrc
-    $tpl += "if not exist `".bvmrc`" (`r`n    `"%BVM_DIR%\runtime\current\bin\bun.exe" %*`r`n    exit /b %errorlevel%`r`n)`r`n"
-    # Fallback: use shim
-    $tpl += "`"%BVM_DIR%\runtime\current\bin\bun.exe" `"%BVM_DIR%\bin\bvm-shim.js`" `"$name`" %*"
+    $tpl = @"
+@echo off
+set "BVM_DIR=$WinBvmDir"
+
+if not exist ".bvmrc" (
+    "%BVM_DIR%\runtime\current\bin\bun.exe" %*
+    exit /b %errorlevel%
+)
+
+"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "$name" %*
+"@
     Set-Content -Path (Join-Path $BVM_SHIMS_DIR "$name.cmd") -Value $tpl -Encoding Ascii
 }
 
