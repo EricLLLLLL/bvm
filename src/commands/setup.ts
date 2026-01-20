@@ -220,6 +220,64 @@ fi
 }
 
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
+    const bvmBinPath = join(BVM_BIN_DIR);
+    const bvmShimsPath = join(BVM_SHIMS_DIR);
+
+    if (displayPrompt) {
+        console.log(colors.cyan('Configuring Windows environment variables (Registry)...'));
+    }
+
+    // PowerShell script to safely update User PATH and BVM_DIR
+    // 1. Sets BVM_DIR
+    // 2. Prepend shims and bin to PATH if not already present
+    const psCommand = `
+        $targetDir = "${BVM_DIR}";
+        $shimsPath = "${bvmShimsPath}";
+        $binPath = "${bvmBinPath}";
+        
+        # Set BVM_DIR
+        [Environment]::SetEnvironmentVariable("BVM_DIR", $targetDir, "User");
+        
+        # Get current PATH
+        $oldPath = [Environment]::GetEnvironmentVariable("PATH", "User");
+        $paths = $oldPath -split ";"
+        
+        $newPaths = @()
+        if ($paths -notcontains $shimsPath) { $newPaths += $shimsPath }
+        if ($paths -notcontains $binPath) { $newPaths += $binPath }
+        
+        if ($newPaths.Count -gt 0) {
+            $newPathString = (($newPaths + $paths) -join ";").Trim(";")
+            [Environment]::SetEnvironmentVariable("PATH", $newPathString, "User");
+            return "SUCCESS"
+        }
+        return "ALREADY_SET"
+    `;
+
+    try {
+        const proc = Bun.spawnSync({
+            cmd: ['powershell', '-NoProfile', '-Command', psCommand],
+            stdout: 'pipe',
+            stderr: 'pipe'
+        });
+
+        const result = proc.stdout.toString().trim();
+        if (proc.success) {
+            if (displayPrompt) {
+                if (result === 'SUCCESS') {
+                    console.log(colors.green('✓ Successfully updated User PATH and BVM_DIR in Registry.'));
+                } else {
+                    console.log(colors.gray('✓ Environment variables are already up to date.'));
+                }
+            }
+        } else {
+            throw new Error(proc.stderr.toString());
+        }
+    } catch (e: any) {
+        console.error(colors.red(`Failed to update environment variables: ${e.message}`));
+    }
+
+    // Also try to update PowerShell profile as a secondary convenience, but make it completely non-fatal
     let profilePath = '';
     try {
         const proc = Bun.spawnSync({
@@ -227,18 +285,21 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
             stdout: 'pipe'
         });
         profilePath = proc.stdout.toString().trim();
+        if (profilePath) {
+            // We use native powershell to ensure directory exists to handle OneDrive quirks better
+            Bun.spawnSync({
+                cmd: ['powershell', '-NoProfile', '-Command', `if (!(Test-Path "${dirname(profilePath)}")) { New-Item -ItemType Directory -Force -Path "${dirname(profilePath)}" }`],
+                stderr: 'pipe'
+            });
+            await updatePowerShellProfile(profilePath, false); // Silent update
+        }
     } catch (e) {
-        profilePath = join(homedir(), 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1');
+        // Ignore profile errors since we already updated the Registry
     }
 
-    if (!profilePath) return;
-    try {
-        await mkdir(dirname(profilePath), { recursive: true });
-    } catch (e: any) {
-        // Ignore EEXIST, proceed to try writing file
-        if (e.code !== 'EEXIST') console.error(colors.red(`Warning: Failed to ensure profile directory: ${e.message}`));
+    if (displayPrompt) {
+        console.log(colors.yellow('Please restart your terminal or IDE to apply the new PATH.'));
     }
-    await updatePowerShellProfile(profilePath, displayPrompt);
 }
 
 export async function updatePowerShellProfile(profilePath: string, displayPrompt: boolean = true): Promise<void> {
