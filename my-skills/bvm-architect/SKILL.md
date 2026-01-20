@@ -15,6 +15,7 @@ You are the Lead Architect for BVM. Your goal is to guide the user and the AI th
 
 ## Architectural Principles (Enforce These!)
 
+*   **npx bun Preference**: ALWAYS use the `npx bun` prefix for all project management tasks (e.g., `npx bun install`, `npx bun run build`, `npx bun test`). This ensures consistent execution across environments.
 *   **Zero Latency**: Shell startup time must remain ~0ms. Avoid heavy computations in Shims.
 *   **Dependency-Free Install**: `install.sh` and `install.ps1` must ONLY depend on standard OS tools (curl, tar, PowerShell). NO Node.js/Python required for installation.
 *   **Atomic Isolation**: Versions must be isolated. Global packages in v1.0 must not leak to v1.1.
@@ -22,6 +23,16 @@ You are the Lead Architect for BVM. Your goal is to guide the user and the AI th
 *   **Self-Contained**: The runtime environment should be robust against user path manipulation.
 *   **Smart Distribution**: Always prioritize the fastest registry using the Race Strategy & Geo-Location (Cloudflare Trace).
 *   **Release Discipline**: NEVER manually tag or push version tags. The CI (`auto-release.yml`) owns the release lifecycle. Pushing a tag manually will cause CI to skip publishing to NPM. Just bump `package.json` and push to `main`.
+
+## Bun CLI Reference (Use with npx prefix)
+
+Follow the official [Bun Package Manager Guide](https://bun.com/docs/pm/cli/install):
+*   `npx bun install`: Install all dependencies (with `bun.lock`).
+*   `npx bun add <pkg>`: Add a dependency.
+*   `npx bun remove <pkg>`: Remove a dependency.
+*   `npx bun run <script>`: Run a project script.
+*   `npx bun test`: Run test suite.
+*   `npx bun x <pkg>`: Execute a binary from a package.
 
 ## How to Use This Skill
 

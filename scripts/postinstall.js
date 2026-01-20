@@ -203,7 +203,12 @@ function main() {
 
     createWrappers();
     const bvmBin = path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm');
-    run(bvmBin, ['setup', '--silent'], { env: { BVM_DIR } });
+    const setupResult = run(bvmBin, ['setup', '--silent'], { env: { BVM_DIR } });
+    if (setupResult.status !== 0) {
+        error(`bvm setup failed with exit code ${setupResult.status}`);
+        if (setupResult.stderr) console.error(setupResult.stderr);
+        process.exit(1);
+    }
     log('🎉 BVM initialized successfully.');
 }
 
