@@ -28,9 +28,9 @@
 ## 阶段 3：NPM 安装流程优化 (NPM Post-install Refinement)
 确保通过 `npm install -g bvm` 安装时逻辑一致。
 
-- [ ] **任务 3.1: 更新 `scripts/postinstall.js`**
-    - [ ] 同步移除侵入性逻辑。
-    - [ ] 修复可能导致 NPM 环境下安装路径权限问题的潜在 bug。
+- [x] **任务 3.1: 更新 `scripts/postinstall.js`** [ef7f148]
+    - [x] 同步移除侵入性逻辑。
+    - [x] 修复可能导致 NPM 环境下安装路径权限问题的潜在 bug。
 - [ ] **任务: Conductor - User Manual Verification '阶段 3：NPM 安装流程优化' (Protocol in workflow.md)**
 
 ## 阶段 4：端到端验证 (E2E Verification)
