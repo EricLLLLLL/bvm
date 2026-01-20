@@ -1,4 +1,4 @@
-import { join, dirname, delimiter } from 'path';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { pathExists, ensureDir, removeDir } from '../utils';
 import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR } from '../constants';
@@ -25,10 +25,6 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
   if (process.platform === 'win32') {
       await configureWindows(displayPrompt);
       return;
-  }
-
-  if (!process.env.BVM_TEST_MODE) {
-      await checkConflicts();
   }
 
   // Unix Support (Mac/Linux)
@@ -162,25 +158,29 @@ async function recreateShims(displayPrompt: boolean) {
 
         // Create bvm wrapper
         let bvmWrapper = '';
+        const bunkerBun = join(BVM_DIR, 'runtime', 'current', 'bin', 'bun');
+        const bvmSrc = join(BVM_SRC_DIR, 'index.js');
+
         if (process.env.BVM_INSTALL_SOURCE === 'npm') {
-            // NPM-Compatible Wrapper (Preserve Source & Fallback)
+            // NPM-Compatible Wrapper (Strict Isolation + Node Fallback)
             bvmWrapper = `#!/bin/bash
 export BVM_DIR="${BVM_DIR}"
 export BVM_INSTALL_SOURCE="npm"
-# 1. Try internal runtime
-if [ -x "${BVM_DIR}/current/bin/bun" ]; then
-  exec "${BVM_DIR}/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"
-# 2. Try global/system bun (fallback)
+if [ -f "${bunkerBun}" ]; then
+  exec "${bunkerBun}" "${bvmSrc}" "$@"
 elif command -v bun >/dev/null 2>&1; then
-  exec bun "${BVM_DIR}/src/index.js" "$@"
+  exec bun "${bvmSrc}" "$@"
 else
-  echo "Error: BVM requires Bun. Please install Bun or ensure it is in your PATH."
-  exit 1
+  # Last resort: use the node entry point if it's an NPM install
+  # This is only possible if we are in the original NPM environment
+  # We'll leave this as a hint or a very specific fallback
+  echo "Error: BVM Bunker Runtime not found. Attempting emergency fallback..."
+  node -e "require('child_process').spawnSync('node', [require('path').join(process.env.BVM_DIR, '../', 'bin/bvm-npm.js'), ...process.argv.slice(1)], {stdio:'inherit'})" "\$@"
 fi
 `;
         } else {
             // Standard Wrapper (Strict Isolation)
-            bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${BVM_DIR}/current/bin/bun" "${BVM_DIR}/src/index.js" "$@"`;
+            bvmWrapper = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nexec "${bunkerBun}" "${bvmSrc}" "$@"`;
         }
 
         const bvmPath = join(BVM_BIN_DIR, 'bvm');
@@ -197,8 +197,6 @@ fi
 }
 
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
-    await checkConflicts();
-
     let profilePath = '';
     try {
         const proc = Bun.spawnSync({
@@ -253,42 +251,5 @@ if (Test-Path "$env:BVM_DIR\bin\bvm.cmd") {
         }
     } catch (error: any) {
         console.error(colors.red(`Failed to write to ${profilePath}: ${error.message}`));
-    }
-}
-
-async function checkConflicts(): Promise<void> {
-    if (process.env.BVM_TEST_MODE) return;
-    if (process.env.BVM_SUPPRESS_CONFLICT_WARNING === 'true') return;
-
-    const paths = (process.env.PATH || '').split(delimiter);
-    const officialBunPath = join(homedir(), '.bun');
-    const officialBunBin = join(officialBunPath, 'bin');
-    
-    for (const p of paths) {
-        if (!p || p === BVM_BIN_DIR || p.includes('.bvm')) continue;
-
-        const bunPath = join(p, EXECUTABLE_NAME);
-        if (await pathExists(bunPath)) {
-            if (p.includes('node_modules')) {
-                continue;
-            }
-            
-            if (p === officialBunBin || p === officialBunPath) { 
-                 console.log();
-                 console.log(colors.yellow(' NOTE: OFFICIAL BUN DETECTED ')); 
-                 console.log(colors.yellow(`Found existing official Bun installation at: ${bunPath}`));
-                 console.log(colors.yellow(`BVM will coexist by taking precedence in your PATH.`));
-                 console.log(colors.dim('No files will be deleted. BVM shims will handle version switching.'));
-                 return; 
-            } 
-            else {
-                console.log();
-                console.log(colors.yellow(' NOTE: ANOTHER BUN DETECTED '));
-                console.log(colors.yellow(`Found another Bun installation at: ${bunPath}`));
-                console.log(colors.yellow(`BVM will take precedence. To avoid confusion, you may manually manage the other version.`));
-                console.log();
-                return;
-            }
-        }
     }
 }

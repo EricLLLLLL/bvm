@@ -127,13 +127,17 @@ function createWrappers() {
     const bvmBin = path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm');
     const bvmDirWin = BVM_DIR.replace(/\//g, '\\');
     const entryPath = path.join(PKG_ROOT, 'bin', 'bvm-npm.js');
+    const bvmSrc = path.join(BVM_DIR, 'src', 'index.js');
+    const bunkerBun = path.join(BVM_DIR, 'runtime', 'current', 'bin', IS_WINDOWS ? 'bun.exe' : 'bun');
+    const bunkerBunWin = bunkerBun.replace(/\//g, '\\');
+    const bvmSrcWin = bvmSrc.replace(/\//g, '\\');
     
     if (IS_WINDOWS) {
-        const content = `@echo off\r\nset "BVM_DIR=${bvmDirWin}"\r\nnode "${entryPath}" %*`;
+        const content = `@echo off\r\nset "BVM_DIR=${bvmDirWin}"\r\nif exist "${bunkerBunWin}" (\r\n  "${bunkerBunWin}" "${bvmSrcWin}" %*\r\n) else (\r\n  node "${entryPath}" %*\r\n)`;
         fs.writeFileSync(bvmBin, content);
         fs.writeFileSync(path.join(BVM_BIN_DIR, 'bvm'), '# BVM Windows Shim\n');
     } else {
-        const content = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nnode "${entryPath}" "$@"`;
+        const content = `#!/bin/bash\nexport BVM_DIR="${BVM_DIR}"\nif [ -f "${bunkerBun}" ]; then\n  exec "${bunkerBun}" "${bvmSrc}" "$@"\nelse\n  node "${entryPath}" "$@"\nfi`;
         fs.writeFileSync(bvmBin, content);
         fs.chmodSync(bvmBin, 0o755);
     }
