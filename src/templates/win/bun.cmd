@@ -1,5 +1,6 @@
 @echo off
 set "BVM_DIR=%USERPROFILE%\.bvm"
+set "BUN_INSTALL=%BVM_DIR%\current"
 
 :: Fast-path: If no .bvmrc in current directory, run default directly
 if not exist ".bvmrc" (

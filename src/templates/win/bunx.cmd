@@ -1,5 +1,6 @@
 @echo off
 set "BVM_DIR=%USERPROFILE%\.bvm"
+set "BUN_INSTALL=%BVM_DIR%\current"
 
 if not exist ".bvmrc" (
     "%BVM_DIR%\runtime\current\bin\bun.exe" %*

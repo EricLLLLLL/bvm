@@ -160,6 +160,7 @@ foreach ($name in $CMD_NAMES) {
     $tpl = @"
 @echo off
 set "BVM_DIR=$WinBvmDir"
+set "BUN_INSTALL=%BVM_DIR%\current"
 
 if not exist ".bvmrc" (
     "%BVM_DIR%\runtime\current\bin\bun.exe" %*
