@@ -173,12 +173,13 @@ if not exist ".bvmrc" (
 
 # --- 7. Configure Path (Prepend for Priority) ---
 $RawPath = [Environment]::GetEnvironmentVariable("Path", "User")
+$BVM_CURRENT_BIN = Join-Path $BVM_DIR "current\bin"
 $PathList = if ($RawPath) { $RawPath.Split(';') } else { @() }
 $NewPathList = @()
-foreach ($p in $PathList) { if ($p -notlike "*\.bvm\shims*" -and $p -notlike "*\.bvm\bin*" -and -not [string]::IsNullOrEmpty($p)) { $NewPathList += $p } }
-$FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($NewPathList -join ';')
+foreach ($p in $PathList) { if ($p -notlike "*\.bvm\shims*" -and $p -notlike "*\.bvm\bin*" -and $p -notlike "*\.bvm\current\bin*" -and -not [string]::IsNullOrEmpty($p)) { $NewPathList += $p } }
+$FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$BVM_CURRENT_BIN;" + ($NewPathList -join ';')
 [Environment]::SetEnvironmentVariable("Path", $FinalPath, "User")
-$env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
+$env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$BVM_CURRENT_BIN;$env:Path"
 
 # --- 8. Initialize BVM (Self-Repair) ---
 & (Join-Path $TARGET_DIR "bin\bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent
