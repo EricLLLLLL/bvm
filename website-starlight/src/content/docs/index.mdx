@@ -1,0 +1,55 @@
+---
+title: BVM - Bun Version Manager
+description: The native, zero-dependency version manager for Bun.
+template: splash
+hero:
+  tagline: The native, zero-dependency version manager for Bun.
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Get Started
+      link: /guides/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/EricLLLLLL/bvm
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why BVM?
+
+<CardGrid stagger>
+	<Card title="🚀 Zero Latency" icon="rocket">
+		Shim-based design ensures ~0ms shell startup overhead. No more slow terminal inits.
+	</Card>
+	<Card title="🛡️ Bunker Architecture" icon="shield">
+		BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
+	</Card>
+	<Card title="🌏 Smart Mirroring" icon="earth">
+		Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
+	</Card>
+	<Card title="💻 Cross-Platform" icon="laptop">
+		Full support for macOS, Linux, and Windows (PowerShell) with unified logic.
+	</Card>
+</CardGrid>
+
+---
+
+## One-Line Installation
+
+### macOS / Linux (Recommended)
+```bash
+curl -fsSL https://bvm-core.pages.dev/install | bash
+```
+
+### Windows (Recommended)
+```powershell
+irm https://bvm-core.pages.dev/install | iex
+```
+
+### NPM (Optional)
+```bash
+npm install -g bvm-core@latest
+```

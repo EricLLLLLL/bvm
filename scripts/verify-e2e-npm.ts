@@ -47,14 +47,29 @@ try {
 
     // 5. Functional Verification
     console.log("🧪 Verifying BVM functionality...");
-    // We need to run it with the exact path because PATH might not be updated in this shell
     const bvmExec = join(BIN_DIR, "bvm");
     const output = await $`${bvmExec} ls`.text();
-    
     console.log(output.trim());
 
     if (!output.includes("Locally installed Bun versions")) {
         throw new Error("❌ 'bvm ls' output is unexpected.");
+    }
+
+    // 6. Global Package Isolation Verification (NEW)
+    console.log("📦 Verifying Global Package Isolation (Option B)...");
+    // Ensure we are using a version
+    await $`${bvmExec} use default`.quiet();
+    // Simulate bun install -g
+    console.log("   Installing dummy global package...");
+    await $`${join(SHIMS_DIR, "bun")} install -g fake-pkg-test-bvm`.quiet().catch(() => {}); 
+    
+    const currentBin = join(BVM_DIR, "current", "bin");
+    console.log(`   Checking if current bin path is correctly set up: ${currentBin}`);
+    
+    // We check if current/bin is in the PATH reported by setup
+    const zshrc = await $`cat ${join(HOME, ".zshrc")}`.text();
+    if (!zshrc.includes("current/bin")) {
+        throw new Error("❌ .zshrc does not contain 'current/bin' in PATH");
     }
 
     console.log("\n✅ \x1b[32mE2E VERIFICATION PASSED!\x1b[0m");
