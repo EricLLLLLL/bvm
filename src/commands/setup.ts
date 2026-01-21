@@ -1,10 +1,11 @@
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import { pathExists, removeDir } from '../utils';
+import { pathExists, removeDir, getInstalledVersions, normalizeVersion, resolveVersion, createSymlink } from '../utils';
 import { mkdir } from 'fs/promises'; // Import mkdir
-import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR } from '../constants';
+import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_DIR } from '../constants';
 import { colors, confirm } from '../utils/ui';
 import { chmod } from 'fs/promises';
+import { useBunVersion } from './use';
 import { 
     BVM_INIT_SH_TEMPLATE, 
     BVM_INIT_FISH_TEMPLATE, 
@@ -99,9 +100,11 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
   const configBlock = `${startMarker}
 # !! Contents within this block are managed by 'bvm setup' !!
 export BVM_DIR="${BVM_DIR}"
-export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$PATH"
-# Reset current version to default for new terminal sessions
-[ -L "$BVM_DIR/current" ] && rm "$BVM_DIR/current"
+export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$BVM_DIR/current/bin:$PATH"
+# Ensure current link exists for PATH consistency
+if [ ! -L "$BVM_DIR/current" ] && [ -f "$BVM_DIR/aliases/default" ]; then
+    ln -sf "$BVM_DIR/versions/$(cat "$BVM_DIR/aliases/default")" "$BVM_DIR/current"
+fi
 ${endMarker}`;
 
   const fishConfigBlock = `# >>> bvm initialize >>>
@@ -109,9 +112,12 @@ ${endMarker}`;
 set -Ux BVM_DIR "${BVM_DIR}"
 fish_add_path "$BVM_DIR/shims"
 fish_add_path "$BVM_DIR/bin"
-# Reset current version to default
-if test -L "$BVM_DIR/current"
-    rm "$BVM_DIR/current"
+fish_add_path "$BVM_DIR/current/bin"
+# Ensure current link exists
+if not test -L "$BVM_DIR/current"
+    if test -f "$BVM_DIR/aliases/default"
+        ln -sf "$BVM_DIR/versions/$(cat "$BVM_DIR/aliases/default")" "$BVM_DIR/current"
+    end
 end
 # <<< bvm initialize <<<`;
 
@@ -147,6 +153,13 @@ end
 
     if (displayPrompt) {
         console.log(colors.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
+    }
+
+    // Ensure 'current' symlink is established
+    try {
+        await useBunVersion('default', { silent: true });
+    } catch (e) {
+        // Ignore if no default version set yet
     }
   } catch (error: any) {
     console.error(colors.red(`Failed to write to ${configFile}: ${error.message}`));
@@ -222,6 +235,7 @@ fi
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     const bvmBinPath = join(BVM_BIN_DIR);
     const bvmShimsPath = join(BVM_SHIMS_DIR);
+    const bvmCurrentBinPath = join(BVM_DIR, 'current', 'bin');
 
     if (displayPrompt) {
         console.log(colors.cyan('Configuring Windows environment variables (Registry)...'));
@@ -229,11 +243,12 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
 
     // PowerShell script to safely update User PATH and BVM_DIR
     // 1. Sets BVM_DIR
-    // 2. Prepend shims and bin to PATH if not already present
+    // 2. Prepend shims, bin and current/bin to PATH if not already present
     const psCommand = `
         $targetDir = "${BVM_DIR}";
         $shimsPath = "${bvmShimsPath}";
         $binPath = "${bvmBinPath}";
+        $currentBinPath = "${bvmCurrentBinPath}";
         
         # Set BVM_DIR
         [Environment]::SetEnvironmentVariable("BVM_DIR", $targetDir, "User");
@@ -245,6 +260,7 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
         $newPaths = @()
         if ($paths -notcontains $shimsPath) { $newPaths += $shimsPath }
         if ($paths -notcontains $binPath) { $newPaths += $binPath }
+        if ($paths -notcontains $currentBinPath) { $newPaths += $currentBinPath }
         
         if ($newPaths.Count -gt 0) {
             $newPathString = (($newPaths + $paths) -join ";").Trim(";")
@@ -306,10 +322,10 @@ export async function updatePowerShellProfile(profilePath: string, displayPrompt
     const psStr = `
 # BVM Configuration
 $env:BVM_DIR = "${BVM_DIR}"
-$env:PATH = "$env:BVM_DIR\shims;$env:BVM_DIR\bin;$env:PATH"
+$env:PATH = "$env:BVM_DIR\\shims;$env:BVM_DIR\\bin;$env:BVM_DIR\\current\\bin;$env:PATH"
 # Auto-activate default version
-if (Test-Path "$env:BVM_DIR\bin\bvm.cmd") {
-    & "$env:BVM_DIR\bin\bvm.cmd" use default --silent *>$null
+if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
+    & "$env:BVM_DIR\\bin\\bvm.cmd" use default --silent *>$null
 }
 `;
 
