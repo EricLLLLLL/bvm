@@ -15,7 +15,8 @@
     "test": "bun test",
     "bvm": "bun run src/index.ts",
     "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" bun run src/index.ts",
-    "release": "bun run scripts/release.ts",
+    "release": "bun run scripts/check-integrity.ts && bun run build && bun run scripts/release.ts",
+    "check-integrity": "bun run scripts/check-integrity.ts",
     "test:e2e:npm": "bun run scripts/verify-e2e-npm.ts",
     "sync-runtime": "bun run scripts/sync-runtime.ts",
     "postinstall": "node scripts/postinstall.js"
