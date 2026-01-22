@@ -71,8 +71,8 @@ class App {
   }
 
   async run() {
-    // 1. Trigger background check
-    triggerUpdateCheck().catch(() => {});
+    // 1. Trigger background check (Safe wrapper)
+    try { triggerUpdateCheck().catch(() => {}); } catch(e) {}
 
     const { values, positionals } = parseArgs({
       args: Bun.argv.slice(2),

@@ -57,12 +57,24 @@ Configuration blocks in Shell profiles MUST use standardized markers:
 *   **The Emulation Trap**: `uname -m` or `process.arch` can return `x64` on Apple Silicon if running under Rosetta 2.
 *   **Standard**: Always use `sysctl -in hw.optional.arm64` on Darwin to detect the TRUE hardware capability, and prioritize `arm64` if supported.
 
-## 5. Standard Workflow (The "Golden Path")
+## 5. Version Management & Stability Strategy
+
+To prevent rapid and unstable version increments, the following rules MUST be followed:
+
+*   **Rule 1: Assessment First**: Before any change, assess dependency risks and potential side effects on all supported platforms (Unix/Windows/NPM).
+*   **Rule 2: Mandatory Staging**: Major logic changes must stay in a "Pre-release" state (e.g., tested via `bvm:sandbox`) for at least 24 hours before a version bump.
+*   **Rule 3: Automated Gate**: NO version bump is allowed unless `npx bun run check-integrity` AND `npx bun run test:e2e:npm` pass with 100% success.
+*   **Rule 4: Reviewable Changelogs**: Every release MUST have a concise, human-readable summary of changes in the commit message or a dedicated CHANGELOG.md.
+*   **Rule 5: LTS Consideration**: Maintain a "Baseline" (LTS) mindset for core installers (`install.sh/ps1`)—these should be modified with extreme caution.
+
+## 6. Standard Workflow (The "Golden Path")
 
 1.  **Change Code**: Modify `src/`.
-2.  **Verify Locally**: Run `npx bun run build`.
-3.  **Real-world Simulation**: Execute `npx bun scripts/verify-e2e-npm.ts`.
-4.  **Release**: Bump version, push to `main`. (CI owns the NPM publish).
+2.  **Local Test**: Run `npx bun test`.
+3.  **Integrity Check**: Run `npx bun run check-integrity`.
+4.  **Production Simulation**: Run `npx bun run test:e2e:npm`.
+5.  **Staging Review**: Manually verify critical paths if the change is high-risk.
+6.  **Release**: Bump version, push to `main`. (CI owns the NPM publish).
 
 ## Reference Navigation
 

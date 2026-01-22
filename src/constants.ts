@@ -39,6 +39,12 @@ function checkAvx2Support() {
 export const CPU_ARCH = getNativeArch();
 export const HAS_AVX2 = checkAvx2Support();
 
+// Helper to get BVM_DIR dynamically
+export function getBvmDir() {
+    const HOME = process.env.HOME || homedir();
+    return join(HOME, '.bvm');
+}
+
 export const BVM_DIR = getBvmDir();
 export const BVM_SRC_DIR = join(BVM_DIR, 'src');
 export const BVM_VERSIONS_DIR = join(BVM_DIR, 'versions');
