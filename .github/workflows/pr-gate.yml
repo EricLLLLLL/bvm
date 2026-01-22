@@ -26,6 +26,9 @@ jobs:
       - name: Build Project
         run: bun run build
 
+      - name: Setup BVM Runtime
+        run: node scripts/postinstall.js
+
       - name: Run Unit Tests
         run: bun test
 

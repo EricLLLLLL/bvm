@@ -174,6 +174,13 @@ function createWrappers() {
 function main() {
     log('Starting BVM post-install setup...');
     
+    // Check if dist/index.js exists (it might not in dev/CI environment before build)
+    if (!fs.existsSync(path.join(DIST_DIR, 'index.js'))) {
+        log('Development environment detected: dist/index.js missing.');
+        log('Skipping BVM runtime setup. Please run "bun run build" to generate artifacts.');
+        return;
+    }
+    
     [BVM_SRC_DIR, BVM_BIN_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
     const assets = [
         { src: 'index.js', dest: path.join(BVM_SRC_DIR, 'index.js') },
