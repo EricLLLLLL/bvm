@@ -17,7 +17,7 @@ async function sync() {
     console.log('✅ Synced README.zh-CN.md to website/docs/guide/getting-started-zh.md');
 
     // Sync architecture.md
-    await copyFile(join(root, 'conductor', 'architecture.md'), join(docsDest, 'architecture.md'));
+    await copyFile(join(root, 'my-skills', 'bvm-architect', 'references', 'architecture.md'), join(docsDest, 'architecture.md'));
     console.log('✅ Synced architecture.md to website/docs/guide/architecture.md');
 
   } catch (err) {
