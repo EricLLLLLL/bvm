@@ -8,7 +8,8 @@ import {
   BVM_ALIAS_DIR,
   BVM_SHIMS_DIR,
   OS_PLATFORM,
-  CPU_ARCH
+  CPU_ARCH,
+  HAS_AVX2
 } from '../constants';
 import {
   getInstalledVersions,
@@ -68,6 +69,7 @@ function printReport(report: DoctorReport): void {
   console.log(colors.bold('\nSystem'));
   console.log(`  OS: ${colors.cyan(OS_PLATFORM)}`);
   console.log(`  Arch: ${colors.cyan(CPU_ARCH)} ${process.arch !== CPU_ARCH ? colors.yellow(`(Process: ${process.arch})`) : ''}`);
+  console.log(`  AVX2: ${HAS_AVX2 ? colors.green('Supported') : colors.yellow('Not Supported (Baseline fallback enabled)')}`);
 
   console.log(colors.bold('\nDirectories'));
   console.log(`  BVM_DIR: ${colors.cyan(report.env.BVM_DIR || '')}`);

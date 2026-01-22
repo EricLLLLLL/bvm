@@ -85,7 +85,7 @@ function getNativeArch() {
     const arch = process.arch;
     if (process.platform === 'darwin' && arch === 'x64') {
         try {
-            const check = spawnSync('sysctl', ['-in', 'hw.optional.arm64'], { encoding: 'utf-8' });
+            const check = spawnSync('sysctl', ['-n', 'sysctl.proc_translated'], { encoding: 'utf-8' });
             if (check.stdout.trim() === '1') {
                 return 'arm64';
             }
@@ -94,10 +94,23 @@ function getNativeArch() {
     return arch;
 }
 
+function hasAvx2() {
+    if (process.platform === 'win32') return true;
+    try {
+        if (process.platform === 'darwin') {
+            return spawnSync('sysctl', ['-a'], { encoding: 'utf-8' }).stdout.includes('AVX2');
+        } else if (process.platform === 'linux') {
+            return fs.readFileSync('/proc/cpuinfo', 'utf-8').includes('avx2');
+        }
+    } catch (e) {}
+    return true;
+}
+
 function downloadAndInstall() {
     const platform = process.platform === 'win32' ? 'windows' : process.platform;
     const nativeArch = getNativeArch();
     const arch = nativeArch === 'arm64' ? 'aarch64' : 'x64';
+    const suffix = (arch === 'x64' && !hasAvx2()) ? '-baseline' : '';
     const pkgName = `@oven/bun-${platform}-${arch}`;
     
     const info = getPackageInfo(pkgName);
@@ -107,8 +120,9 @@ function downloadAndInstall() {
     }
 
     const { url, version } = info;
+    const downloadUrl = url.replace('.tgz', `${suffix}.tgz`);
     const tempTgz = path.join(os.tmpdir(), `bvm-bun-${Date.now()}.tgz`);
-    log(`Downloading Bun v${version} from: ${url}`);
+    log(`Downloading Bun v${version} from: ${downloadUrl}`);
     
     const dl = run('curl', ['-L', '-s', '-o', tempTgz, url]);
     if (dl.status !== 0) {
@@ -186,27 +200,36 @@ function main() {
         const ver = 'v' + (verRes.stdout || '1.3.6').trim().replace(/^v/, '');
         const verDir = path.join(BVM_DIR, 'versions', ver);
         
-        // Register anyway to preserve user's version
-        const binDir = path.join(verDir, 'bin');
-        if (!fs.existsSync(binDir)) {
-            fs.mkdirSync(binDir, { recursive: true });
-            const destBin = path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun');
-            try {
-                if (path.resolve(binPath) !== path.resolve(destBin)) {
-                    fs.copyFileSync(binPath, destBin);
-                }
-            } catch (e) {
-                error(`Failed to copy system Bun: ${e.message}`);
-            }
-        }
+        // Architecture match check (Native vs. Emulated)
+        const sysArchRes = run(binPath, ['-e', 'console.log(process.arch)']);
+        const sysArch = (sysArchRes.stdout || '').trim();
+        const nativeArch = getNativeArch();
 
-        const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
-        if (test.status === 0) {
-            log('Smoke test passed. Reusing system Bun.');
-            setupRuntimeLink(verDir, ver);
-            hasValidBun = true;
+        if (sysArch !== nativeArch) {
+            log(`System Bun architecture (${sysArch}) doesn't match native hardware (${nativeArch}). Skipping reuse.`);
         } else {
-            log('Smoke test failed. System Bun is incompatible with BVM core.');
+            // Register anyway to preserve user's version
+            const binDir = path.join(verDir, 'bin');
+            if (!fs.existsSync(binDir)) {
+                fs.mkdirSync(binDir, { recursive: true });
+                const destBin = path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun');
+                try {
+                    if (path.resolve(binPath) !== path.resolve(destBin)) {
+                        fs.copyFileSync(binPath, destBin);
+                    }
+                } catch (e) {
+                    error(`Failed to copy system Bun: ${e.message}`);
+                }
+            }
+
+            const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
+            if (test.status === 0) {
+                log('Smoke test passed. Reusing system Bun.');
+                setupRuntimeLink(verDir, ver);
+                hasValidBun = true;
+            } else {
+                log('Smoke test failed. System Bun is incompatible with BVM core.');
+            }
         }
     }
 

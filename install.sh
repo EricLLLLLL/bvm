@@ -179,14 +179,25 @@ else
         
         # macOS Architecture Guard: Handle Rosetta 2 emulation
         if [ "$OS" == "Darwin" ] && [ "$ARCH" == "x86_64" ]; then
-            if [ "$(sysctl -in hw.optional.arm64 2>/dev/null)" == "1" ]; then
+            if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" == "1" ]; then
                 ARCH="arm64"
             fi
         fi
 
         case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) error "Unsupported Arch: $ARCH" ;; esac
+        
+        # Baseline check for x64
+        SUFFIX=""
+        if [ "$A" == "x64" ]; then
+            if [ "$OS" == "Darwin" ]; then
+                if ! sysctl -a 2>/dev/null | grep -q "AVX2"; then SUFFIX="-baseline"; fi
+            elif [ "$OS" == "Linux" ]; then
+                if ! grep -q "avx2" /proc/cpuinfo 2>/dev/null; then SUFFIX="-baseline"; fi
+            fi
+        fi
+
         PKG="@oven/bun-$P-$A"
-        URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}-${BUN_VER#v}.tgz"
+        URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}${SUFFIX}-${BUN_VER#v}.tgz"
         
         TEMP_DIR_BUN=$(mktemp -d)
         TEMP_TGZ_BUN="${TEMP_DIR_BUN}/bun-runtime.tgz"

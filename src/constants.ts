@@ -5,12 +5,15 @@ import { spawnSync } from 'child_process';
 
 // Platform detection
 export const OS_PLATFORM = process.platform;
+export const IS_TEST_MODE = process.env.BVM_TEST_MODE === 'true';
+export const TEST_REMOTE_VERSIONS = ['v1.3.4', 'v1.2.23', 'v1.0.0', 'bun-v1.4.0-canary'];
 
 function getNativeArch() {
     const arch = process.arch;
     if (OS_PLATFORM === 'darwin' && arch === 'x64') {
         try {
-            const check = spawnSync('sysctl', ['-in', 'hw.optional.arm64'], { encoding: 'utf-8' });
+            // Check if we are running under Rosetta 2
+            const check = spawnSync('sysctl', ['-n', 'sysctl.proc_translated'], { encoding: 'utf-8' });
             if (check.stdout.trim() === '1') {
                 return 'arm64';
             }
@@ -19,19 +22,22 @@ function getNativeArch() {
     return arch;
 }
 
-export const CPU_ARCH = getNativeArch();
-export const IS_TEST_MODE = process.env.BVM_TEST_MODE === 'true';
-export const TEST_REMOTE_VERSIONS = ['v1.3.4', 'v1.2.23', 'v1.0.0', 'bun-v1.4.0-canary'];
-
-// Helper to get BVM_DIR dynamically
-export function getBvmDir() {
-    const HOME = process.env.HOME || homedir();
-    return join(HOME, '.bvm');
+function checkAvx2Support() {
+    if (OS_PLATFORM === 'win32') return true; // Windows mostly supports AVX2 on modern x64
+    try {
+        if (OS_PLATFORM === 'darwin') {
+            const res = spawnSync('sysctl', ['-a'], { encoding: 'utf-8' });
+            return res.stdout.includes('AVX2');
+        } else if (OS_PLATFORM === 'linux') {
+            const res = spawnSync('cat', ['/proc/cpuinfo'], { encoding: 'utf-8' });
+            return res.stdout.includes('avx2');
+        }
+    } catch (e) {}
+    return true; // Default to true to avoid unnecessary baseline fallback
 }
 
-// These are still exported as constants for convenience, but they will be re-evaluated if needed
-// Actually, since most commands are short-lived, re-evaluating on startup is fine.
-// The issue is when the module is loaded once and HOME changes later (which happens in tests).
+export const CPU_ARCH = getNativeArch();
+export const HAS_AVX2 = checkAvx2Support();
 
 export const BVM_DIR = getBvmDir();
 export const BVM_SRC_DIR = join(BVM_DIR, 'src');
@@ -67,5 +73,6 @@ export const BVM_COMPONENTS: BvmComponent[] = [
 export function getBunAssetName(version: string): string {
   let platform = OS_PLATFORM === 'win32' ? 'windows' : OS_PLATFORM;
   let arch = CPU_ARCH === 'arm64' ? 'aarch64' : 'x64';
-  return `bun-${platform}-${arch}.zip`;
+  let baseline = (!HAS_AVX2 && arch === 'x64') ? '-baseline' : '';
+  return `bun-${platform}-${arch}${baseline}.zip`;
 }
