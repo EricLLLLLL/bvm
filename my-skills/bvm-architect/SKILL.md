@@ -59,22 +59,19 @@ Configuration blocks in Shell profiles MUST use standardized markers:
 
 ## 5. Version Management & Stability Strategy
 
-*   **Rule 1: Protected Main**: Direct pushes to `main` are strictly FORBIDDEN. All changes must be made on feature/fix branches.
+*   **Rule 1: Protected Main**: Direct pushes to `main` are FORBIDDEN. Use feature branches.
 *   **Rule 2: Mandatory PRs**: Every change MUST go through a GitHub Pull Request.
-*   **Rule 3: Automated Gate**: No PR shall be merged unless `PR Quality Gate` (CI) passes with 100% success.
-*   **Rule 4: Release via Tags**: NPM publication is triggered ONLY by pushing a version tag (`v*`) to the `main` branch after merge.
+*   **Rule 3: Automated Gate**: No PR shall be merged unless `PR Quality Gate` passes.
+*   **Rule 4: Merge-to-Release**: Merging a PR that bumps the version in `package.json` into `main` AUTOMATICALLY triggers the full production release (Tag, NPM, GitHub Release).
 
 ## 6. Standard Workflow (The "Golden Path")
 
 1.  **Branch**: Create a new branch (`feat/` or `fix/`).
-2.  **Develop**: Change code in `src/`.
-3.  **Local Verify**: Run `npx bun run check-integrity` and `npx bun run test:e2e:npm`.
-4.  **PR**: Push branch and open a PR on GitHub.
-5.  **Merge**: Merge the PR via GitHub UI after CI passes.
-6.  **Tag & Release**: 
-    *   Switch to `main` locally and `git pull`.
-    *   Run `npx bun run release` to bump version and update docs.
-    *   Push the release commit and the tag.
+2.  **Develop**: Change code.
+3.  **Prepare**: Run `npx bun run release` on the feature branch. This handles version bumping, script syncing, and documentation updates.
+4.  **Verify**: Run `npx bun run check-integrity` and `npx bun run test:e2e:npm`.
+5.  **PR**: Push the branch and open a PR.
+6.  **Merge**: Once CI passes, merge the PR via GitHub UI. The system will handle the rest!
 
 ## Reference Navigation
 

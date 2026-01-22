@@ -146,7 +146,10 @@ const runGit = (...args: string[]) => run('git', args);
     console.log(`\n🚀 NEXT STEPS:`);
     console.log(`   1. Push your branch:  git push origin ${currentBranch}`);
     console.log(`   2. Open a Pull Request on GitHub.`);
-    console.log(`   3. After merge, tag the main branch and push the tag to trigger production release.`);
+    console.log(`   3. Once merged into main, CI will AUTOMATICALLY:`);
+    console.log(`      - Create Git Tag ${tagName}`);
+    console.log(`      - Publish to NPM`);
+    console.log(`      - Create GitHub Release`);
 
   } catch (error) {
     console.error('\n❌ Release failed:', (error as Error).message);

@@ -2,37 +2,61 @@ name: Production Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'package.json'
 
 permissions:
   contents: write
 
 jobs:
-  publish:
+  check-and-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: 'latest'
 
+      - name: Check Version & Determine Release
+        id: check
+        run: |
+          VERSION=$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4)
+          TAG_NAME="v$VERSION"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "✅ Version $VERSION already released. Skipping."
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "🚀 New version $VERSION detected! Preparing release."
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
       - name: Install Dependencies
+        if: steps.check.outputs.should_release == 'true'
         run: bun install
 
       - name: Run Integrity Check
+        if: steps.check.outputs.should_release == 'true'
         run: bun run check-integrity
 
       - name: Build Project
+        if: steps.check.outputs.should_release == 'true'
         run: bun run build
 
       - name: Calculate Fingerprints
+        if: steps.check.outputs.should_release == 'true'
         run: bun run scripts/fingerprint.ts
 
       - name: Publish to NPM
+        if: steps.check.outputs.should_release == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -40,9 +64,19 @@ jobs:
           npm publish --access public
           rm .npmrc
 
+      - name: Create Git Tag
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a "${{ steps.check.outputs.tag_name }}" -m "Release ${{ steps.check.outputs.tag_name }}"
+          git push origin "${{ steps.check.outputs.tag_name }}"
+
       - name: Create GitHub Release
+        if: steps.check.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.check.outputs.tag_name }}
           files: |
             dist/index.js
             dist/bvm-shim.sh
@@ -52,15 +86,14 @@ jobs:
           generate_release_notes: true
 
       - name: Trigger Mirror Sync
+        if: steps.check.outputs.should_release == 'true'
         run: |
           PACKAGE_NAME=$(grep -oE '"name": "[^"]+"' package.json | cut -d'"' -f4)
-          echo "🔄 Triggering sync for $PACKAGE_NAME via npmmirror API..."
           curl -X PUT "https://registry-direct.npmmirror.com/$PACKAGE_NAME/sync?nodeps=true&publish=true"
 
       - name: Purge jsDelivr Cache
+        if: steps.check.outputs.should_release == 'true'
         run: |
-          TAG_NAME=${{ github.ref_name }}
-          echo "🧹 Purging jsDelivr cache for $TAG_NAME..."
+          TAG_NAME=${{ steps.check.outputs.tag_name }}
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@${TAG_NAME}/dist/index.js || true
           curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/dist/index.js || true
-          echo "Done."
