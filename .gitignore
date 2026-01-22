@@ -59,3 +59,4 @@ verify.log
 .sandbox-*/
 debug-upgrade.ts
 shim-binary
+dist/

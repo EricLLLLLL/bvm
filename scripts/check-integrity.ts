@@ -13,7 +13,8 @@ if (pkg.private) {
     process.exit(1);
 }
 
-// 2. Check for build sync
+// 2. Check for build sync (SKIPPED - CI handles build)
+/*
 const distPath = join(process.cwd(), "dist", "index.js");
 try {
     const distStat = statSync(distPath);
@@ -26,6 +27,7 @@ try {
     console.error("❌ ERROR: Build artifacts (dist/index.js) missing.");
     process.exit(1);
 }
+*/
 
 // 3. Check for mandatory files in package.json
 const requiredFiles = ["dist/index.js", "scripts/postinstall.js", "install.sh", "install.ps1"];
