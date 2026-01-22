@@ -27,33 +27,43 @@ async function syncRuntime() {
 
     // 1. Update install.sh
     let shContent = await Bun.file(installShPath).text();
+    
+    // Sync Bun version
     const shRegex = /(FALLBACK_BUN_VERSION|REQUIRED_BUN_VERSION)="[0-9]+\.[0-9]+\.[0-9]+"/;
     const newShLine = `FALLBACK_BUN_VERSION="${localVersion}"`;
-    
     if (shContent.match(shRegex)) {
-      if (shContent.match(shRegex)?.[0] !== newShLine) {
         shContent = shContent.replace(shRegex, newShLine);
-        await Bun.write(installShPath, shContent);
-        console.log(`✅ Updated install.sh to v${localVersion}`);
-      } else {
-        console.log(`✓ install.sh is already up to date.`);
-      }
     }
+
+    // Sync BVM version
+    const bvmShRegex = /DEFAULT_BVM_VERSION="v[0-9]+\.[0-9]+\.[0-9]+"/;
+    const newBvmShLine = `DEFAULT_BVM_VERSION="v${pkg.version}"`;
+    if (shContent.match(bvmShRegex)) {
+        shContent = shContent.replace(bvmShRegex, newBvmShLine);
+    }
+    
+    await Bun.write(installShPath, shContent);
+    console.log(`✅ Updated install.sh (Bun: v${localVersion}, BVM: v${pkg.version})`);
 
     // 2. Update install.ps1
     let ps1Content = await Bun.file(installPs1Path).text();
+    
+    // Sync Bun version
     const ps1Regex = /\$REQUIRED_BUN_VERSION = "[0-9]+\.[0-9]+\.[0-9]+"/;
     const newPs1Line = `$REQUIRED_BUN_VERSION = "${localVersion}"`;
-
     if (ps1Content.match(ps1Regex)) {
-      if (ps1Content.match(ps1Regex)?.[0] !== newPs1Line) {
         ps1Content = ps1Content.replace(ps1Regex, newPs1Line);
-        await Bun.write(installPs1Path, ps1Content);
-        console.log(`✅ Updated install.ps1 to v${localVersion}`);
-      } else {
-        console.log(`✓ install.ps1 is already up to date.`);
-      }
     }
+
+    // Sync BVM version
+    const bvmPs1Regex = /\$DEFAULT_BVM_VER = "v[0-9]+\.[0-9]+\.[0-9]+"/;
+    const newBvmPs1Line = `$DEFAULT_BVM_VER = "v${pkg.version}"`;
+    if (ps1Content.match(bvmPs1Regex)) {
+        ps1Content = ps1Content.replace(bvmPs1Regex, newBvmPs1Line);
+    }
+
+    await Bun.write(installPs1Path, ps1Content);
+    console.log(`✅ Updated install.ps1 (Bun: v${localVersion}, BVM: v${pkg.version})`);
 
     // 3. Export Shims to dist/
     console.log('🚀 Exporting shims to dist/ directory...');
