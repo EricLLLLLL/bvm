@@ -59,22 +59,22 @@ Configuration blocks in Shell profiles MUST use standardized markers:
 
 ## 5. Version Management & Stability Strategy
 
-To prevent rapid and unstable version increments, the following rules MUST be followed:
-
-*   **Rule 1: Assessment First**: Before any change, assess dependency risks and potential side effects on all supported platforms (Unix/Windows/NPM).
-*   **Rule 2: Mandatory Staging**: Major logic changes must stay in a "Pre-release" state (e.g., tested via `bvm:sandbox`) for at least 24 hours before a version bump.
-*   **Rule 3: Automated Gate**: NO version bump is allowed unless `npx bun run check-integrity` AND `npx bun run test:e2e:npm` pass with 100% success.
-*   **Rule 4: Reviewable Changelogs**: Every release MUST have a concise, human-readable summary of changes in the commit message or a dedicated CHANGELOG.md.
-*   **Rule 5: LTS Consideration**: Maintain a "Baseline" (LTS) mindset for core installers (`install.sh/ps1`)—these should be modified with extreme caution.
+*   **Rule 1: Protected Main**: Direct pushes to `main` are strictly FORBIDDEN. All changes must be made on feature/fix branches.
+*   **Rule 2: Mandatory PRs**: Every change MUST go through a GitHub Pull Request.
+*   **Rule 3: Automated Gate**: No PR shall be merged unless `PR Quality Gate` (CI) passes with 100% success.
+*   **Rule 4: Release via Tags**: NPM publication is triggered ONLY by pushing a version tag (`v*`) to the `main` branch after merge.
 
 ## 6. Standard Workflow (The "Golden Path")
 
-1.  **Change Code**: Modify `src/`.
-2.  **Local Test**: Run `npx bun test`.
-3.  **Integrity Check**: Run `npx bun run check-integrity`.
-4.  **Production Simulation**: Run `npx bun run test:e2e:npm`.
-5.  **Staging Review**: Manually verify critical paths if the change is high-risk.
-6.  **Release**: Bump version, push to `main`. (CI owns the NPM publish).
+1.  **Branch**: Create a new branch (`feat/` or `fix/`).
+2.  **Develop**: Change code in `src/`.
+3.  **Local Verify**: Run `npx bun run check-integrity` and `npx bun run test:e2e:npm`.
+4.  **PR**: Push branch and open a PR on GitHub.
+5.  **Merge**: Merge the PR via GitHub UI after CI passes.
+6.  **Tag & Release**: 
+    *   Switch to `main` locally and `git pull`.
+    *   Run `npx bun run release` to bump version and update docs.
+    *   Push the release commit and the tag.
 
 ## Reference Navigation
 

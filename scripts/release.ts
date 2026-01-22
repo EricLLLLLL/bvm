@@ -142,15 +142,11 @@ const runGit = (...args: string[]) => run('git', args);
     runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1', 'website/docs/guide', ...updatedDocs);
     runGit('commit', '-m', `chore: prepare release ${tagName}`);
 
-    // Create Tag
-    console.log(`\n🏷️  Creating local tag ${tagName}...`);
-    runGit('tag', '-a', tagName, '-m', `Release ${tagName}`);
-
-    console.log(`\n✅ Release prep complete for ${tagName}!`);
+    console.log(`\n✅ Release preparation complete for ${tagName}!`);
     console.log(`\n🚀 NEXT STEPS:`);
-    console.log(`   1. Push the commit:  git push origin ${currentBranch}`);
-    console.log(`   2. Push the tag:     git push origin ${tagName}`);
-    console.log(`\n💡 Note: The NPM publish will ONLY trigger when the tag is pushed.`);
+    console.log(`   1. Push your branch:  git push origin ${currentBranch}`);
+    console.log(`   2. Open a Pull Request on GitHub.`);
+    console.log(`   3. After merge, tag the main branch and push the tag to trigger production release.`);
 
   } catch (error) {
     console.error('\n❌ Release failed:', (error as Error).message);
