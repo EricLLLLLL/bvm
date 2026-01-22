@@ -9,6 +9,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "homepage": "https://bvm-core.pages.dev",
+  "bugs": {
+    "url": "https://github.com/EricLLLLLL/bvm/issues"
+  },
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --target=bun --outfile dist/index.js --minify && bun run scripts/sync-runtime.ts",
