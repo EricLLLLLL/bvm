@@ -57,21 +57,33 @@ Configuration blocks in Shell profiles MUST use standardized markers:
 *   **The Emulation Trap**: `uname -m` or `process.arch` can return `x64` on Apple Silicon if running under Rosetta 2.
 *   **Standard**: Always use `sysctl -in hw.optional.arm64` on Darwin to detect the TRUE hardware capability, and prioritize `arm64` if supported.
 
-## 5. Version Management & Stability Strategy
+## 5. BVM Release Lifecycle Protocol
 
-*   **Rule 1: Protected Main**: Direct pushes to `main` are FORBIDDEN. Use feature branches.
-*   **Rule 2: Mandatory PRs**: Every change MUST go through a GitHub Pull Request.
-*   **Rule 3: Automated Gate**: No PR shall be merged unless `PR Quality Gate` passes.
-*   **Rule 4: Merge-to-Release**: Merging a PR that bumps the version in `package.json` into `main` AUTOMATICALLY triggers the full production release (Tag, NPM, GitHub Release).
+The project follows a strict **"Merge-to-Release"** automated pipeline. The `main` branch is protected and serves as the source of truth for production.
 
-## 6. Standard Workflow (The "Golden Path")
+*   **P1: Protected Main**: NEVER push directly to `main`. No exceptions.
+*   **P2: Feature Isolation**: All work starts on a `feat/` or `fix/` branch.
+*   **P3: Pre-flight Checks**: Before opening a PR, the developer MUST run `npx bun run release`. This local gate performs:
+    *   Integrity checks (via `check-integrity.ts`).
+    *   Version bumping & installation script syncing.
+    *   Documentation & Website synchronization.
+*   **P4: Automated PR Gate**: Every PR triggers the `PR Quality Gate` CI. Merging is blocked until:
+    *   Unit tests pass.
+    *   Full E2E NPM simulation (`test:e2e:npm`) passes.
+*   **P5: Atomic Release**: Merging a version-bumping PR into `main` AUTOMATICALLY triggers:
+    *   Git Tagging (`v*`).
+    *   NPM Publication.
+    *   GitHub Release creation with assets.
+    *   CDN cache purging.
 
-1.  **Branch**: Create a new branch (`feat/` or `fix/`).
-2.  **Develop**: Change code.
-3.  **Prepare**: Run `npx bun run release` on the feature branch. This handles version bumping, script syncing, and documentation updates.
-4.  **Verify**: Run `npx bun run check-integrity` and `npx bun run test:e2e:npm`.
-5.  **PR**: Push the branch and open a PR.
-6.  **Merge**: Once CI passes, merge the PR via GitHub UI. The system will handle the rest!
+## 6. Standard Developer Workflow
+
+1.  **Branch**: `git checkout -b feat/your-feature`
+2.  **Develop**: Implement changes and local tests.
+3.  **Local Release Prep**: `npx bun run release`. Select version type (patch/minor/major).
+4.  **Submit**: `git push origin feat/your-feature` and open GitHub PR.
+5.  **Audit**: Ensure CI passes on PR.
+6.  **Deploy**: Click **Merge** on GitHub. The CD pipeline handles the production rollout.
 
 ## Reference Navigation
 
