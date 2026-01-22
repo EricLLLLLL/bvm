@@ -1,9 +1,25 @@
 import { homedir } from 'os';
 import { join } from 'path';
 
+import { spawnSync } from 'child_process';
+
 // Platform detection
 export const OS_PLATFORM = process.platform;
-export const CPU_ARCH = process.arch;
+
+function getNativeArch() {
+    const arch = process.arch;
+    if (OS_PLATFORM === 'darwin' && arch === 'x64') {
+        try {
+            const check = spawnSync('sysctl', ['-in', 'hw.optional.arm64'], { encoding: 'utf-8' });
+            if (check.stdout.trim() === '1') {
+                return 'arm64';
+            }
+        } catch (e) {}
+    }
+    return arch;
+}
+
+export const CPU_ARCH = getNativeArch();
 export const IS_TEST_MODE = process.env.BVM_TEST_MODE === 'true';
 export const TEST_REMOTE_VERSIONS = ['v1.3.4', 'v1.2.23', 'v1.0.0', 'bun-v1.4.0-canary'];
 

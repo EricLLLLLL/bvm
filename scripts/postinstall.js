@@ -81,9 +81,23 @@ function setupRuntimeLink(verDir, ver) {
     fs.writeFileSync(path.join(aliasDir, 'default'), ver);
 }
 
+function getNativeArch() {
+    const arch = process.arch;
+    if (process.platform === 'darwin' && arch === 'x64') {
+        try {
+            const check = spawnSync('sysctl', ['-in', 'hw.optional.arm64'], { encoding: 'utf-8' });
+            if (check.stdout.trim() === '1') {
+                return 'arm64';
+            }
+        } catch (e) {}
+    }
+    return arch;
+}
+
 function downloadAndInstall() {
     const platform = process.platform === 'win32' ? 'windows' : process.platform;
-    const arch = process.arch === 'arm64' ? 'aarch64' : 'x64';
+    const nativeArch = getNativeArch();
+    const arch = nativeArch === 'arm64' ? 'aarch64' : 'x64';
     const pkgName = `@oven/bun-${platform}-${arch}`;
     
     const info = getPackageInfo(pkgName);

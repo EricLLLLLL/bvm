@@ -6,7 +6,9 @@ import {
   BVM_VERSIONS_DIR,
   BVM_BIN_DIR,
   BVM_ALIAS_DIR,
-  BVM_SHIMS_DIR, // New
+  BVM_SHIMS_DIR,
+  OS_PLATFORM,
+  CPU_ARCH
 } from '../constants';
 import {
   getInstalledVersions,
@@ -63,6 +65,10 @@ async function readAliases(): Promise<Array<{ name: string; target: string }>> {
 }
 
 function printReport(report: DoctorReport): void {
+  console.log(colors.bold('\nSystem'));
+  console.log(`  OS: ${colors.cyan(OS_PLATFORM)}`);
+  console.log(`  Arch: ${colors.cyan(CPU_ARCH)} ${process.arch !== CPU_ARCH ? colors.yellow(`(Process: ${process.arch})`) : ''}`);
+
   console.log(colors.bold('\nDirectories'));
   console.log(`  BVM_DIR: ${colors.cyan(report.env.BVM_DIR || '')}`);
   console.log(`  BIN_DIR: ${colors.cyan(BVM_BIN_DIR)}`);
