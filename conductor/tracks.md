@@ -218,5 +218,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
-\n---\n\n- [x] **Track: 修复 Windows 安装冲突并简化官方 Bun 共存逻辑 (Unified)**\n*Link: [./conductor/tracks/fix_windows_install_20260120/](./conductor/tracks/fix_windows_install_20260120/)*
+
 
