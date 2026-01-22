@@ -176,6 +176,14 @@ else
         OS="$(uname -s | tr -d '"')"
         ARCH="$(uname -m | tr -d '"')"
         case "$OS" in Linux) P="linux" ;; Darwin) P="darwin" ;; *) error "Unsupported OS: $OS" ;; esac
+        
+        # macOS Architecture Guard: Handle Rosetta 2 emulation
+        if [ "$OS" == "Darwin" ] && [ "$ARCH" == "x86_64" ]; then
+            if [ "$(sysctl -in hw.optional.arm64 2>/dev/null)" == "1" ]; then
+                ARCH="arm64"
+            fi
+        fi
+
         case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) error "Unsupported Arch: $ARCH" ;; esac
         PKG="@oven/bun-$P-$A"
         URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}-${BUN_VER#v}.tgz"
