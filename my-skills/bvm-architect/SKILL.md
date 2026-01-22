@@ -49,9 +49,13 @@ Configuration blocks in Shell profiles MUST use standardized markers:
 *   **The Silence**: NPM silences `postinstall` errors.
 *   **Standard**: Always check exit codes in `postinstall.js` and re-throw with visible logs.
 
-### 4.3 Infinite Loop Protection
+### Infinite Loop Protection
 *   **The Mirror Bug**: Installation scripts can mistake BVM Shims for a system runtime.
 *   **Standard**: Always implement a **Shim Guard** that checks if a binary path contains `.bvm/shims` or `.bvm/bin` before using it for bootstrapping.
+
+### Architecture Detection (macOS Rosetta 2)
+*   **The Emulation Trap**: `uname -m` or `process.arch` can return `x64` on Apple Silicon if running under Rosetta 2.
+*   **Standard**: Always use `sysctl -in hw.optional.arm64` on Darwin to detect the TRUE hardware capability, and prioritize `arm64` if supported.
 
 ## 5. Standard Workflow (The "Golden Path")
 
