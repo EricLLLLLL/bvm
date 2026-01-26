@@ -39,7 +39,7 @@ function Detect-NetworkZone {
 $BVM_REGION = Detect-NetworkZone
 $REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
 
-$DEFAULT_BVM_VER = "v1.1.32"
+$DEFAULT_BVM_VER = "v1.1.33"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
     try {
