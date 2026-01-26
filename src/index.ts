@@ -20,7 +20,6 @@ import { cacheCommand } from './commands/cache';
 import { configureShell } from './commands/setup';
 import { upgradeBvm } from './commands/upgrade';
 import { doctor } from './commands/doctor';
-import { fixShimsCommand } from './commands/fix-shims';
 import { rehash } from './commands/rehash';
 import { printCompletion } from './commands/completion';
 import { colors } from './utils/ui';
@@ -220,9 +219,6 @@ async function main() {
 
   app.command('doctor', 'Show diagnostics for Bun/BVM setup')
     .action(async () => { await doctor(); });
-
-  app.command('fix-shims', 'Fix relative paths in Windows global shims')
-    .action(async () => { await fixShimsCommand(); });
 
   app.command('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
     .action(async (args) => { if (!args[0]) throw new Error('Shell name is required'); printCompletion(args[0]); });
