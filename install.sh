@@ -3,7 +3,7 @@
 set -e
 
 # --- Configuration ---
-DEFAULT_BVM_VERSION="v1.1.30" # Fallback
+DEFAULT_BVM_VERSION="v1.1.32" # Fallback
 FALLBACK_BUN_VERSION="1.3.6"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION}" # If empty, will resolve dynamically
 
@@ -253,4 +253,4 @@ case "$CURRENT_SHELL" in
   fish) DP="$HOME/.config/fish/config.fish" ;; 
   *) DP="$HOME/.profile" ;; 
 esac
-echo -e "\nTo start using bvm:\n  ${YELLOW}1. Refresh your shell:${RESET}\n     source $DP\n\n  ${YELLOW}2. Verify:${RESET}\n     bvm --version"
+echo -e "\nTo start using bvm:\n  ${YELLOW}1. Refresh your shell:${RESET}\n     source $DP\n\n  ${YELLOW}2. Verify:${RESET}\n     bvm --version\n\n  ${YELLOW}3. Note:${RESET}\n     Global packages (bun install -g) are isolated per version.\n     Ensure ~/.bvm/current/bin is in your PATH."

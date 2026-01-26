@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_global_bin_20260126",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-01-26T10:00:00Z",
+  "updated_at": "2026-01-26T10:00:00Z",
+  "description": "修复 bun install -g 全局包在 macOS 和 Windows 上无法使用的问题"
+}

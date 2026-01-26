@@ -39,7 +39,7 @@ function Detect-NetworkZone {
 $BVM_REGION = Detect-NetworkZone
 $REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
 
-$DEFAULT_BVM_VER = "v1.1.30"
+$DEFAULT_BVM_VER = "v1.1.32"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
     try {
@@ -187,3 +187,5 @@ $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$BVM_CURRENT_BIN;$env:Path"
 
 Write-Host "`n[OK] BVM installed successfully!" -ForegroundColor Green
 Write-Host "IMPORTANT: Please close this terminal and open a NEW one to apply changes." -ForegroundColor Cyan
+Write-Host "NOTE: Global packages (bun install -g) are isolated per version." -ForegroundColor Yellow
+Write-Host "      Ensure $($BVM_DIR)\current\bin is in your PATH." -ForegroundColor Yellow
