@@ -25,16 +25,21 @@ jobs:
         with:
           bun-version: 'latest'
 
-      - name: Check Version & Determine Release
+      - name: Check NPM & Determine Release
         id: check
         run: |
           VERSION=$(grep -oE '"version": "[^"]+"' package.json | cut -d'"' -f4)
           TAG_NAME="v$VERSION"
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "✅ Version $VERSION already released. Skipping."
+          PACKAGE_NAME=$(grep -oE '"name": "[^"]+"' package.json | cut -d'"' -f4)
+          
+          echo "Checking registry for $PACKAGE_NAME@$VERSION..."
+          NPM_VERSION=$(npm view "$PACKAGE_NAME@$VERSION" version 2>/dev/null || echo "not_found")
+          
+          if [ "$NPM_VERSION" == "$VERSION" ]; then
+            echo "✅ Version $VERSION already exists on NPM. Skipping release."
             echo "should_release=false" >> $GITHUB_OUTPUT
           else
-            echo "🚀 New version $VERSION detected! Preparing release."
+            echo "🚀 Version $VERSION not found on NPM. Preparing release."
             echo "should_release=true" >> $GITHUB_OUTPUT
             echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
             echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -67,11 +72,13 @@ jobs:
 
       - name: Create Git Tag
         if: steps.check.outputs.should_release == 'true'
+        continue-on-error: true
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git tag -a "${{ steps.check.outputs.tag_name }}" -m "Release ${{ steps.check.outputs.tag_name }}"
-          git push origin "${{ steps.check.outputs.tag_name }}"
+          # Force tag update if it exists (to match the release commit)
+          git tag -f -a "${{ steps.check.outputs.tag_name }}" -m "Release ${{ steps.check.outputs.tag_name }}"
+          git push -f origin "${{ steps.check.outputs.tag_name }}"
 
       - name: Create GitHub Release
         if: steps.check.outputs.should_release == 'true'
