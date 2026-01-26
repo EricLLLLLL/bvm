@@ -52,6 +52,32 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
     // Update the 'current' directory symlink for immediate global effect
     await createSymlink(installPath, BVM_CURRENT_DIR);
 
+    // Verify if current/bin is in PATH
+    try {
+        const currentBinPath = join(BVM_CURRENT_DIR, 'bin');
+        // Normalize paths for comparison (handle separators)
+        const normalizedCurrentBin = currentBinPath.replace(/\\/g, '/');
+        const delimiter = require('path').delimiter;
+        const pathEntries = (process.env.PATH || '').split(delimiter);
+        
+        const isPathConfigured = pathEntries.some(p => {
+            const normalizedP = p.replace(/\\/g, '/');
+            // Check for exact match or if it ends with .bvm/current/bin
+            return normalizedP.includes(normalizedCurrentBin) || normalizedP.endsWith('/.bvm/current/bin');
+        });
+
+        if (!isPathConfigured && !options.silent) {
+            if (spinner) spinner.stop(); // Stop spinner to print warning cleanly
+            console.log(colors.yellow(`\n⚠️  Warning: Global bin directory is not in your PATH.`));
+            console.log(colors.yellow(`   Global packages (e.g., 'bun install -g') may not be found.`));
+            console.log(colors.gray(`   Please add the following to your PATH:`));
+            console.log(colors.white(`   ${currentBinPath}`));
+            if (spinner) spinner.start(); // Restart spinner if needed, or just leave it stopped as we are done
+        }
+    } catch (e: any) {
+        // console.error("Path check error:", e);
+    }
+
     if (spinner) {
         spinner.succeed(colors.green(`Now using Bun ${normalizedFinalResolvedVersion} (immediate effect).`));
     }

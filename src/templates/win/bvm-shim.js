@@ -70,7 +70,36 @@ process.env.BUN_INSTALL = versionDir;
 process.env.PATH = binDir + path.delimiter + process.env.PATH;
 
 const child = spawn(realExecutable, ARGS, { stdio: 'inherit', shell: false });
-child.on('exit', (code) => process.exit(code ?? 0));
+child.on('exit', (code) => {
+    if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
+        const isGlobal = ARGS.includes('-g') || ARGS.includes('--global');
+        const isInstall = ARGS.includes('install') || ARGS.includes('add') || ARGS.includes('remove') || ARGS.includes('upgrade');
+        
+        if (isGlobal && isInstall) {
+            try {
+                fixShims(binDir, versionDir);
+            } catch(e) {}
+        }
+    }
+    process.exit(code ?? 0);
+});
+
+function fixShims(binDir, versionDir) {
+    try {
+        const files = fs.readdirSync(binDir);
+        for (const file of files) {
+            if (file.endsWith('.cmd')) {
+                const filePath = path.join(binDir, file);
+                let content = fs.readFileSync(filePath, 'utf8');
+                if (content.includes('%~dp0\\..')) {
+                    content = content.split('%~dp0\\..').join(versionDir);
+                    fs.writeFileSync(filePath, content, 'utf8');
+                }
+            }
+        }
+    } catch(e) {}
+}
+
 child.on('error', (err) => {
     console.error("BVM Error: Failed to start child process: " + err.message);
     process.exit(1);

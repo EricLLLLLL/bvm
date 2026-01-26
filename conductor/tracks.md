@@ -396,3 +396,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
+\n---\n\n- [x] **Track: 修复 Windows 下全局包 Shim 的相对路径解析错误**\n*Link: [./conductor/tracks/fix_windows_global_shim_resolution_20260126/](./conductor/tracks/fix_windows_global_shim_resolution_20260126/)*

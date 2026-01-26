@@ -187,3 +187,5 @@ $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$BVM_CURRENT_BIN;$env:Path"
 
 Write-Host "`n[OK] BVM installed successfully!" -ForegroundColor Green
 Write-Host "IMPORTANT: Please close this terminal and open a NEW one to apply changes." -ForegroundColor Cyan
+Write-Host "NOTE: Global packages (bun install -g) are isolated per version." -ForegroundColor Yellow
+Write-Host "      Ensure $($BVM_DIR)\current\bin is in your PATH." -ForegroundColor Yellow
