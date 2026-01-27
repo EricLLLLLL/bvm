@@ -20,6 +20,7 @@ import { cacheCommand } from './commands/cache';
 import { configureShell } from './commands/setup';
 import { upgradeBvm } from './commands/upgrade';
 import { doctor } from './commands/doctor';
+import { handleConfigCommand } from './commands/config';
 import { rehash } from './commands/rehash';
 import { printCompletion } from './commands/completion';
 import { colors } from './utils/ui';
@@ -216,6 +217,9 @@ async function main() {
 
   app.command('upgrade', 'Upgrade bvm to the latest version', { aliases: ['self-update'] })
     .action(async () => { await upgradeBvm(); });
+
+  app.command('config <subcommand>', 'Manage BVM configuration (registry)')
+    .action(async (args) => { await handleConfigCommand(args); });
 
   app.command('doctor', 'Show diagnostics for Bun/BVM setup')
     .action(async () => { await doctor(); });

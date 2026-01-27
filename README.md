@@ -59,7 +59,7 @@ npm install -g bvm-core@latest
 - **🚀 Zero Latency**: Shim-based design ensures ~0ms shell startup overhead.
 - **🛡️ Bunker Architecture**: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
 - **🛡️ Atomic Isolation**: Each Bun version has its own global package directory. No more conflicts.
-- **🌏 Smart Mirroring**: Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
+- **🌏 Smart Mirroring & Auto-Config**: Automatically selects the fastest registry for downloads AND auto-configures `bunfig.toml` for instant, "no-magic" `bun install` speeds.
 - **📦 Zero Dependency**: BVM bootstraps itself. No pre-requisites required (it can reuse your system Bun or download its own).
 
 ---

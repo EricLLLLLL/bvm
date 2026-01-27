@@ -19,16 +19,19 @@ import {
   getActiveVersion, // New
 } from '../utils';
 import { withSpinner } from '../command-runner';
+import { BunfigManager } from '../utils/bunfig';
 
 interface DoctorReport {
   currentVersion: string | null;
   installedVersions: string[];
   aliases: Array<{ name: string; target: string }>
   env: Record<string, string | undefined>;
+  bunfig: { path: string; registry: string | null };
 }
 
 export async function doctor(): Promise<void> {
   await withSpinner('Gathering BVM diagnostics...', async () => {
+    const bunfigManager = new BunfigManager();
     const report: DoctorReport = {
       currentVersion: (await getActiveVersion()).version,
       installedVersions: await getInstalledVersions(),
@@ -40,6 +43,10 @@ export async function doctor(): Promise<void> {
         BVM_VERSIONS_DIR,
         BVM_TEST_MODE: process.env.BVM_TEST_MODE,
         HOME: process.env.HOME || homedir(),
+      },
+      bunfig: {
+        path: bunfigManager.getPath(),
+        registry: bunfigManager.getRegistry(),
       },
     };
 
@@ -93,6 +100,10 @@ function printReport(report: DoctorReport): void {
       console.log(`  ${prefix} ${display}${marker}`);
     });
   }
+
+  console.log(colors.bold('\nConfiguration'));
+  console.log(`  Bunfig: ${colors.cyan(report.bunfig.path)}`);
+  console.log(`  Registry: ${report.bunfig.registry ? colors.green(report.bunfig.registry) : colors.dim('default')}`);
 
   console.log(colors.bold('\nAliases'));
   if (report.aliases.length === 0) {

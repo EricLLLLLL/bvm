@@ -1,20 +1,24 @@
-# Implementation Plan: Release BVM v1.1.32
+# Implementation Plan: Release BVM v1.1.35
 
 ## Phase 1: Update Version
-- [ ] Task: Bump version to 1.1.32
-    - [ ] Update `package.json`.
-    - [ ] Run `sync-runtime`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1'
+- [~] Task: Bump version to 1.1.35
+    - [x] Update `package.json`.
+    - [ ] Run `sync-runtime` to update install scripts.
+    - [ ] Verify `install.sh` and `install.ps1` contain `DEFAULT_BVM_VERSION="v1.1.35"`.
 
 ## Phase 2: Build & Verify
 - [ ] Task: Build
     - [ ] Run `npm run build`.
     - [ ] Run `check-integrity`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2'
+- [ ] Task: Verification
+    - [ ] Run `test:e2e:npm` (Simulate install from local build).
+    - [ ] Verify `bin/bvm-npm.js` logic if changed (Shim logic).
 
-## Phase 3: Finalize
-- [ ] Task: Commit & Push
-    - [ ] Commit changes.
-    - [ ] Tag `v1.1.32`.
-    - [ ] Push to `test`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3'
+## Phase 3: Release
+- [ ] Task: Commit & Tag
+    - [ ] Commit version bump.
+    - [ ] Create tag `v1.1.35`.
+    - [ ] Push to main.
+- [ ] Task: NPM Publish
+    - [ ] Ensure clean registry state.
+    - [ ] Publish to NPM.
