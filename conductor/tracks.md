@@ -398,3 +398,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 \n---\n\n- [~] **Track: Release BVM v1.1.32**\n*Link: [./conductor/tracks/release_v1_1_32_20260126/](./conductor/tracks/release_v1_1_32_20260126/)*
+
+---
+
+- [x] **Track: Smart Registry Auto-Configuration (No-Magic Bun Install)**
+*Link: [./conductor/tracks/smart_registry_auto_config_20260127/](./conductor/tracks/smart_registry_auto_config_20260127/)*
