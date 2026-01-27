@@ -14,6 +14,8 @@ import { runCommand } from '../helpers/process';
 import { useBunVersion } from './use';
 import { rehash } from './rehash';
 import { rename, rm } from 'fs/promises';
+import { RegistrySpeedTester, REGISTRIES } from '../utils/registry-check';
+import { BunfigManager } from '../utils/bunfig';
 
 async function safeRename(src: string, dest: string) {
   try {
@@ -290,6 +292,29 @@ Debug: ${error.message}`)); // Visible if spinner fails
   }
 
   await rehash();
+
+  // --- Smart Registry Auto-Config ---
+  if (installedVersion && !IS_TEST_MODE) {
+    try {
+      const bunfig = new BunfigManager();
+      // Only auto-configure if no registry is explicitly set
+      if (!bunfig.getRegistry()) {
+        await withSpinner('Checking network speed for registry optimization...', async (spinner) => {
+             const tester = new RegistrySpeedTester(3000); // 3s timeout
+             const fastest = await tester.getFastestRegistry();
+             
+             if (fastest === REGISTRIES.NPM_MIRROR) {
+               bunfig.setRegistry(REGISTRIES.NPM_MIRROR);
+               spinner.succeed(colors.green('⚡ Auto-configured global bunfig.toml to use npmmirror.com for faster installs.'));
+             } else {
+               spinner.stop(); // Official is fast enough or wins
+             }
+        }, { failMessage: 'Registry check failed (harmless)' });
+      }
+    } catch (e) {
+      // Ignore errors silently
+    }
+  }
 
   // Final success messages (moved here to appear after Rehash log)
   if (installedVersion) {
