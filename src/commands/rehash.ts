@@ -77,22 +77,21 @@ export async function rehash() {
                   
                   let newContent = content;
                   if (f.endsWith('.cmd')) {
-                      // Aggressive regex replacement for any relative node_modules path
-                      const regex = /"%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
-                      newContent = newContent.replace(regex, `"${globalNodeModules}`);
+                      // Aggressively replace any %~dp0\.. chain with absolute versionDir
+                      newContent = content.replace(/%~dp0([/\\]\.\.)+/g, versionDirAbs);
                       
-                      const regexNoQuotes = /%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
-                      newContent = newContent.replace(regexNoQuotes, globalNodeModules);
-
-                      newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\.[/\\]\.\./g, dirname(dirname(dirname(versionDirAbs))));
-                      newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\./g, dirname(dirname(versionDirAbs)));
-                      newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\./g, dirname(versionDirAbs));
-                      newContent = newContent.replace(/%~dp0[/\\]\.\./g, versionDirAbs);
+                      // Fix node_modules landing spot
+                      if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
+                          newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNodeModules);
+                      }
                   } else {
-                      const regexPs = /\$PSScriptRoot[/\\](?:\.\.[/\\])+node_modules/g;
-                      newContent = newContent.replace(regexPs, `'${globalNodeModules}'`);
+                      // Aggressively replace any $PSScriptRoot\.. chain with absolute versionDir
+                      // Handle potential quotes
+                      newContent = content.replace(/"?\$PSScriptRoot([/\\]\.\.)+"?/g, `'${versionDirAbs}'`);
 
-                      newContent = newContent.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
+                      if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
+                          newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNodeModules);
+                      }
                   }
 
                   if (newContent !== content) {

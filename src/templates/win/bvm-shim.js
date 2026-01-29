@@ -5,10 +5,11 @@ const fs = require('fs');
 
 /**
  * BVM Shim for Windows (JavaScript version)
+ * Enhanced to handle .exe, .cmd, and .ps1 with path fixing
  */
 
 const BVM_DIR = process.env.BVM_DIR || path.join(os.homedir(), '.bvm');
-const CMD = process.argv[2] ? process.argv[2].replace(/\.exe$/i, '').replace(/\.cmd$/i, '') : 'bun';
+const CMD = process.argv[2] ? process.argv[2].replace(/\.(exe|cmd|bat|ps1)$/i, '') : 'bun';
 const ARGS = process.argv.slice(3);
 
 function resolveVersion() {
@@ -50,7 +51,6 @@ function resolveVersion() {
   return '';
 }
 
-// Simple synchronous execution for performance
 const version = resolveVersion();
 if (!version) {
     console.error("BVM Error: No Bun version is active or default is set.");
@@ -59,38 +59,54 @@ if (!version) {
 
 const versionDir = path.join(BVM_DIR, 'versions', version);
 const binDir = path.join(versionDir, 'bin');
-let realExecutable = path.join(binDir, CMD + '.exe');
-let finalArgs = ARGS;
 
-if (!fs.existsSync(realExecutable)) {
+// Support multiple extensions on Windows
+let realExecutable = '';
+let isShellScript = false;
+const extensions = ['.exe', '.cmd', '.bat', '.ps1'];
+
+for (const ext of extensions) {
+    const p = path.join(binDir, CMD + ext);
+    if (fs.existsSync(p)) {
+        realExecutable = p;
+        isShellScript = (ext !== '.exe');
+        break;
+    }
+}
+
+let finalArgs = ARGS;
+if (!realExecutable) {
     if (CMD === 'bunx') {
-        // Fallback: Use 'bun.exe x' if 'bunx.exe' is missing
         const bunExe = path.join(binDir, 'bun.exe');
         if (fs.existsSync(bunExe)) {
             realExecutable = bunExe;
             finalArgs = ['x', ...ARGS];
+            isShellScript = false;
         } else {
             console.error("BVM Error: Both 'bunx.exe' and 'bun.exe' are missing in Bun " + version);
             process.exit(127);
         }
     } else {
-        console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + realExecutable);
+        console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + binDir);
         process.exit(127);
     }
 }
 
+// Ensure BUN_INSTALL is set for the child process
 process.env.BUN_INSTALL = versionDir;
 process.env.PATH = binDir + path.delimiter + process.env.PATH;
 
-const child = spawn(realExecutable, finalArgs, { stdio: 'inherit', shell: false });
+// Use shell: true for .cmd/.ps1 to ensure correct execution
+const child = spawn(realExecutable, finalArgs, { 
+    stdio: 'inherit', 
+    shell: isShellScript,
+    env: process.env 
+});
+
 child.on('exit', (code) => {
+    // Post-install self-healing
     if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
-        const isGlobal = ARGS.includes('-g') || ARGS.includes('--global');
-        const isInstall = ARGS.includes('install') || ARGS.includes('i') || 
-                         ARGS.includes('add') || ARGS.includes('a') || 
-                         ARGS.includes('remove') || ARGS.includes('rm') || 
-                         ARGS.includes('upgrade');
-        
+        const isInstall = ARGS.some(arg => ['install', 'i', 'add', 'a', 'remove', 'rm', 'upgrade'].includes(arg));
         if (isInstall) {
             try {
                 fixShims(binDir, versionDir);
@@ -108,36 +124,33 @@ function fixShims(binDir, versionDir) {
         
         for (const file of files) {
             const filePath = path.join(binDir, file);
-            if (file.endsWith('.cmd')) {
+            if (file.endsWith('.cmd') || file.endsWith('.bat')) {
                 let content = fs.readFileSync(filePath, 'utf8');
                 let newContent = content;
                 
-                // Aggressively replace any relative path jump from %~dp0 to node_modules 
-                // with the absolute path to Bun's global node_modules in BVM
-                const regex = /"%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
-                newContent = newContent.replace(regex, `"${globalNodeModules}`);
+                // 1. Fix BUN_INSTALL and other relative paths
+                // Replace any %~dp0\.. chain with absolute versionDir
+                newContent = newContent.replace(/%~dp0([/\\]\.\.)+/g, versionDirAbs);
                 
-                // Also handle cases without quotes if they exist
-                const regexNoQuotes = /%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
-                newContent = newContent.replace(regexNoQuotes, globalNodeModules);
-
-                // Fallback for other relative paths: replace %~dp0\.. with versionDirAbs
-                newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\.[/\\]\.\./g, path.dirname(path.dirname(path.dirname(versionDirAbs))));
-                newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\./g, path.dirname(path.dirname(versionDirAbs)));
-                newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\./g, path.dirname(versionDirAbs));
-                newContent = newContent.replace(/%~dp0[/\\]\.\./g, versionDirAbs);
+                // 2. Fix node_modules path specifically for Bun's global layout
+                // If the path lands in versionDir\node_modules, move it to install\global\node_modules
+                if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
+                    newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNodeModules);
+                }
 
                 if (content !== newContent) {
                     fs.writeFileSync(filePath, newContent, 'utf8');
                 }
             } else if (file.endsWith('.ps1')) {
                 let content = fs.readFileSync(filePath, 'utf8');
-                // Replace $PSScriptRoot\..\..\..\node_modules with absolute path
-                const regexPs = /\$PSScriptRoot[/\\](?:\.\.[/\\])+node_modules/g;
-                let newContent = content.replace(regexPs, `'${globalNodeModules}'`);
+                // Replace $PSScriptRoot\.. chain with absolute versionDir
+                // Use a format that works both with and without existing quotes
+                let newContent = content.replace(/"?\$PSScriptRoot([/\\]\.\.)+"?/g, `'${versionDirAbs}'`);
                 
-                newContent = newContent.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
-                
+                if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
+                    newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNodeModules);
+                }
+
                 if (content !== newContent) {
                     fs.writeFileSync(filePath, newContent, 'utf8');
                 }
