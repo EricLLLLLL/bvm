@@ -104,31 +104,40 @@ function fixShims(binDir, versionDir) {
     try {
         const files = fs.readdirSync(binDir);
         const versionDirAbs = path.resolve(versionDir);
+        const globalNodeModules = path.join(versionDirAbs, 'install', 'global', 'node_modules');
+        
         for (const file of files) {
             const filePath = path.join(binDir, file);
             if (file.endsWith('.cmd')) {
                 let content = fs.readFileSync(filePath, 'utf8');
                 let newContent = content;
                 
-                // Replace relative jumps with absolute version path
-                // We do this precisely to avoid breaking other parts of the command
+                // Aggressively replace any relative path jump from %~dp0 to node_modules 
+                // with the absolute path to Bun's global node_modules in BVM
+                const regex = /"%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
+                newContent = newContent.replace(regex, `"${globalNodeModules}`);
+                
+                // Also handle cases without quotes if they exist
+                const regexNoQuotes = /%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
+                newContent = newContent.replace(regexNoQuotes, globalNodeModules);
+
+                // Fallback for other relative paths: replace %~dp0\.. with versionDirAbs
                 newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\.[/\\]\.\./g, path.dirname(path.dirname(path.dirname(versionDirAbs))));
                 newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\./g, path.dirname(path.dirname(versionDirAbs)));
                 newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\./g, path.dirname(versionDirAbs));
                 newContent = newContent.replace(/%~dp0[/\\]\.\./g, versionDirAbs);
-                
-                // Special case for Bun's global layout: if it points to node_modules directly, 
-                // it might need to go through install/global/node_modules
-                if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
-                    newContent = newContent.split(versionDirAbs + '\\node_modules').join(versionDirAbs + '\\install\\global\\node_modules');
-                }
 
                 if (content !== newContent) {
                     fs.writeFileSync(filePath, newContent, 'utf8');
                 }
             } else if (file.endsWith('.ps1')) {
                 let content = fs.readFileSync(filePath, 'utf8');
-                let newContent = content.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
+                // Replace $PSScriptRoot\..\..\..\node_modules with absolute path
+                const regexPs = /\$PSScriptRoot[/\\](?:\.\.[/\\])+node_modules/g;
+                let newContent = content.replace(regexPs, `'${globalNodeModules}'`);
+                
+                newContent = newContent.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
+                
                 if (content !== newContent) {
                     fs.writeFileSync(filePath, newContent, 'utf8');
                 }

@@ -73,18 +73,26 @@ export async function rehash() {
                   const filePath = join(binDir, f);
                   const content = await Bun.file(filePath).text();
                   const versionDirAbs = versionDir; // Use absolute path
+                  const globalNodeModules = join(versionDirAbs, 'install', 'global', 'node_modules');
                   
                   let newContent = content;
                   if (f.endsWith('.cmd')) {
-                      newContent = content.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\./g, dirname(dirname(versionDirAbs)));
+                      // Aggressive regex replacement for any relative node_modules path
+                      const regex = /"%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
+                      newContent = newContent.replace(regex, `"${globalNodeModules}`);
+                      
+                      const regexNoQuotes = /%~dp0[/\\](?:\.\.[/\\])+node_modules/g;
+                      newContent = newContent.replace(regexNoQuotes, globalNodeModules);
+
+                      newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\.[/\\]\.\./g, dirname(dirname(dirname(versionDirAbs))));
+                      newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\./g, dirname(dirname(versionDirAbs)));
                       newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\./g, dirname(versionDirAbs));
                       newContent = newContent.replace(/%~dp0[/\\]\.\./g, versionDirAbs);
-                      
-                      if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
-                          newContent = newContent.split(versionDirAbs + '\\node_modules').join(versionDirAbs + '\\install\\global\\node_modules');
-                      }
                   } else {
-                      newContent = content.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
+                      const regexPs = /\$PSScriptRoot[/\\](?:\.\.[/\\])+node_modules/g;
+                      newContent = newContent.replace(regexPs, `'${globalNodeModules}'`);
+
+                      newContent = newContent.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
                   }
 
                   if (newContent !== content) {
