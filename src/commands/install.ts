@@ -276,6 +276,19 @@ Debug: ${error.message}`)); // Visible if spinner fails
                     if (pDir !== installDir && pDir !== installBinDir) await removeDir(pDir);
                 }
                 await chmod(bunExecutablePath, 0o755);
+                
+                // NEW: Create compatibility junction for Windows global packages
+                if (OS_PLATFORM === 'win32') {
+                    try {
+                        const globalNM = join(installDir, 'install', 'global', 'node_modules');
+                        const compatNM = join(installDir, 'node_modules');
+                        await ensureDir(globalNM);
+                        if (!(await pathExists(compatNM))) {
+                            await createSymlink(globalNM, compatNM);
+                        }
+                    } catch (e) {}
+                }
+
                 spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
                 await ensureBunx(installBinDir, bunExecutablePath);
                 installedVersion = foundVersion;

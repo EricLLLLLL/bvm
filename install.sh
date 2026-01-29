@@ -122,6 +122,25 @@ if [ "$USE_LOCAL_ASSETS" = true ]; then
         error "--local flag provided but ./dist/index.js or ./dist/bvm-shim.sh not found."
     fi
 else
+    echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
+    if [ -z "$BVM_SRC_VERSION" ]; then
+        BVM_LATEST=$(curl -s https://${REGISTRY}/bvm-core | grep -oE '"dist-tags":\{"latest":"[^" ]+"\}' | cut -d'"' -f6 || echo "")
+        BVM_SRC_VERSION="v${BVM_LATEST:-$DEFAULT_BVM_VERSION}"
+    fi
+    echo -e "${GREEN}${BVM_SRC_VERSION}${RESET}"
+
+    if [ "$BVM_REGION" == "cn" ]; then
+        TARBALL_URL="https://registry.npmmirror.com/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
+    else
+        TARBALL_URL="https://registry.npmjs.org/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
+    fi
+
+    TEMP_TGZ=$(mktemp)
+    download_file "$TARBALL_URL" "$TEMP_TGZ" "Downloading BVM Source (${BVM_SRC_VERSION})..."
+    tar -xzf "$TEMP_TGZ" -C "$BVM_SRC_DIR" --strip-components=2 "package/dist/index.js"
+    tar -xzf "$TEMP_TGZ" -C "$BVM_BIN_DIR" --strip-components=2 "package/dist/bvm-shim.sh"
+    rm -f "$TEMP_TGZ"
+fi
 chmod +x "${BVM_BIN_DIR}/bvm-shim.sh"
 
 # 5. Bootstrapping Runtime (Using system bun if available, READ-ONLY)

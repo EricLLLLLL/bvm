@@ -5,7 +5,7 @@ const fs = require('fs');
 
 /**
  * BVM Shim for Windows (JavaScript version)
- * Native performance, robust execution.
+ * Designed for maximum path stability via Mirror Junction Strategy.
  */
 
 const BVM_DIR = process.env.BVM_DIR || path.join(os.homedir(), '.bvm');
@@ -90,7 +90,7 @@ if (!realExecutable) {
     }
 }
 
-// ENVIRONMENT SYNC
+// LOGICAL ANCHORING
 const logicalCurrentDir = path.join(BVM_DIR, 'current');
 const env = Object.assign({}, process.env, {
     BUN_INSTALL: logicalCurrentDir,
@@ -104,6 +104,20 @@ const child = spawn(realExecutable, ARGS, {
 });
 
 child.on('exit', (code) => {
+    if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
+        const isInstall = ARGS.some(arg => ['install', 'i', 'add', 'a', 'remove', 'rm', 'upgrade'].includes(arg));
+        if (isInstall) {
+            // Mirror Junction Self-Healing
+            try {
+                const globalNM = path.join(versionDir, 'install', 'global', 'node_modules');
+                const compatNM = path.join(versionDir, 'node_modules');
+                if (!fs.existsSync(globalNM)) fs.mkdirSync(globalNM, { recursive: true });
+                if (!fs.existsSync(compatNM)) {
+                    fs.symlinkSync(globalNM, compatNM, 'junction');
+                }
+            } catch (e) {}
+        }
+    }
     process.exit(code ?? 0);
 });
 
