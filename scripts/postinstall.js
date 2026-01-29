@@ -257,46 +257,59 @@ function main() {
     const checkBun = run(whichCmd, ['bun']);
 
     if (checkBun.status === 0 && checkBun.stdout) {
-        const binPath = checkBun.stdout.trim().split('\n')[0].trim();
-        log(`System Bun detected at: ${binPath}. Running Smoke Test...`);
+        // Filter out BVM's own shims to avoid infinite loops/broken bootstrapping
+        const candidates = checkBun.stdout.trim().split('\n').map(p => p.trim());
+        const binPath = candidates.find(p => !p.includes('.bvm\\shims') && !p.includes('.bvm\\bin') && !p.includes('.bvm/shims') && !p.includes('.bvm/bin'));
         
-        const verRes = run(binPath, ['--version']);
-        const verRaw = (verRes.stdout || '').trim();
-        log(`System Bun version check output: "${verRaw}"`);
-        const ver = 'v' + (verRaw || '1.3.6').replace(/^v/, '');
-        const verDir = path.join(BVM_DIR, 'versions', ver);
-        
-        const sysArchRes = run(binPath, ['-e', 'console.log(process.arch)']);
-        const sysArch = (sysArchRes.stdout || '').trim();
-        const nativeArch = getNativeArch();
-        log(`System Bun arch: ${sysArch}, Native arch: ${nativeArch}`);
+        if (binPath) {
+            log(`System Bun detected at: ${binPath}. Running Smoke Test...`);
+            
+            const verRes = run(binPath, ['--version']);
+            const verRaw = (verRes.stdout || '').trim();
+            log(`System Bun version check output: "${verRaw}"`);
+            
+            // Validate version string (ensure it doesn't contain error messages)
+            if (verRes.status === 0 && verRaw && !verRaw.includes('BVM Error') && /^\d+\.\d+\.\d+/.test(verRaw.replace(/^v/, ''))) {
+                const ver = 'v' + verRaw.replace(/^v/, '');
+                const verDir = path.join(BVM_DIR, 'versions', ver);
+                
+                const sysArchRes = run(binPath, ['-e', 'console.log(process.arch)']);
+                const sysArch = (sysArchRes.stdout || '').trim();
+                const nativeArch = getNativeArch();
+                log(`System Bun arch: ${sysArch}, Native arch: ${nativeArch}`);
 
-        if (sysArch !== nativeArch && sysArch !== '' && nativeArch !== '') {
-            log(`Architecture mismatch. Skipping reuse.`);
-        } else {
-            const binDir = path.join(verDir, 'bin');
-            if (!fs.existsSync(binDir)) {
-                fs.mkdirSync(binDir, { recursive: true });
-                const destBin = path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun');
-                try {
-                    if (path.resolve(binPath) !== path.resolve(destBin)) {
-                        fs.copyFileSync(binPath, destBin);
-                        log(`Linked system Bun to ${destBin}`);
+                if (sysArch !== nativeArch && sysArch !== '' && nativeArch !== '') {
+                    log(`Architecture mismatch. Skipping reuse.`);
+                } else {
+                    const binDir = path.join(verDir, 'bin');
+                    if (!fs.existsSync(binDir)) {
+                        fs.mkdirSync(binDir, { recursive: true });
+                        const destBin = path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun');
+                        try {
+                            if (path.resolve(binPath) !== path.resolve(destBin)) {
+                                fs.copyFileSync(binPath, destBin);
+                                log(`Linked system Bun to ${destBin}`);
+                            }
+                        } catch (e) {
+                            error(`Failed to copy system Bun: ${e.message}`);
+                        }
                     }
-                } catch (e) {
-                    error(`Failed to copy system Bun: ${e.message}`);
-                }
-            }
 
-            log('Running internal smoke test...');
-            const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
-            if (test.status === 0) {
-                log('Smoke test passed. Reusing system Bun.');
-                setupRuntimeLink(verDir, ver);
-                hasValidBun = true;
+                    log('Running internal smoke test...');
+                    const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
+                    if (test.status === 0) {
+                        log('Smoke test passed. Reusing system Bun.');
+                        setupRuntimeLink(verDir, ver);
+                        hasValidBun = true;
+                    } else {
+                        log(`Smoke test failed (Exit ${test.status}). System Bun is incompatible.`);
+                    }
+                }
             } else {
-                log(`Smoke test failed (Exit ${test.status}). System Bun is incompatible.`);
+                log('Detected Bun output is invalid or an error. Skipping reuse.');
             }
+        } else {
+            log('No external system Bun found (excluding BVM shims).');
         }
     }
 

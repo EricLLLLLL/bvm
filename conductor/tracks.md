@@ -397,9 +397,17 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 
 
-\n---\n\n- [~] **Track: Release BVM v1.1.35**\n*Link: [./conductor/tracks/release_v1_1_32_20260126/](./conductor/tracks/release_v1_1_32_20260126/)*
+---
+
+- [~] **Track: Release BVM v1.1.35**
+*Link: [./conductor/tracks/release_v1_1_32_20260126/](./conductor/tracks/release_v1_1_32_20260126/)*
 
 ---
 
 - [x] **Track: Smart Registry Auto-Configuration (No-Magic Bun Install)**
 *Link: [./conductor/tracks/smart_registry_auto_config_20260127/](./conductor/tracks/smart_registry_auto_config_20260127/)*
+
+---
+
+- [x] **Track: 修复 BVM 在 Windows 环境下管理全局包时的路径解析错误，优化安装脚本的竞速与降级逻辑，并从根源上解决多平台下 bunx 二进制缺失的管理问题。**
+*Link: [./conductor/tracks/fix_windows_global_env_20260129/](./conductor/tracks/fix_windows_global_env_20260129/)*

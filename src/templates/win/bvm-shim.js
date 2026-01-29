@@ -5,17 +5,12 @@ const fs = require('fs');
 
 /**
  * BVM Shim for Windows (JavaScript version)
- * Enhanced with aggressive path fixing and debug logging
+ * Native performance, robust execution.
  */
 
 const BVM_DIR = process.env.BVM_DIR || path.join(os.homedir(), '.bvm');
 const CMD = process.argv[2] ? process.argv[2].replace(/\.(exe|cmd|bat|ps1)$/i, '') : 'bun';
 const ARGS = process.argv.slice(3);
-const DEBUG = process.env.BVM_DEBUG === '1';
-
-function log(msg) {
-    if (DEBUG) console.log(`[BVM DEBUG] ${msg}`);
-}
 
 function resolveVersion() {
   if (process.env.BVM_ACTIVE_VERSION) {
@@ -78,13 +73,12 @@ for (const ext of extensions) {
     }
 }
 
-let finalArgs = ARGS;
 if (!realExecutable) {
     if (CMD === 'bunx') {
         const bunExe = path.join(binDir, 'bun.exe');
         if (fs.existsSync(bunExe)) {
             realExecutable = bunExe;
-            finalArgs = ['x', ...ARGS];
+            ARGS.unshift('x');
             isShellScript = false;
         } else {
             console.error("BVM Error: Both 'bunx.exe' and 'bun.exe' are missing in Bun " + version);
@@ -96,64 +90,24 @@ if (!realExecutable) {
     }
 }
 
-log(`Resolved command ${CMD} to ${realExecutable}`);
-
-// Ensure environment is passed correctly
+// ENVIRONMENT SYNC
+const logicalCurrentDir = path.join(BVM_DIR, 'current');
 const env = Object.assign({}, process.env, {
-    BUN_INSTALL: versionDir,
-    PATH: binDir + path.delimiter + process.env.PATH
+    BUN_INSTALL: logicalCurrentDir,
+    PATH: path.join(logicalCurrentDir, 'bin') + path.delimiter + binDir + path.delimiter + process.env.PATH
 });
 
-const child = spawn(realExecutable, finalArgs, { 
+const child = spawn(realExecutable, ARGS, { 
     stdio: 'inherit', 
     shell: isShellScript,
     env: env
 });
 
 child.on('exit', (code) => {
-    if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
-        const isInstall = ARGS.some(arg => ['install', 'i', 'add', 'a', 'remove', 'rm', 'upgrade'].includes(arg));
-        if (isInstall) {
-            log('Installation command detected, triggering self-healing...');
-            try {
-                fixShims(binDir, versionDir);
-            } catch(e) {
-                log(`Self-healing failed: ${e.message}`);
-            }
-        }
-    }
     process.exit(code ?? 0);
 });
 
-function fixShims(binDir, versionDir) {
-    const files = fs.readdirSync(binDir);
-    const versionDirAbs = path.resolve(versionDir);
-    const globalNM = path.join(versionDirAbs, 'install', 'global', 'node_modules');
-    
-    log(`Scanning ${files.length} files in ${binDir} for path fixing...`);
-    
-    for (const file of files) {
-        const filePath = path.join(binDir, file);
-        if (file.endsWith('.cmd') || file.endsWith('.bat')) {
-            let content = fs.readFileSync(filePath, 'utf8');
-            let newContent = content;
-            
-            // Aggressively replace ANY %~dp0\.. sequence with absolute version path
-            // Use function replacement to avoid backslash escaping issues
-            newContent = newContent.replace(/%~dp0([/\\]\.\.)+/gi, () => versionDirAbs);
-            
-            // Fix node_modules redirection for Bun's global layout
-            if (newContent.includes(versionDirAbs + '\\node_modules')) {
-                newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNM);
-            }
-            if (newContent.includes(versionDirAbs + '/node_modules')) {
-                newContent = newContent.split(versionDirAbs + '/node_modules').join(globalNM);
-            }
-
-            if (content !== newContent) {
-                log(`Fixed path in ${file}`);
-                fs.writeFileSync(filePath, newContent, 'utf8');
-            }
-        } else if (file.endsWith('.ps1')) {
-            let content = fs.readFileSync(filePath, 'utf8');
-            let newContent = content.replace(/
+child.on('error', (err) => {
+    console.error("BVM Error: Failed to start child process: " + err.message);
+    process.exit(1);
+});

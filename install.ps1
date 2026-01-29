@@ -1,5 +1,6 @@
 # BVM Installer for Windows (PowerShell)
 # Unified Installation Logic: strict isolation, idempotency, and path precedence.
+param([switch]$Local)
 $ErrorActionPreference = "Stop"
 
 # --- Fix: Enforce TLS 1.2 ---
@@ -58,14 +59,21 @@ foreach ($d in $Dirs) {
 }
 
 # --- 3. Download BVM Source ---
-$BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
-$TARBALL_URL = "https://$REGISTRY/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
-$CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
-
-if (Test-Path "dist\index.js") {
-    Copy-Item "dist\index.js" (Join-Path $BVM_SRC_DIR "index.js") -Force
-    Copy-Item "dist\bvm-shim.js" (Join-Path $BVM_BIN_DIR "bvm-shim.js") -Force
+if ($Local) {
+    if ((Test-Path "dist\index.js") -and (Test-Path "dist\bvm-shim.js")) {
+        Write-Host "Explicitly using local BVM core assets (-Local)." -ForegroundColor Green
+        $BVM_VER = "v-local"
+        Copy-Item "dist\index.js" (Join-Path $BVM_SRC_DIR "index.js") -Force
+        Copy-Item "dist\bvm-shim.js" (Join-Path $BVM_BIN_DIR "bvm-shim.js") -Force
+    } else {
+        Write-Error "-Local switch provided but dist\index.js or dist\bvm-shim.js not found."
+        exit 1
+    }
 } else {
+    $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
+    $TARBALL_URL = "https://$REGISTRY/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
+    $CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
+
     $TMP_TGZ = Join-Path $BVM_DIR "bvm-core.tgz"
     & $CURL_CMD "-#SfLo" "$TMP_TGZ" "$TARBALL_URL"
     $EXT_DIR = Join-Path $BVM_DIR "temp_bvm_extract"
@@ -118,10 +126,18 @@ if ($USE_SYSTEM_AS_RUNTIME) {
     $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR $BUN_VER
     
     if (-not (Test-Path (Join-Path $TARGET_DIR "bin\bun.exe"))) {
-        Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
-        $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$($BUN_VER.TrimStart('v')).tgz"
         $TMP = Join-Path $BVM_DIR "bun-runtime.tgz"
-        & $CURL_CMD "-#SfLo" "$TMP" "$URL"
+        
+        # Priority: Check for locally provided runtime archive
+        if ($env:BVM_LOCAL_RUNTIME_PATH -and (Test-Path $env:BVM_LOCAL_RUNTIME_PATH)) {
+            Write-Host "Using local runtime archive: $env:BVM_LOCAL_RUNTIME_PATH" -ForegroundColor Green
+            $TMP = $env:BVM_LOCAL_RUNTIME_PATH
+        } else {
+            Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
+            $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$($BUN_VER.TrimStart('v')).tgz"
+            & $CURL_CMD "-#SfLo" "$TMP" "$URL"
+        }
+
         $EXT = Join-Path $BVM_DIR "temp_extract"
         if (Test-Path $EXT) { Remove-Item $EXT -Recurse -Force | Out-Null }
         New-Item -ItemType Directory -Path $EXT | Out-Null

@@ -80,6 +80,13 @@ command -v curl >/dev/null || error "curl is required."
 command -v tar >/dev/null || error "tar is required."
 
 # --- Main Script ---
+USE_LOCAL_ASSETS=false
+for arg in "$@"; do
+  case $arg in
+    --local) USE_LOCAL_ASSETS=true ;;
+  esac
+done
+
 BVM_REGION=$(detect_network_zone)
 if [ "$BVM_REGION" == "cn" ]; then
     REGISTRY="registry.npmmirror.com"
@@ -101,34 +108,20 @@ if [ -f "$BVM_BIN_PATH" ]; then
     fi
 fi
 
-# 2. Resolve BVM Version
-echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
-if [ -z "$BVM_SRC_VERSION" ]; then
-    BVM_LATEST=$(curl -s https://${REGISTRY}/bvm-core | grep -oE '"dist-tags":\{"latest":"[^" ]+"\}' | cut -d'"' -f6 || echo "")
-    BVM_SRC_VERSION="v${BVM_LATEST:-$DEFAULT_BVM_VERSION}"
-fi
-echo -e "${GREEN}${BVM_SRC_VERSION}${RESET}"
-
 # 3. Setup Directories
 mkdir -p "$BVM_DIR" "$BVM_SRC_DIR" "$BVM_RUNTIME_DIR" "$BVM_BIN_DIR" "$BVM_SHIMS_DIR" "$BVM_ALIAS_DIR" "$BVM_VERSIONS_DIR"
 
-# 4. Download BVM Source
-if [ "$BVM_REGION" == "cn" ]; then
-    TARBALL_URL="https://registry.npmmirror.com/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
+# 4. Resolve BVM Version & Download
+if [ "$USE_LOCAL_ASSETS" = true ]; then
+    if [ -f "./dist/index.js" ] && [ -f "./dist/bvm-shim.sh" ]; then
+        BVM_SRC_VERSION="v-local"
+        info "Explicitly using local BVM core assets (--local)."
+        cp "./dist/index.js" "${BVM_SRC_DIR}/index.js"
+        cp "./dist/bvm-shim.sh" "${BVM_BIN_DIR}/bvm-shim.sh"
+    else
+        error "--local flag provided but ./dist/index.js or ./dist/bvm-shim.sh not found."
+    fi
 else
-    TARBALL_URL="https://registry.npmjs.org/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
-fi
-
-if [ -f "./dist/index.js" ]; then
-    cp "./dist/index.js" "${BVM_SRC_DIR}/index.js"
-    cp "./dist/bvm-shim.sh" "${BVM_BIN_DIR}/bvm-shim.sh"
-else
-    TEMP_TGZ=$(mktemp)
-    download_file "$TARBALL_URL" "$TEMP_TGZ" "Downloading BVM Source (${BVM_SRC_VERSION})..."
-    tar -xzf "$TEMP_TGZ" -C "$BVM_SRC_DIR" --strip-components=2 "package/dist/index.js"
-    tar -xzf "$TEMP_TGZ" -C "$BVM_BIN_DIR" --strip-components=2 "package/dist/bvm-shim.sh"
-    rm -f "$TEMP_TGZ"
-fi
 chmod +x "${BVM_BIN_DIR}/bvm-shim.sh"
 
 # 5. Bootstrapping Runtime (Using system bun if available, READ-ONLY)
@@ -174,35 +167,41 @@ else
     TARGET_RUNTIME_DIR="${BVM_VERSIONS_DIR}/${BUN_VER}"
     
     if [ ! -x "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
-        OS="$(uname -s | tr -d '"')"
-        ARCH="$(uname -m | tr -d '"')"
-        case "$OS" in Linux) P="linux" ;; Darwin) P="darwin" ;; *) error "Unsupported OS: $OS" ;; esac
-        
-        # macOS Architecture Guard: Handle Rosetta 2 emulation
-        if [ "$OS" == "Darwin" ] && [ "$ARCH" == "x86_64" ]; then
-            if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" == "1" ]; then
-                ARCH="arm64"
-            fi
-        fi
-
-        case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) error "Unsupported Arch: $ARCH" ;; esac
-        
-        # Baseline check for x64
-        SUFFIX=""
-        if [ "$A" == "x64" ]; then
-            if [ "$OS" == "Darwin" ]; then
-                if ! sysctl -a 2>/dev/null | grep -q "AVX2"; then SUFFIX="-baseline"; fi
-            elif [ "$OS" == "Linux" ]; then
-                if ! grep -q "avx2" /proc/cpuinfo 2>/dev/null; then SUFFIX="-baseline"; fi
-            fi
-        fi
-
-        PKG="@oven/bun-$P-$A"
-        URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}${SUFFIX}-${BUN_VER#v}.tgz"
-        
         TEMP_DIR_BUN=$(mktemp -d)
         TEMP_TGZ_BUN="${TEMP_DIR_BUN}/bun-runtime.tgz"
-        download_file "$URL" "$TEMP_TGZ_BUN" "Downloading Compatible Runtime (bun@${BUN_VER#v})..."
+
+        if [ -n "$BVM_LOCAL_RUNTIME_PATH" ] && [ -f "$BVM_LOCAL_RUNTIME_PATH" ]; then
+            info "Using local runtime archive: $BVM_LOCAL_RUNTIME_PATH"
+            TEMP_TGZ_BUN="$BVM_LOCAL_RUNTIME_PATH"
+        else
+            OS="$(uname -s | tr -d '"')"
+            ARCH="$(uname -m | tr -d '"')"
+            case "$OS" in Linux) P="linux" ;; Darwin) P="darwin" ;; *) error "Unsupported OS: $OS" ;; esac
+            
+            # macOS Architecture Guard: Handle Rosetta 2 emulation
+            if [ "$OS" == "Darwin" ] && [ "$ARCH" == "x86_64" ]; then
+                if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" == "1" ]; then
+                    ARCH="arm64"
+                fi
+            fi
+
+            case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) error "Unsupported Arch: $ARCH" ;; esac
+            
+            # Baseline check for x64
+            SUFFIX=""
+            if [ "$A" == "x64" ]; then
+                if [ "$OS" == "Darwin" ]; then
+                    if ! sysctl -a 2>/dev/null | grep -q "AVX2"; then SUFFIX="-baseline"; fi
+                elif [ "$OS" == "Linux" ]; then
+                    if ! grep -q "avx2" /proc/cpuinfo 2>/dev/null; then SUFFIX="-baseline"; fi
+                fi
+            fi
+
+            PKG="@oven/bun-$P-$A"
+            URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}${SUFFIX}-${BUN_VER#v}.tgz"
+            download_file "$URL" "$TEMP_TGZ_BUN" "Downloading Compatible Runtime (bun@${BUN_VER#v})..."
+        fi
+
         tar -xzf "$TEMP_TGZ_BUN" -C "$TEMP_DIR_BUN"
         mkdir -p "${TARGET_RUNTIME_DIR}/bin"
         mv "$(find "$TEMP_DIR_BUN" -type f -name "bun" | head -n 1)" "${TARGET_RUNTIME_DIR}/bin/bun"

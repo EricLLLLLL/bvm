@@ -1,5 +1,5 @@
 @echo off
-set "BVM_DIR=%USERPROFILE%\.bvm"
+set "BVM_DIR=__BVM_DIR__"
 set "BUN_INSTALL=%BVM_DIR%\current"
 
 :: If BVM_INSTALL_RUNNING is set, skip shim to avoid infinite loop during postinstall
@@ -19,9 +19,16 @@ if "%USE_SHIM%"=="1" goto slowpath
 if exist ".bvmrc" goto slowpath
 
 :fastpath
-"%BVM_DIR%\current\bin\bun.exe" %*
-exit /b %errorlevel%
+if exist "%BVM_DIR%\current\bin\bun.exe" (
+    "%BVM_DIR%\current\bin\bun.exe" %*
+    exit /b %errorlevel%
+)
 
 :slowpath
 :: Hand over to JS shim for version resolution and post-install fixing
-"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bun" %*
+if exist "%BVM_DIR%\runtime\current\bin\bun.exe" (
+    "%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bun" %*
+) else (
+    echo BVM Error: Bun runtime not found at "%BVM_DIR%\runtime\current\bin\bun.exe"
+    exit /b 1
+)

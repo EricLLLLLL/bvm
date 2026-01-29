@@ -161,6 +161,13 @@ end
     } catch (e) {
         // Ignore if no default version set yet
     }
+
+    // NEW: Trigger rehash to fix any existing global shims (self-healing)
+    try {
+        await rehash();
+    } catch (e) {
+        // Non-fatal
+    }
   } catch (error: any) {
     console.error(colors.red(`Failed to write to ${configFile}: ${error.message}`));
   }
@@ -169,23 +176,18 @@ end
 async function recreateShims(displayPrompt: boolean) {
     if (displayPrompt) console.log(colors.cyan('Refreshing shims and wrappers...'));
     
-    // Debug: Log the paths we are trying to create
-    if (!displayPrompt) {
-        console.log(`[DEBUG] BIN_DIR: ${BVM_BIN_DIR}`);
-        console.log(`[DEBUG] SHIMS_DIR: ${BVM_SHIMS_DIR}`);
-    }
-
     await mkdir(BVM_BIN_DIR, { recursive: true }); // Use mkdir
     await mkdir(BVM_SHIMS_DIR, { recursive: true }); // Use mkdir
 
     const isWindows = process.platform === 'win32';
+    const bvmDirWin = BVM_DIR.replace(/\//g, '\\');
 
     if (isWindows) {
-        // Use external templates for Windows
+        // Use external templates for Windows and inject absolute paths
         await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), BVM_SHIM_JS_TEMPLATE);
-        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE);
-        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE);
-        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE);
+        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
     } else {
         // Create bvm-shim.sh
         const bvmShimShPath = join(BVM_BIN_DIR, 'bvm-shim.sh');
