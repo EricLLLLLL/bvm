@@ -4,7 +4,7 @@ import { ensureDir, pathExists, removeDir, resolveVersion, normalizeVersion, rea
 import { findBunDownloadUrl, fetchBunVersions, checkBunVersionExists, fetchBunDistTags } from '../api';
 import { colors, ProgressBar } from '../utils/ui';
 import { extractArchive } from '../utils/archive';
-import { chmod } from 'fs/promises';
+import { chmod, rename, rm, symlink, unlink } from 'fs/promises';
 import { configureShell } from './setup';
 import { getRcVersion } from '../rc';
 import { getInstalledVersions } from '../utils';
@@ -13,9 +13,22 @@ import { withSpinner } from '../command-runner';
 import { runCommand } from '../helpers/process';
 import { useBunVersion } from './use';
 import { rehash } from './rehash';
-import { rename, rm } from 'fs/promises';
 import { RegistrySpeedTester, REGISTRIES } from '../utils/registry-check';
 import { BunfigManager } from '../utils/bunfig';
+
+async function ensureBunx(binDir: string, bunPath: string) {
+  const bunxName = EXECUTABLE_NAME.replace('bun', 'bunx');
+  const bunxPath = join(binDir, bunxName);
+
+  if (await pathExists(bunxPath)) return;
+
+  try {
+    await symlink(EXECUTABLE_NAME, bunxPath);
+  } catch (e) {
+    await Bun.write(Bun.file(bunxPath), Bun.file(bunPath));
+    await chmod(bunxPath, 0o755);
+  }
+}
 
 async function safeRename(src: string, dest: string) {
   try {
@@ -165,6 +178,7 @@ export async function installBunVersion(targetVersion?: string, options: { globa
 
         if (await pathExists(bunExecutablePath)) {
           spinner.succeed(colors.green(`Bun ${foundVersion} is already installed.`));
+          await ensureBunx(installBinDir, bunExecutablePath);
           installedVersion = foundVersion;
           shouldConfigureShell = true;
         } else {
@@ -183,11 +197,13 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                   await chmod(bunExecutablePath, 0o755);
                 }
                 spinner.succeed(colors.green(`Bun ${foundVersion} linked from local runtime.`));
+                await ensureBunx(installBinDir, bunExecutablePath);
                 installedVersion = foundVersion;
                 shouldConfigureShell = true;
             } else if (IS_TEST_MODE) {
                 await ensureDir(installBinDir);
                 await writeTestBunBinary(bunExecutablePath, foundVersion);
+                await ensureBunx(installBinDir, bunExecutablePath);
                 installedVersion = foundVersion;
                 shouldConfigureShell = true;
             } else {
@@ -261,6 +277,7 @@ Debug: ${error.message}`)); // Visible if spinner fails
                 }
                 await chmod(bunExecutablePath, 0o755);
                 spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
+                await ensureBunx(installBinDir, bunExecutablePath);
                 installedVersion = foundVersion;
                 shouldConfigureShell = true;
             }

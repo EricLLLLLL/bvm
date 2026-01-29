@@ -4,6 +4,11 @@ import { BVM_SHIMS_DIR, BVM_VERSIONS_DIR, BVM_DIR, BVM_BIN_DIR, OS_PLATFORM, EXE
 import { ensureDir, pathExists, readDir } from '../utils';
 import { colors } from '../utils/ui';
 
+import { 
+    BVM_BUN_CMD_TEMPLATE,
+    BVM_BUNX_CMD_TEMPLATE
+} from '../templates/init-scripts';
+
 /**
  * Rehash command: regenerates all shims based on installed Bun versions.
  */
@@ -68,7 +73,13 @@ export async function rehash() {
   // 3. Generate Wrappers
   for (const bin of executables) {
     if (isWindows) {
-      await Bun.write(join(BVM_SHIMS_DIR, `${bin}.cmd`), WRAPPER_CMD(bin));
+      if (bin === 'bun') {
+          await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE);
+      } else if (bin === 'bunx') {
+          await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE);
+      } else {
+          await Bun.write(join(BVM_SHIMS_DIR, `${bin}.cmd`), WRAPPER_CMD(bin));
+      }
       const ps1 = join(BVM_SHIMS_DIR, `${bin}.ps1`);
       if (await pathExists(ps1)) await unlink(ps1);
     } else {

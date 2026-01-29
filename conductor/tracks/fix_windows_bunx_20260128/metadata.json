@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_windows_bunx_20260128",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-01-28T10:00:00Z",
+  "updated_at": "2026-01-28T10:00:00Z",
+  "description": "修复 BVM 在 Windows 环境下 bunx 命令失效的问题，主要涉及身份识别和显式路由优化。"
+}

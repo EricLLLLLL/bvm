@@ -39,7 +39,7 @@ function Detect-NetworkZone {
 $BVM_REGION = Detect-NetworkZone
 $REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
 
-$DEFAULT_BVM_VER = "v1.1.35"
+$DEFAULT_BVM_VER = "v1.1.36"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
     try {
@@ -97,6 +97,7 @@ if ($SYSTEM_BUN_BIN) {
     $SYS_BIN_DIR = Join-Path $SYS_VER_DIR "bin"
     if (-not (Test-Path $SYS_BIN_DIR)) { New-Item -ItemType Directory -Path $SYS_BIN_DIR -Force | Out-Null }
     Copy-Item $SYSTEM_BUN_BIN (Join-Path $SYS_BIN_DIR "bun.exe") -Force
+    Copy-Item $SYSTEM_BUN_BIN (Join-Path $SYS_BIN_DIR "bunx.exe") -Force
     
     # Smoke Test
     $BvmIndex = Join-Path $BVM_SRC_DIR "index.js"
@@ -129,6 +130,7 @@ if ($USE_SYSTEM_AS_RUNTIME) {
         $BIN_DEST = Join-Path $TARGET_DIR "bin"
         if (-not (Test-Path $BIN_DEST)) { New-Item -ItemType Directory -Path $BIN_DEST -Force | Out-Null }
         Move-Item -Path $FoundBun.FullName -Destination (Join-Path $BIN_DEST "bun.exe") -Force
+        Copy-Item (Join-Path $BIN_DEST "bun.exe") (Join-Path $BIN_DEST "bunx.exe") -Force
         Remove-Item $TMP -Force
         Remove-Item $EXT -Recurse -Force
     }
@@ -163,7 +165,7 @@ set "BVM_DIR=$WinBvmDir"
 set "BUN_INSTALL=%BVM_DIR%\current"
 
 if not exist ".bvmrc" (
-    "%BVM_DIR%\runtime\current\bin\bun.exe" %*
+    "%BVM_DIR%\runtime\current\bin\%~n0.exe" %*
     exit /b %errorlevel%
 )
 

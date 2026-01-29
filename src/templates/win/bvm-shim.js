@@ -59,17 +59,30 @@ if (!version) {
 
 const versionDir = path.join(BVM_DIR, 'versions', version);
 const binDir = path.join(versionDir, 'bin');
-const realExecutable = path.join(binDir, CMD + '.exe');
+let realExecutable = path.join(binDir, CMD + '.exe');
+let finalArgs = ARGS;
 
 if (!fs.existsSync(realExecutable)) {
-    console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + realExecutable);
-    process.exit(127);
+    if (CMD === 'bunx') {
+        // Fallback: Use 'bun.exe x' if 'bunx.exe' is missing
+        const bunExe = path.join(binDir, 'bun.exe');
+        if (fs.existsSync(bunExe)) {
+            realExecutable = bunExe;
+            finalArgs = ['x', ...ARGS];
+        } else {
+            console.error("BVM Error: Both 'bunx.exe' and 'bun.exe' are missing in Bun " + version);
+            process.exit(127);
+        }
+    } else {
+        console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + realExecutable);
+        process.exit(127);
+    }
 }
 
 process.env.BUN_INSTALL = versionDir;
 process.env.PATH = binDir + path.delimiter + process.env.PATH;
 
-const child = spawn(realExecutable, ARGS, { stdio: 'inherit', shell: false });
+const child = spawn(realExecutable, finalArgs, { stdio: 'inherit', shell: false });
 child.on('exit', (code) => {
     if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
         const isGlobal = ARGS.includes('-g') || ARGS.includes('--global');
