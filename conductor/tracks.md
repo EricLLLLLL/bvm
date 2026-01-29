@@ -4,7 +4,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: 增强 Shim 解析逻辑与项目上下文检测
+## [~] Track: 增强 Shim 解析逻辑与项目上下文检测
 
 *Link: [./conductor/tracks/shim_context_20251222/](./conductor/tracks/shim_context_20251222/)*
 

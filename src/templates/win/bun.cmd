@@ -10,4 +10,3 @@ if not exist ".bvmrc" (
 
 :: Slow-path: Hand over to JS shim for version resolution
 "%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bun" %*
-

@@ -153,6 +153,7 @@ if [ -n "$SYSTEM_BUN_BIN" ]; then
         cp "$SYSTEM_BUN_BIN" "${SYS_VER_DIR}/bin/bun"
     fi
     chmod +x "${SYS_VER_DIR}/bin/bun"
+    ln -sf "./bun" "${SYS_VER_DIR}/bin/bunx"
     
     # Smoke Test
     if "${SYS_VER_DIR}/bin/bun" "${BVM_SRC_DIR}/index.js" --version >/dev/null 2>&1; then
@@ -206,6 +207,7 @@ else
         mkdir -p "${TARGET_RUNTIME_DIR}/bin"
         mv "$(find "$TEMP_DIR_BUN" -type f -name "bun" | head -n 1)" "${TARGET_RUNTIME_DIR}/bin/bun"
         chmod +x "${TARGET_RUNTIME_DIR}/bin/bun"
+        ln -sf "./bun" "${TARGET_RUNTIME_DIR}/bin/bunx"
         rm -rf "$TEMP_DIR_BUN"
     fi
 fi
