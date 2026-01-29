@@ -156,87 +156,157 @@ USE_SYSTEM_AS_RUNTIME=false
 BUN_VER=""
 
 if [ -n "$SYSTEM_BUN_BIN" ]; then
-    # We copy detected system bun to BVM internal versions for bootstrapping
-    # We never modify the system installation.
     info "Bootstrapping with detected system Bun v${SYSTEM_BUN_VER}..."
-    SYS_VER_DIR="${BVM_VERSIONS_DIR}/v${SYSTEM_BUN_VER}"
-    mkdir -p "${SYS_VER_DIR}/bin"
-    if [ "$SYSTEM_BUN_BIN" != "${SYS_VER_DIR}/bin/bun" ]; then
-        cp "$SYSTEM_BUN_BIN" "${SYS_VER_DIR}/bin/bun"
+    SYS_RUNTIME_DIR="${BVM_RUNTIME_DIR}/v${SYSTEM_BUN_VER}"
+    mkdir -p "${SYS_RUNTIME_DIR}/bin"
+    if [ "$SYSTEM_BUN_BIN" != "${SYS_RUNTIME_DIR}/bin/bun" ]; then
+        cp "$SYSTEM_BUN_BIN" "${SYS_RUNTIME_DIR}/bin/bun"
     fi
-    chmod +x "${SYS_VER_DIR}/bin/bun"
-    ln -sf "./bun" "${SYS_VER_DIR}/bin/bunx"
+    chmod +x "${SYS_RUNTIME_DIR}/bin/bun"
+    ln -sf "./bun" "${SYS_RUNTIME_DIR}/bin/bunx"
+    
+    # Generate bunfig.toml
+    cat > "${SYS_RUNTIME_DIR}/bunfig.toml" <<EOF
+[install]
+globalDir = "${SYS_RUNTIME_DIR}"
+globalBinDir = "${SYS_RUNTIME_DIR}/bin"
+EOF
+
+    # Link registry to physical runtime
+    mkdir -p "$BVM_VERSIONS_DIR"
+    ln -sf "../runtime/v${SYSTEM_BUN_VER}" "${BVM_VERSIONS_DIR}/v${SYSTEM_BUN_VER}"
     
     # Smoke Test
-    if "${SYS_VER_DIR}/bin/bun" "${BVM_SRC_DIR}/index.js" --version >/dev/null 2>&1; then
+    if "${SYS_RUNTIME_DIR}/bin/bun" "${BVM_SRC_DIR}/index.js" --version >/dev/null 2>&1; then
         success "Smoke Test passed."
         USE_SYSTEM_AS_RUNTIME=true
         BUN_VER="v${SYSTEM_BUN_VER}"
+        TARGET_PHYSICAL_DIR="$SYS_RUNTIME_DIR"
     else
         warn "Smoke Test failed. Will download fresh runtime."
     fi
 fi
 
 if [ "$USE_SYSTEM_AS_RUNTIME" = true ]; then
-    TARGET_RUNTIME_DIR="${BVM_VERSIONS_DIR}/${BUN_VER}"
+
+    TARGET_PHYSICAL_DIR="$SYS_RUNTIME_DIR"
+
 else
+
     # Resolve and download compatible runtime
-    BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^" ]+"' | cut -d'"' -f4 || echo "$FALLBACK_BUN_VERSION")
+
+    BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "$FALLBACK_BUN_VERSION")
+
     BUN_VER="v${BUN_LATEST}"
-    TARGET_RUNTIME_DIR="${BVM_VERSIONS_DIR}/${BUN_VER}"
+
+    TARGET_PHYSICAL_DIR="${BVM_RUNTIME_DIR}/${BUN_VER}"
+
     
-    if [ ! -x "${TARGET_RUNTIME_DIR}/bin/bun" ]; then
+
+    if [ ! -x "${TARGET_PHYSICAL_DIR}/bin/bun" ]; then
+
         TEMP_DIR_BUN=$(mktemp -d)
+
         TEMP_TGZ_BUN="${TEMP_DIR_BUN}/bun-runtime.tgz"
 
+
+
         if [ -n "$BVM_LOCAL_RUNTIME_PATH" ] && [ -f "$BVM_LOCAL_RUNTIME_PATH" ]; then
+
             info "Using local runtime archive: $BVM_LOCAL_RUNTIME_PATH"
-            TEMP_TGZ_BUN="$BVM_LOCAL_RUNTIME_PATH"
+
+            cp "$BVM_LOCAL_RUNTIME_PATH" "$TEMP_TGZ_BUN"
+
         else
+
             OS="$(uname -s | tr -d '"')"
+
             ARCH="$(uname -m | tr -d '"')"
+
+            # ... (keep OS/Arch detection)
+
             case "$OS" in Linux) P="linux" ;; Darwin) P="darwin" ;; *) error "Unsupported OS: $OS" ;; esac
-            
-            # macOS Architecture Guard: Handle Rosetta 2 emulation
+
             if [ "$OS" == "Darwin" ] && [ "$ARCH" == "x86_64" ]; then
-                if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" == "1" ]; then
-                    ARCH="arm64"
-                fi
+
+                if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" == "1" ]; then ARCH="arm64"; fi
+
             fi
 
             case "$ARCH" in x86_64) A="x64" ;; arm64|aarch64) A="aarch64" ;; *) error "Unsupported Arch: $ARCH" ;; esac
+
             
-            # Baseline check for x64
+
             SUFFIX=""
+
             if [ "$A" == "x64" ]; then
+
                 if [ "$OS" == "Darwin" ]; then
+
                     if ! sysctl -a 2>/dev/null | grep -q "AVX2"; then SUFFIX="-baseline"; fi
+
                 elif [ "$OS" == "Linux" ]; then
+
                     if ! grep -q "avx2" /proc/cpuinfo 2>/dev/null; then SUFFIX="-baseline"; fi
+
                 fi
+
             fi
 
+
+
             PKG="@oven/bun-$P-$A"
+
             URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}${SUFFIX}-${BUN_VER#v}.tgz"
+
             download_file "$URL" "$TEMP_TGZ_BUN" "Downloading Compatible Runtime (bun@${BUN_VER#v})..."
+
         fi
 
+
+
         tar -xzf "$TEMP_TGZ_BUN" -C "$TEMP_DIR_BUN"
-        mkdir -p "${TARGET_RUNTIME_DIR}/bin"
-        mv "$(find "$TEMP_DIR_BUN" -type f -name "bun" | head -n 1)" "${TARGET_RUNTIME_DIR}/bin/bun"
-        chmod +x "${TARGET_RUNTIME_DIR}/bin/bun"
-        ln -sf "./bun" "${TARGET_RUNTIME_DIR}/bin/bunx"
+
+        mkdir -p "${TARGET_PHYSICAL_DIR}/bin"
+
+        mv "$(find "$TEMP_DIR_BUN" -type f -name "bun" | head -n 1)" "${TARGET_PHYSICAL_DIR}/bin/bun"
+
+        chmod +x "${TARGET_PHYSICAL_DIR}/bin/bun"
+
+        ln -sf "./bun" "${TARGET_PHYSICAL_DIR}/bin/bunx"
+
+        
+
+        # Generate bunfig.toml
+
+        cat > "${TARGET_PHYSICAL_DIR}/bunfig.toml" <<EOF
+
+[install]
+
+globalDir = "${TARGET_PHYSICAL_DIR}"
+
+globalBinDir = "${TARGET_PHYSICAL_DIR}/bin"
+
+EOF
+
         rm -rf "$TEMP_DIR_BUN"
+
     fi
+
+    # Link versions directory to physical runtime
+
+    mkdir -p "$BVM_VERSIONS_DIR"
+
+    ln -sf "../runtime/${BUN_VER}" "${BVM_VERSIONS_DIR}/${BUN_VER}"
+
 fi
 
-# 6. Link Runtime
+# 6. Link Current
 rm -rf "${BVM_RUNTIME_DIR}/current"
-ln -sf "$TARGET_RUNTIME_DIR" "${BVM_RUNTIME_DIR}/current"
+ln -sf "$TARGET_PHYSICAL_DIR" "${BVM_RUNTIME_DIR}/current"
 
-# Also link to ~/.bvm/current for user/shims compatibility
 rm -rf "${BVM_DIR}/current"
-ln -sf "$TARGET_RUNTIME_DIR" "${BVM_DIR}/current"
+ln -sf "versions/${BUN_VER}" "${BVM_DIR}/current"
 
 echo "$BUN_VER" > "${BVM_ALIAS_DIR}/default"
 

@@ -411,3 +411,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: 修复 BVM 在 Windows 环境下管理全局包时的路径解析错误，优化安装脚本的竞速与降级逻辑，并从根源上解决多平台下 bunx 二进制缺失的管理问题。**
 *Link: [./conductor/tracks/fix_windows_global_env_20260129/](./conductor/tracks/fix_windows_global_env_20260129/)*
+
+---
+
+- [~] **Track:实施“地堡优先”（Bunker-First）架构：将 runtime/ 设为 BVM 的核心物理存储层，将 versions/ 设为版本注册表。针对不同系统采用差异化策略：Unix 使用软链接，Windows 使用更稳健的物理拷贝或 Junction，并配合 bunfig.toml 实现全平台路径锁定。bvm install 在发现已安装时自动切换到该版本。**
+*Link: [./conductor/tracks/bunker_first_architecture_20260129/](./conductor/tracks/bunker_first_architecture_20260129/)*

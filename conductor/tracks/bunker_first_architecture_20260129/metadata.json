@@ -1,0 +1,8 @@
+{
+  "track_id": "bunker_first_architecture_20260129",
+  "type": "refactor",
+  "status": "new",
+  "created_at": "2026-01-29T14:30:00Z",
+  "updated_at": "2026-01-29T14:30:00Z",
+  "description": "实施“地堡优先”（Bunker-First）架构：将 runtime/ 设为 BVM 的核心物理存储层，将 versions/ 设为版本注册表。针对不同系统采用差异化策略：Unix 使用软链接，Windows 使用更稳健的物理拷贝或 Junction，并配合 bunfig.toml 实现全平台路径锁定。bvm install 在发现已安装时自动切换到该版本。"
+}

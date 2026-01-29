@@ -186,8 +186,20 @@ async function recreateShims(displayPrompt: boolean) {
         // Use external templates for Windows and inject absolute paths
         await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), BVM_SHIM_JS_TEMPLATE);
         await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
-        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
-        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+        
+        const lightningTpl = (bin: string) => `@echo off
+set "BVM_DIR=${bvmDirWin}"
+set "BUN_INSTALL=%BVM_DIR%\\current"
+
+if not exist ".bvmrc" (
+    "%BVM_DIR%\\current\\bin\\${bin}.exe" %*
+    exit /b %errorlevel%
+)
+
+"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "${bin}" %*
+`;
+        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), lightningTpl('bun'));
+        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), lightningTpl('bunx'));
     } else {
         // Create bvm-shim.sh
         const bvmShimShPath = join(BVM_BIN_DIR, 'bvm-shim.sh');
@@ -237,39 +249,35 @@ fi
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     const bvmBinPath = join(BVM_BIN_DIR);
     const bvmShimsPath = join(BVM_SHIMS_DIR);
-    const bvmCurrentBinPath = join(BVM_DIR, 'current', 'bin');
 
     if (displayPrompt) {
         console.log(colors.cyan('Configuring Windows environment variables (Registry)...'));
     }
 
     // PowerShell script to safely update User PATH and BVM_DIR
-    // 1. Sets BVM_DIR
-    // 2. Prepend shims, bin and current/bin to PATH if not already present
+    // We EXCLUDE current/bin to ensure BVM redirectors in BVM_SHIMS_DIR have priority.
     const psCommand = `
         $targetDir = "${BVM_DIR}";
         $shimsPath = "${bvmShimsPath}";
         $binPath = "${bvmBinPath}";
-        $currentBinPath = "${bvmCurrentBinPath}";
         
         # Set BVM_DIR
         [Environment]::SetEnvironmentVariable("BVM_DIR", $targetDir, "User");
         
         # Get current PATH
         $oldPath = [Environment]::GetEnvironmentVariable("PATH", "User");
-        $paths = $oldPath -split ";"
+        $paths = $oldPath -split ";" | Where-Object { $_ -ne "" }
         
         $newPaths = @()
         if ($paths -notcontains $shimsPath) { $newPaths += $shimsPath }
         if ($paths -notcontains $binPath) { $newPaths += $binPath }
-        if ($paths -notcontains $currentBinPath) { $newPaths += $currentBinPath }
         
-        if ($newPaths.Count -gt 0) {
-            $newPathString = (($newPaths + $paths) -join ";").Trim(";")
-            [Environment]::SetEnvironmentVariable("PATH", $newPathString, "User");
-            return "SUCCESS"
-        }
-        return "ALREADY_SET"
+        # Aggressive Filter: remove any current/bin entries to prevent bypass
+        $filteredPaths = $paths | Where-Object { $_ -notlike "*\\.bvm\\current\\bin*" }
+        
+        $finalPathString = (($newPaths + $filteredPaths) -join ";").Trim(";")
+        [Environment]::SetEnvironmentVariable("PATH", $finalPathString, "User");
+        return "SUCCESS"
     `;
 
     try {

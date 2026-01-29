@@ -98,37 +98,48 @@ $USE_SYSTEM_AS_RUNTIME = $false
 $BUN_VER = ""
 
 if ($SYSTEM_BUN_BIN) {
-    # We copy the system bun to BVM's internal version store for bootstrapping.
-    # We do NOT touch the system installation.
+    # We copy the system bun to BVM's internal runtime store for bootstrapping.
     Write-Host "Bootstrapping with detected system Bun v$SYSTEM_BUN_VER..." -ForegroundColor Gray
-    $SYS_VER_DIR = Join-Path $BVM_VERSIONS_DIR "v$SYSTEM_BUN_VER"
-    $SYS_BIN_DIR = Join-Path $SYS_VER_DIR "bin"
+    $SYS_VER_NAME = "v$SYSTEM_BUN_VER"
+    $SYS_RUNTIME_DIR = Join-Path $BVM_RUNTIME_DIR $SYS_VER_NAME
+    $SYS_BIN_DIR = Join-Path $SYS_RUNTIME_DIR "bin"
     if (-not (Test-Path $SYS_BIN_DIR)) { New-Item -ItemType Directory -Path $SYS_BIN_DIR -Force | Out-Null }
     Copy-Item $SYSTEM_BUN_BIN (Join-Path $SYS_BIN_DIR "bun.exe") -Force
     Copy-Item $SYSTEM_BUN_BIN (Join-Path $SYS_BIN_DIR "bunx.exe") -Force
     
+    # Generate bunfig.toml
+    $WinRuntimeDir = $SYS_RUNTIME_DIR.Replace('/', '\')
+    $WinBinDir = $SYS_BIN_DIR.Replace('/', '\')
+    $BunfigContent = "[install]`nglobalDir = `"$($WinRuntimeDir.Replace('\', '\\'))`"`nglobalBinDir = `"$($WinBinDir.Replace('\', '\\'))`"`n"
+    Set-Content -Path (Join-Path $SYS_RUNTIME_DIR "bunfig.toml") -Value $BunfigContent -Encoding Ascii
+
+    # Link registry to physical runtime
+    $SYS_VERSIONS_LINK = Join-Path $BVM_VERSIONS_DIR $SYS_VER_NAME
+    if (Test-Path $SYS_VERSIONS_LINK) { Remove-Item -Recurse -Force $SYS_VERSIONS_LINK | Out-Null }
+    New-Item -ItemType Junction -Path $SYS_VERSIONS_LINK -Value $SYS_RUNTIME_DIR | Out-Null
+
     # Smoke Test
     $BvmIndex = Join-Path $BVM_SRC_DIR "index.js"
     & $SYSTEM_BUN_BIN $BvmIndex --version | Out-Null
     if ($LASTEXITCODE -eq 0) {
         $USE_SYSTEM_AS_RUNTIME = $true
-        $BUN_VER = "v$SYSTEM_BUN_VER"
+        $BUN_VER = $SYS_VER_NAME
+        $TARGET_PHYSICAL_DIR = $SYS_RUNTIME_DIR
     }
 }
 
 if ($USE_SYSTEM_AS_RUNTIME) {
-    $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR $BUN_VER
+    # Already set up
 } else {
     try {
         $BunLatest = (Invoke-RestMethod -Uri "https://$REGISTRY/-/package/bun/dist-tags" -TimeoutSec 5).latest
         $BUN_VER = "v$BunLatest"
     } catch { $BUN_VER = "v1.3.5" }
-    $TARGET_DIR = Join-Path $BVM_VERSIONS_DIR $BUN_VER
+    $TARGET_PHYSICAL_DIR = Join-Path $BVM_RUNTIME_DIR $BUN_VER
     
-    if (-not (Test-Path (Join-Path $TARGET_DIR "bin\bun.exe"))) {
+    if (-not (Test-Path (Join-Path $TARGET_PHYSICAL_DIR "bin\bun.exe"))) {
         $TMP = Join-Path $BVM_DIR "bun-runtime.tgz"
-        
-        # Priority: Check for locally provided runtime archive
+        # ... (keep download logic) ...
         if ($env:BVM_LOCAL_RUNTIME_PATH -and (Test-Path $env:BVM_LOCAL_RUNTIME_PATH)) {
             Write-Host "Using local runtime archive: $env:BVM_LOCAL_RUNTIME_PATH" -ForegroundColor Green
             $TMP = $env:BVM_LOCAL_RUNTIME_PATH
@@ -143,23 +154,34 @@ if ($USE_SYSTEM_AS_RUNTIME) {
         New-Item -ItemType Directory -Path $EXT | Out-Null
         & tar -xf "$TMP" -C "$EXT"
         $FoundBun = Get-ChildItem -Path $EXT -Filter "bun.exe" -Recurse | Select-Object -First 1
-        $BIN_DEST = Join-Path $TARGET_DIR "bin"
+        $BIN_DEST = Join-Path $TARGET_PHYSICAL_DIR "bin"
         if (-not (Test-Path $BIN_DEST)) { New-Item -ItemType Directory -Path $BIN_DEST -Force | Out-Null }
         Move-Item -Path $FoundBun.FullName -Destination (Join-Path $BIN_DEST "bun.exe") -Force
         Copy-Item (Join-Path $BIN_DEST "bun.exe") (Join-Path $BIN_DEST "bunx.exe") -Force
+        
+        # Generate bunfig.toml
+        $WinRuntimeDir = $TARGET_PHYSICAL_DIR.Replace('/', '\')
+        $WinBinDir = $BIN_DEST.Replace('/', '\')
+        $BunfigContent = "[install]`nglobalDir = `"$($WinRuntimeDir.Replace('\', '\\'))`"`nglobalBinDir = `"$($WinBinDir.Replace('\', '\\'))`"`n"
+        Set-Content -Path (Join-Path $TARGET_PHYSICAL_DIR "bunfig.toml") -Value $BunfigContent -Encoding Ascii
+
         Remove-Item $TMP -Force
         Remove-Item $EXT -Recurse -Force
     }
+    # Link registry to physical runtime
+    $VERSIONS_LINK = Join-Path $BVM_VERSIONS_DIR $BUN_VER
+    if (Test-Path $VERSIONS_LINK) { Remove-Item -Recurse -Force $VERSIONS_LINK | Out-Null }
+    New-Item -ItemType Junction -Path $VERSIONS_LINK -Value $TARGET_PHYSICAL_DIR | Out-Null
 }
 
 # --- 5. Link Runtime ---
 $PRIVATE_RUNTIME_LINK = Join-Path $BVM_RUNTIME_DIR "current"
 if (Test-Path $PRIVATE_RUNTIME_LINK) { Remove-Item -Recurse -Force $PRIVATE_RUNTIME_LINK | Out-Null }
-New-Item -ItemType Junction -Path $PRIVATE_RUNTIME_LINK -Value $TARGET_DIR | Out-Null
+New-Item -ItemType Junction -Path $PRIVATE_RUNTIME_LINK -Value $TARGET_PHYSICAL_DIR | Out-Null
 
 $USER_CURRENT_LINK = Join-Path $BVM_DIR "current"
 if (Test-Path $USER_CURRENT_LINK) { Remove-Item -Recurse -Force $USER_CURRENT_LINK | Out-Null }
-New-Item -ItemType Junction -Path $USER_CURRENT_LINK -Value $TARGET_DIR | Out-Null
+New-Item -ItemType Junction -Path $USER_CURRENT_LINK -Value (Join-Path $BVM_VERSIONS_DIR $BUN_VER) | Out-Null
 
 Set-Content -Path (Join-Path $BVM_ALIAS_DIR "default") -Value $BUN_VER -Encoding Ascii
 
@@ -181,7 +203,7 @@ set "BVM_DIR=$WinBvmDir"
 set "BUN_INSTALL=%BVM_DIR%\current"
 
 if not exist ".bvmrc" (
-    "%BVM_DIR%\runtime\current\bin\%~n0.exe" %*
+    "%BVM_DIR%\current\bin\$name.exe" %*
     exit /b %errorlevel%
 )
 
@@ -190,15 +212,15 @@ if not exist ".bvmrc" (
     Set-Content -Path (Join-Path $BVM_SHIMS_DIR "$name.cmd") -Value $tpl -Encoding Ascii
 }
 
-# --- 7. Configure Path (Prepend for Priority) ---
+# --- 7. Configure Path (Purge Old & Prepend New) ---
+Write-Host "Configuring PATH (Physical Redirector mode)..." -ForegroundColor Gray
 $RawPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$BVM_CURRENT_BIN = Join-Path $BVM_DIR "current\bin"
-$PathList = if ($RawPath) { $RawPath.Split(';') } else { @() }
-$NewPathList = @()
-foreach ($p in $PathList) { if ($p -notlike "*\.bvm\shims*" -and $p -notlike "*\.bvm\bin*" -and $p -notlike "*\.bvm\current\bin*" -and -not [string]::IsNullOrEmpty($p)) { $NewPathList += $p } }
-$FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$BVM_CURRENT_BIN;" + ($NewPathList -join ';')
+# Aggressively remove ALL .bvm entries, especially current/bin, to ensure BVM shims priority
+$cleanPathList = $RawPath -split ";" | Where-Object { $_ -notlike "*\.bvm*" -and -not [string]::IsNullOrEmpty($_) }
+$FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($cleanPathList -join ';')
+
 [Environment]::SetEnvironmentVariable("Path", $FinalPath, "User")
-$env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$BVM_CURRENT_BIN;$env:Path"
+$env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
 
 # --- 8. Initialize BVM (Self-Repair) ---
 & (Join-Path $TARGET_DIR "bin\bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent

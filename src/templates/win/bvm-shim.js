@@ -1,11 +1,11 @@
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 
 /**
  * BVM Shim for Windows (JavaScript version)
- * Designed for maximum path stability via Mirror Junction Strategy.
+ * Features: Physical Execution Proxy - No Drift, Full Compatibility.
  */
 
 const BVM_DIR = process.env.BVM_DIR || path.join(os.homedir(), '.bvm');
@@ -53,50 +53,50 @@ function resolveVersion() {
 
 const version = resolveVersion();
 if (!version) {
-    console.error("BVM Error: No Bun version is active or default is set.");
+    console.error("BVM Error: No Bun version is active.");
     process.exit(1);
 }
 
 const versionDir = path.join(BVM_DIR, 'versions', version);
 const binDir = path.join(versionDir, 'bin');
+const bunExe = path.join(binDir, 'bun.exe');
 
 let realExecutable = '';
 let isShellScript = false;
-const extensions = ['.exe', '.cmd', '.bat', '.ps1'];
 
-for (const ext of extensions) {
-    const p = path.join(binDir, CMD + ext);
-    if (fs.existsSync(p)) {
-        realExecutable = p;
-        isShellScript = (ext !== '.exe');
-        break;
-    }
-}
-
-if (!realExecutable) {
-    if (CMD === 'bunx') {
-        const bunExe = path.join(binDir, 'bun.exe');
-        if (fs.existsSync(bunExe)) {
-            realExecutable = bunExe;
-            ARGS.unshift('x');
-            isShellScript = false;
-        } else {
-            console.error("BVM Error: Both 'bunx.exe' and 'bun.exe' are missing in Bun " + version);
-            process.exit(127);
+// 1. Core Logic: Resolve the PHYSICAL executable
+if (CMD === 'bun') {
+    realExecutable = bunExe;
+} else if (CMD === 'bunx') {
+    // Windows Bun doesn't have a physical bunx.exe, it's 'bun x'
+    realExecutable = bunExe;
+    ARGS.unshift('x');
+} else {
+    // For 3rd party tools, find the physical shim created by Bun in the version dir
+    const extensions = ['.exe', '.cmd', '.bat', '.ps1'];
+    for (const ext of extensions) {
+        const p = path.join(binDir, CMD + ext);
+        if (fs.existsSync(p)) {
+            realExecutable = p;
+            isShellScript = (ext !== '.exe');
+            break;
         }
-    } else {
-        console.error("BVM Error: Command '" + CMD + "' not found in Bun " + version + " at " + binDir);
-        process.exit(127);
     }
 }
 
-// LOGICAL ANCHORING
-const logicalCurrentDir = path.join(BVM_DIR, 'current');
+if (!realExecutable || !fs.existsSync(realExecutable)) {
+    // Ultimate fallback to bun x if not found physically
+    realExecutable = bunExe;
+    ARGS.unshift('x', CMD);
+}
+
+// 2. CONFIGURE ENVIRONMENT
 const env = Object.assign({}, process.env, {
-    BUN_INSTALL: logicalCurrentDir,
-    PATH: path.join(logicalCurrentDir, 'bin') + path.delimiter + binDir + path.delimiter + process.env.PATH
+    BUN_INSTALL: versionDir,
+    PATH: binDir + path.delimiter + process.env.PATH
 });
 
+// 3. EXECUTE THE PHYSICAL ORIGINAL
 const child = spawn(realExecutable, ARGS, { 
     stdio: 'inherit', 
     shell: isShellScript,
@@ -104,24 +104,21 @@ const child = spawn(realExecutable, ARGS, {
 });
 
 child.on('exit', (code) => {
-    if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
-        const isInstall = ARGS.some(arg => ['install', 'i', 'add', 'a', 'remove', 'rm', 'upgrade'].includes(arg));
-        if (isInstall) {
-            // Mirror Junction Self-Healing
-            try {
-                const globalNM = path.join(versionDir, 'install', 'global', 'node_modules');
-                const compatNM = path.join(versionDir, 'node_modules');
-                if (!fs.existsSync(globalNM)) fs.mkdirSync(globalNM, { recursive: true });
-                if (!fs.existsSync(compatNM)) {
-                    fs.symlinkSync(globalNM, compatNM, 'junction');
-                }
-            } catch (e) {}
+    // AUTOMATIC REHASH: Ensure new commands are exposed immediately after installation
+    const isInstall = ARGS.some(a => ['install', 'i', 'add', 'a', 'remove', 'rm', 'upgrade'].includes(a));
+    if (code === 0 && isInstall) {
+        const bvmCmd = path.join(BVM_DIR, 'bin', 'bvm.cmd');
+        if (fs.existsSync(bvmCmd)) {
+            spawnSync(bvmCmd, ['rehash', '--silent'], { 
+                stdio: 'ignore', 
+                env: Object.assign({}, process.env, { BVM_DIR })
+            });
         }
     }
     process.exit(code ?? 0);
 });
 
 child.on('error', (err) => {
-    console.error("BVM Error: Failed to start child process: " + err.message);
+    console.error("BVM Error: " + err.message);
     process.exit(1);
 });

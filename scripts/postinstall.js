@@ -2,7 +2,7 @@
 
 /**
  * BVM Post-install Script (Smart Edition)
- * Optimized for Speed: Priority given to npmmirror (China) and npmjs (Official).
+ * Bunker-First: Manages BVM private runtime in runtime/ bunker.
  */
 
 const fs = require('fs');
@@ -40,48 +40,53 @@ function findBinary(dir, name) {
     return null;
 }
 
-/**
- * Prioritized registry sniffing for speed and reliability
- */
-function getPackageInfo(pkgName, version = 'latest') {
-    const registries = [
-        'https://registry.npmmirror.com', // High speed for China
-        'https://registry.npmjs.org'      // Official reliability
-    ];
-
-    const target = version === 'latest' ? pkgName : `${pkgName}@${version}`;
-
-    for (const registry of registries) {
-        log(`Checking ${target} info from ${registry}...`);
-        const res = run('npm', ['info', target, '--json', '--registry', registry]);
-        if (res.status === 0 && res.stdout) {
-            try {
-                const info = JSON.parse(res.stdout);
-                const data = Array.isArray(info) ? info[0] : info;
-                if (data.dist && data.dist.tarball) {
-                    return { url: data.dist.tarball.trim(), version: data.version };
-                }
-            } catch (e) {}
-        }
+function setupBunker(verDir, ver) {
+    const runtimeRoot = path.join(BVM_DIR, 'runtime');
+    if (!fs.existsSync(runtimeRoot)) fs.mkdirSync(runtimeRoot, { recursive: true });
+    
+    const bunkerDir = path.join(runtimeRoot, ver);
+    if (verDir !== bunkerDir && fs.existsSync(verDir)) {
+        if (!fs.existsSync(bunkerDir)) fs.renameSync(verDir, bunkerDir);
+    } else if (!fs.existsSync(bunkerDir)) {
+        fs.mkdirSync(bunkerDir, { recursive: true });
     }
-    return null;
-}
 
-function setupRuntimeLink(verDir, ver) {
-    const runtimeDir = path.join(BVM_DIR, 'runtime');
-    if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
-    const currentLink = path.join(runtimeDir, 'current');
+    const currentLink = path.join(runtimeRoot, 'current');
     const userCurrentLink = path.join(BVM_DIR, 'current');
+    const versionsDir = path.join(BVM_DIR, 'versions');
+    if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
+    const versionLink = path.join(versionsDir, ver);
+
     const linkType = IS_WINDOWS ? 'junction' : 'dir';
 
+    // 1. Link versions/vX.Y.Z -> runtime/vX.Y.Z (Crucial for bvm ls/use)
+    try { if (fs.existsSync(versionLink)) fs.unlinkSync(versionLink); } catch(e) {
+        if (IS_WINDOWS) run('cmd', ['/c', 'rmdir', versionLink]);
+    }
+    try { fs.symlinkSync(bunkerDir, versionLink, linkType); } catch(e) {}
+
+    // 2. Link current -> versions/vX.Y.Z
     [currentLink, userCurrentLink].forEach(link => {
-        try { if (fs.existsSync(link)) fs.unlinkSync(link); } catch(e) {}
-        try { fs.symlinkSync(verDir, link, linkType); } catch(e) {}
+        try { if (fs.existsSync(link)) fs.unlinkSync(link); } catch(e) {
+            if (IS_WINDOWS) run('cmd', ['/c', 'rmdir', link]);
+        }
+        // Current always points to the registry entry
+        const target = link === currentLink ? bunkerDir : versionLink;
+        try { fs.symlinkSync(target, link, linkType); } catch(e) {}
     });
     
     const aliasDir = path.join(BVM_DIR, 'aliases');
     if (!fs.existsSync(aliasDir)) fs.mkdirSync(aliasDir, { recursive: true });
     fs.writeFileSync(path.join(aliasDir, 'default'), ver);
+
+    // 3. Generate bunfig.toml in bunker
+    const binDir = path.join(bunkerDir, 'bin');
+    const bunkerAbs = path.resolve(bunkerDir);
+    const binAbs = path.resolve(binDir);
+    const winBunker = bunkerAbs.replace(/\\/g, '\\\\');
+    const winBin = binAbs.replace(/\\/g, '\\\\');
+    const bunfigContent = `[install]\nglobalDir = "${winBunker}"\nglobalBinDir = "${winBin}"\n`;
+    fs.writeFileSync(path.join(bunkerDir, 'bunfig.toml'), bunfigContent);
 }
 
 function getNativeArch() {
@@ -89,9 +94,7 @@ function getNativeArch() {
     if (process.platform === 'darwin' && arch === 'x64') {
         try {
             const check = spawnSync('sysctl', ['-n', 'sysctl.proc_translated'], { encoding: 'utf-8' });
-            if (check.stdout.trim() === '1') {
-                return 'arm64';
-            }
+            if (check.stdout.trim() === '1') return 'arm64';
         } catch (e) {}
     }
     return arch;
@@ -100,37 +103,23 @@ function getNativeArch() {
 function hasAvx2() {
     if (process.platform === 'win32') return true;
     try {
-        if (process.platform === 'darwin') {
-            return spawnSync('sysctl', ['-a'], { encoding: 'utf-8' }).stdout.includes('AVX2');
-        } else if (process.platform === 'linux') {
-            return fs.readFileSync('/proc/cpuinfo', 'utf-8').includes('avx2');
-        }
+        if (process.platform === 'darwin') return spawnSync('sysctl', ['-a'], { encoding: 'utf-8' }).stdout.includes('AVX2');
+        else if (process.platform === 'linux') return fs.readFileSync('/proc/cpuinfo', 'utf-8').includes('avx2');
     } catch (e) {}
     return true;
 }
 
-/**
- * Detect the fastest registry by racing HEAD requests
- */
 function getFastestRegistry() {
     const registries = [
         { name: 'npmmirror', url: 'https://registry.npmmirror.com' },
         { name: 'npmjs', url: 'https://registry.npmjs.org' }
     ];
-    
     log('Racing registries for speed...');
-    
-    // Simple speed check using curl to time out quickly
     const results = registries.map(reg => {
         const start = Date.now();
-        // Use a 2s timeout for racing
         const res = run('curl', ['-I', '-s', '--connect-timeout', '2', reg.url]);
-        return { 
-            ...reg, 
-            time: res.status === 0 ? (Date.now() - start) : 9999 
-        };
+        return { ...reg, time: res.status === 0 ? (Date.now() - start) : 9999 };
     });
-
     results.sort((a, b) => a.time - b.time);
     log(`Winner: ${results[0].name} (${results[0].time}ms)`);
     return results;
@@ -138,10 +127,8 @@ function getFastestRegistry() {
 
 function downloadAndInstall() {
     const platform = process.platform === 'win32' ? 'windows' : process.platform;
-    const nativeArch = getNativeArch();
-    const arch = nativeArch === 'arm64' ? 'aarch64' : 'x64';
-    const isBaseline = (arch === 'x64' && !hasAvx2());
-    const pkgName = `@oven/bun-${platform}-${arch}${isBaseline ? '-baseline' : ''}`;
+    const arch = getNativeArch() === 'arm64' ? 'aarch64' : 'x64';
+    const pkgName = `@oven/bun-${platform}-${arch}${ (arch === 'x64' && !hasAvx2()) ? '-baseline' : ''}`;
     
     const sortedRegs = getFastestRegistry();
     const versionsToTry = ['latest', '1.3.6'];
@@ -149,50 +136,34 @@ function downloadAndInstall() {
 
     for (const verReq of versionsToTry) {
         log(`\n--- Attempting Bun ${verReq} ---`);
-        
         for (const reg of sortedRegs) {
             if (reg.time >= 9999) continue;
-
             const target = verReq === 'latest' ? pkgName : `${pkgName}@${verReq}`;
             log(`Checking ${target} from ${reg.name}...`);
-            
             const infoRes = run('npm', ['info', target, '--json', '--registry', reg.url]);
             if (infoRes.status !== 0 || !infoRes.stdout) continue;
-
             try {
                 const info = JSON.parse(infoRes.stdout);
                 const data = Array.isArray(info) ? info[0] : info;
                 if (!data.dist || !data.dist.tarball) continue;
-
                 const url = data.dist.tarball.trim();
                 const version = data.version;
-                
                 log(`Downloading Bun v${version} from ${reg.name}...`);
-                log(`URL: ${url}`);
-
-                const dl = run('curl', [
-                    '-L', '--fail', 
-                    '--connect-timeout', '15', 
-                    '--retry', '1',
-                    '-o', tempTgz, url
-                ], { stdio: 'inherit' });
-                
+                const dl = run('curl', ['-L', '--fail', '--connect-timeout', '10', '--max-time', '180', '--retry', '1', '-o', tempTgz, url], { stdio: 'inherit' });
                 if (dl.status === 0) {
                     log('Extracting runtime... ');
                     const extractDir = path.join(os.tmpdir(), `bvm-ext-${Date.now()}`);
-                    if (!fs.existsSync(extractDir)) fs.mkdirSync(extractDir, { recursive: true });
+                    fs.mkdirSync(extractDir, { recursive: true });
                     const ex = run('tar', ['-xzf', tempTgz, '-C', extractDir]);
-                    
                     if (ex.status === 0) {
-                        const exeName = IS_WINDOWS ? 'bun.exe' : 'bun';
-                        const foundBin = findBinary(extractDir, exeName);
+                        const foundBin = findBinary(extractDir, IS_WINDOWS ? 'bun.exe' : 'bun');
                         if (foundBin) {
                             const verName = 'v' + version.replace(/^v/, '');
-                            const verDir = path.join(BVM_DIR, 'versions', verName);
-                            const binDir = path.join(verDir, 'bin');
+                            const bunkerDir = path.join(BVM_DIR, 'runtime', verName);
+                            const binDir = path.join(bunkerDir, 'bin');
                             if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
                             fs.copyFileSync(foundBin, path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun'));
-                            setupRuntimeLink(verDir, verName);
+                            setupBunker(bunkerDir, verName);
                             log(`🎉 Successfully installed Bun ${verName} via ${reg.name}.`);
                             try { fs.unlinkSync(tempTgz); } catch(e) {}
                             return true;
@@ -202,7 +173,6 @@ function downloadAndInstall() {
             } catch (e) {}
         }
     }
-    
     return false;
 }
 
@@ -214,7 +184,6 @@ function createWrappers() {
     const bunkerBun = path.join(BVM_DIR, 'runtime', 'current', 'bin', IS_WINDOWS ? 'bun.exe' : 'bun');
     const bunkerBunWin = bunkerBun.replace(/\//g, '\\');
     const bvmSrcWin = bvmSrc.replace(/\//g, '\\');
-    
     if (IS_WINDOWS) {
         const content = `@echo off\r\nset "BVM_DIR=${bvmDirWin}"\r\nif exist "${bunkerBunWin}" (\r\n  "${bunkerBunWin}" "${bvmSrcWin}" %*\r\n) else (\r\n  node "${entryPath}" %*\r\n)`;
         fs.writeFileSync(bvmBin, content);
@@ -228,116 +197,39 @@ function createWrappers() {
 
 function main() {
     log('Starting BVM post-install setup...');
-    log(`Platform: ${process.platform}, Arch: ${process.arch}`);
-    
-    // Check if dist/index.js exists
-    if (!fs.existsSync(path.join(DIST_DIR, 'index.js'))) {
-        log('Development environment detected: dist/index.js missing.');
-        return;
-    }
-    
-    log('Preparing BVM directories and assets...');
+    if (!fs.existsSync(path.join(DIST_DIR, 'index.js'))) return;
     [BVM_SRC_DIR, BVM_BIN_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
-    const assets = [
-        { src: 'index.js', dest: path.join(BVM_SRC_DIR, 'index.js') },
-        { src: 'bvm-shim.sh', dest: path.join(BVM_BIN_DIR, 'bvm-shim.sh') },
-        { src: 'bvm-shim.js', dest: path.join(BVM_BIN_DIR, 'bvm-shim.js') }
-    ];
-    assets.forEach(a => {
-        const srcPath = path.join(DIST_DIR, a.src);
-        if (fs.existsSync(srcPath)) {
-            fs.copyFileSync(srcPath, a.dest);
-            if (!a.dest.endsWith('.js')) fs.chmodSync(a.dest, 0o755);
-        }
-    });
+    const assets = [ { src: 'index.js', dest: path.join(BVM_SRC_DIR, 'index.js') }, { src: 'bvm-shim.sh', dest: path.join(BVM_BIN_DIR, 'bvm-shim.sh') }, { src: 'bvm-shim.js', dest: path.join(BVM_BIN_DIR, 'bvm-shim.js') } ];
+    assets.forEach(a => { const srcPath = path.join(DIST_DIR, a.src); if (fs.existsSync(srcPath)) fs.copyFileSync(srcPath, a.dest); });
 
     let hasValidBun = false;
-    const whichCmd = IS_WINDOWS ? 'where' : 'which';
-    log(`Checking for existing Bun via "${whichCmd} bun"...`);
-    const checkBun = run(whichCmd, ['bun']);
-
+    const checkBun = run(IS_WINDOWS ? 'where' : 'which', ['bun']);
     if (checkBun.status === 0 && checkBun.stdout) {
-        // Filter out BVM's own shims to avoid infinite loops/broken bootstrapping
         const candidates = checkBun.stdout.trim().split('\n').map(p => p.trim());
-        const binPath = candidates.find(p => !p.includes('.bvm\\shims') && !p.includes('.bvm\\bin') && !p.includes('.bvm/shims') && !p.includes('.bvm/bin'));
-        
+        const binPath = candidates.find(p => !p.includes('.bvm\shims') && !p.includes('.bvm\bin') && !p.includes('.bvm/shims') && !p.includes('.bvm/bin'));
         if (binPath) {
             log(`System Bun detected at: ${binPath}. Running Smoke Test...`);
-            
             const verRes = run(binPath, ['--version']);
             const verRaw = (verRes.stdout || '').trim();
-            log(`System Bun version check output: "${verRaw}"`);
-            
-            // Validate version string (ensure it doesn't contain error messages)
             if (verRes.status === 0 && verRaw && !verRaw.includes('BVM Error') && /^\d+\.\d+\.\d+/.test(verRaw.replace(/^v/, ''))) {
                 const ver = 'v' + verRaw.replace(/^v/, '');
-                const verDir = path.join(BVM_DIR, 'versions', ver);
-                
-                const sysArchRes = run(binPath, ['-e', 'console.log(process.arch)']);
-                const sysArch = (sysArchRes.stdout || '').trim();
-                const nativeArch = getNativeArch();
-                log(`System Bun arch: ${sysArch}, Native arch: ${nativeArch}`);
-
-                if (sysArch !== nativeArch && sysArch !== '' && nativeArch !== '') {
-                    log(`Architecture mismatch. Skipping reuse.`);
-                } else {
-                    const binDir = path.join(verDir, 'bin');
-                    if (!fs.existsSync(binDir)) {
-                        fs.mkdirSync(binDir, { recursive: true });
-                        const destBin = path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun');
-                        try {
-                            if (path.resolve(binPath) !== path.resolve(destBin)) {
-                                fs.copyFileSync(binPath, destBin);
-                                log(`Linked system Bun to ${destBin}`);
-                            }
-                        } catch (e) {
-                            error(`Failed to copy system Bun: ${e.message}`);
-                        }
-                    }
-
-                    log('Running internal smoke test...');
-                    const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
-                    if (test.status === 0) {
-                        log('Smoke test passed. Reusing system Bun.');
-                        setupRuntimeLink(verDir, ver);
-                        hasValidBun = true;
-                    } else {
-                        log(`Smoke test failed (Exit ${test.status}). System Bun is incompatible.`);
-                    }
+                const bunkerDir = path.join(BVM_DIR, 'runtime', ver);
+                if (!fs.existsSync(path.join(bunkerDir, 'bin'))) {
+                    fs.mkdirSync(path.join(bunkerDir, 'bin'), { recursive: true });
+                    try { fs.copyFileSync(binPath, path.join(bunkerDir, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun')); } catch (e) {}
                 }
-            } else {
-                log('Detected Bun output is invalid or an error. Skipping reuse.');
+                const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
+                if (test.status === 0) {
+                    setupBunker(bunkerDir, ver);
+                    hasValidBun = true;
+                }
             }
-        } else {
-            log('No external system Bun found (excluding BVM shims).');
         }
     }
-
-    if (!hasValidBun) {
-        log('No compatible system Bun found. Performing smart download...');
-        hasValidBun = downloadAndInstall();
-    }
-
-    log('Creating BVM wrappers...');
+    if (!hasValidBun) hasValidBun = downloadAndInstall();
     createWrappers();
-    const bvmBin = path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm');
-    
-    log('Running final "bvm setup"...');
-    const setupResult = run(bvmBin, ['setup', '--silent'], { 
-        env: Object.assign({}, process.env, { BVM_DIR, BVM_INSTALL_RUNNING: '1' }) 
-    });
-    
-    if (setupResult.status !== 0) {
-        error(`bvm setup failed with exit code ${setupResult.status}`);
-        if (setupResult.stderr) console.error(setupResult.stderr);
-        process.exit(1);
-    }
+    run(path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm'), ['setup', '--silent'], { env: Object.assign({}, process.env, { BVM_DIR, BVM_INSTALL_RUNNING: '1' }) });
     log('🎉 BVM initialized successfully.');
 }
 
-try {
-    main();
-} catch (e) {
-    error(e.message);
-    process.exit(1);
-}
+try { main(); } catch (e) { error(e.message); process.exit(1); }

@@ -58,6 +58,12 @@ REAL_EXECUTABLE="$VERSION_DIR/bin/$CMD_NAME"
 if [ -x "$REAL_EXECUTABLE" ]; then
     export BUN_INSTALL="$VERSION_DIR"
     export PATH="$VERSION_DIR/bin:$PATH"
+    
+    # Inject version-specific config if present
+    if [ -f "$VERSION_DIR/bunfig.toml" ]; then
+        export BUN_CONFIG_FILE="$VERSION_DIR/bunfig.toml"
+    fi
+    
     exec "$REAL_EXECUTABLE" "$@"
 elif [ "$CMD_NAME" = "bunx" ] && [ -x "$VERSION_DIR/bin/bun" ]; then
     export BUN_INSTALL="$VERSION_DIR"

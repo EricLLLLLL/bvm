@@ -30,17 +30,42 @@ export async function pathExists(path: string): Promise<boolean> {
 }
 
 export async function createSymlink(target: string, path: string): Promise<void> {
+  // On Windows, junctions are more reliable for directory links without admin.
+  const isWindows = process.platform === 'win32';
+  
   try {
-    await unlink(path);
-  } catch (error) {
-    // Ignore if path doesn't exist
-    // On Windows, unlink might fail for directory symlinks/junctions, try rm
-    try {
+    if (await pathExists(path)) {
         await rm(path, { recursive: true, force: true });
-    } catch (e) {}
+    }
+  } catch (error) {
+    // Ignore errors during removal
   }
-  const type = process.platform === 'win32' ? 'junction' : 'dir';
+
+  const type = isWindows ? 'junction' : 'dir';
   await symlink(target, path, type);
+}
+
+/**
+ * Robust linking from runtime bunker to versions registry.
+ */
+export async function linkToRegistry(target: string, path: string): Promise<void> {
+    const isWindows = process.platform === 'win32';
+    
+    // On Windows, we prefer Junctions for the versions registry as well
+    // to avoid permission issues and ensure module resolution stability.
+    if (isWindows) {
+        await createSymlink(target, path);
+    } else {
+        // Unix: Use standard relative symlinks for better portability within BVM_DIR
+        try {
+            await unlink(path);
+        } catch (e) {
+            await rm(path, { recursive: true, force: true }).catch(() => {});
+        }
+        
+        const relativeTarget = '../runtime/' + basename(target);
+        await symlink(relativeTarget, path, 'dir');
+    }
 }
 
 export async function getSymlinkTarget(path: string): Promise<string | null> {
