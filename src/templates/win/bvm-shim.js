@@ -86,9 +86,12 @@ const child = spawn(realExecutable, finalArgs, { stdio: 'inherit', shell: false 
 child.on('exit', (code) => {
     if (code === 0 && (CMD === 'bun' || CMD === 'bunx')) {
         const isGlobal = ARGS.includes('-g') || ARGS.includes('--global');
-        const isInstall = ARGS.includes('install') || ARGS.includes('add') || ARGS.includes('remove') || ARGS.includes('upgrade');
+        const isInstall = ARGS.includes('install') || ARGS.includes('i') || 
+                         ARGS.includes('add') || ARGS.includes('a') || 
+                         ARGS.includes('remove') || ARGS.includes('rm') || 
+                         ARGS.includes('upgrade');
         
-        if (isGlobal && isInstall) {
+        if (isInstall) {
             try {
                 fixShims(binDir, versionDir);
             } catch(e) {}
@@ -100,13 +103,34 @@ child.on('exit', (code) => {
 function fixShims(binDir, versionDir) {
     try {
         const files = fs.readdirSync(binDir);
+        const versionDirAbs = path.resolve(versionDir);
         for (const file of files) {
+            const filePath = path.join(binDir, file);
             if (file.endsWith('.cmd')) {
-                const filePath = path.join(binDir, file);
                 let content = fs.readFileSync(filePath, 'utf8');
-                if (content.includes('%~dp0\\..')) {
-                    content = content.split('%~dp0\\..').join(versionDir);
-                    fs.writeFileSync(filePath, content, 'utf8');
+                let newContent = content;
+                
+                // Replace relative jumps with absolute version path
+                // We do this precisely to avoid breaking other parts of the command
+                newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\.[/\\]\.\./g, path.dirname(path.dirname(path.dirname(versionDirAbs))));
+                newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\.[/\\]\.\./g, path.dirname(path.dirname(versionDirAbs)));
+                newContent = newContent.replace(/%~dp0[/\\]\.\.[/\\]\.\./g, path.dirname(versionDirAbs));
+                newContent = newContent.replace(/%~dp0[/\\]\.\./g, versionDirAbs);
+                
+                // Special case for Bun's global layout: if it points to node_modules directly, 
+                // it might need to go through install/global/node_modules
+                if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
+                    newContent = newContent.split(versionDirAbs + '\\node_modules').join(versionDirAbs + '\\install\\global\\node_modules');
+                }
+
+                if (content !== newContent) {
+                    fs.writeFileSync(filePath, newContent, 'utf8');
+                }
+            } else if (file.endsWith('.ps1')) {
+                let content = fs.readFileSync(filePath, 'utf8');
+                let newContent = content.replace(/\$PSScriptRoot[/\\]\.\./g, `'${versionDirAbs}'`);
+                if (content !== newContent) {
+                    fs.writeFileSync(filePath, newContent, 'utf8');
                 }
             }
         }
