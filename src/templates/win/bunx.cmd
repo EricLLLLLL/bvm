@@ -2,8 +2,10 @@
 set "BVM_DIR=%USERPROFILE%\.bvm"
 set "BUN_INSTALL=%BVM_DIR%\current"
 
+:: If BVM_INSTALL_RUNNING is set, skip shim
+if "%BVM_INSTALL_RUNNING%"=="1" goto fastpath
+
 :: For bunx, if there's no .bvmrc, we usually go fast, but if it fails it might need a rehash.
-:: To be safe and support version switching via .bvmrc, we check for it.
 if exist ".bvmrc" goto slowpath
 
 :fastpath

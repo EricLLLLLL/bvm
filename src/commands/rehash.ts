@@ -14,12 +14,12 @@ import {
  */
 
 // Use lightweight wrappers that point to shared logic
-const WRAPPER_CMD = (bin: string) => `@echo off
-set "BVM_DIR=%USERPROFILE%\.bvm"
-if exist "%BVM_DIR%\runtime\current\bin\bun.exe" (
-    "%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "${bin}" %*
+const WRAPPER_CMD = (bin: string, bvmDir: string) => `@echo off
+set "BVM_DIR=${bvmDir}"
+if exist "%BVM_DIR%\\runtime\\current\\bin\\bun.exe" (
+    "%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "${bin}" %*
 ) else (
-    echo BVM Error: Bun runtime not found.
+    echo BVM Error: Bun runtime not found at "%BVM_DIR%\\runtime\\current\\bin\\bun.exe"
     exit /b 1
 )`;
 
@@ -31,6 +31,7 @@ export async function rehash() {
   await ensureDir(BVM_SHIMS_DIR);
   await ensureDir(BVM_BIN_DIR);
   const isWindows = OS_PLATFORM === 'win32';
+  const bvmDirWin = BVM_DIR.replace(/\//g, '\\');
 
   // 1. Sync shared logic files from templates to bin directory
   // Note: During local development, they are in src/templates.
@@ -72,25 +73,27 @@ export async function rehash() {
               try {
                   const filePath = join(binDir, f);
                   const content = await Bun.file(filePath).text();
-                  const versionDirAbs = versionDir; // Use absolute path
+                  const versionDirAbs = versionDir.replace(/\//g, '\\'); // Use absolute path
                   const globalNodeModules = join(versionDirAbs, 'install', 'global', 'node_modules');
                   
                   let newContent = content;
                   if (f.endsWith('.cmd')) {
-                      // Aggressively replace any %~dp0\.. chain with absolute versionDir
-                      newContent = content.replace(/%~dp0([/\\]\.\.)+/g, versionDirAbs);
+                      // Aggressively replace ANY %~dp0\.. sequence with absolute version path
+                      newContent = content.replace(/%~dp0([/\\]\.\.)+/gi, () => versionDirAbs);
                       
-                      // Fix node_modules landing spot
-                      if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
+                      // Fix node_modules redirection
+                      if (newContent.includes(versionDirAbs + '\\node_modules')) {
                           newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNodeModules);
+                      }
+                      if (newContent.includes(versionDirAbs + '/node_modules')) {
+                          newContent = newContent.split(versionDirAbs + '/node_modules').join(globalNodeModules);
                       }
                   } else {
                       // Aggressively replace any $PSScriptRoot\.. chain with absolute versionDir
-                      // Handle potential quotes
-                      newContent = content.replace(/"?\$PSScriptRoot([/\\]\.\.)+"?/g, `'${versionDirAbs}'`);
+                      newContent = content.replace(/"?\$PSScriptRoot([/\\]\.\.)+"?/gi, () => `'${versionDirAbs}'`);
 
-                      if (newContent.includes(versionDirAbs + '\\node_modules') && !newContent.includes(versionDirAbs + '\\install\\global')) {
-                          newContent = newContent.split(versionDirAbs + '\\node_modules').join(globalNodeModules);
+                      if (newContent.includes(versionDirAbs + '/node_modules')) {
+                          newContent = newContent.split(versionDirAbs + '/node_modules').join(globalNodeModules);
                       }
                   }
 
@@ -108,11 +111,11 @@ export async function rehash() {
   for (const bin of executables) {
     if (isWindows) {
       if (bin === 'bun') {
-          await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE);
+          await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE.replace(/%USERPROFILE%\\.bvm/g, bvmDirWin));
       } else if (bin === 'bunx') {
-          await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE);
+          await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE.replace(/%USERPROFILE%\\.bvm/g, bvmDirWin));
       } else {
-          await Bun.write(join(BVM_SHIMS_DIR, `${bin}.cmd`), WRAPPER_CMD(bin));
+          await Bun.write(join(BVM_SHIMS_DIR, `${bin}.cmd`), WRAPPER_CMD(bin, bvmDirWin));
       }
       const ps1 = join(BVM_SHIMS_DIR, `${bin}.ps1`);
       if (await pathExists(ps1)) await unlink(ps1);

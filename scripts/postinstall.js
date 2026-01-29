@@ -43,20 +43,23 @@ function findBinary(dir, name) {
 /**
  * Prioritized registry sniffing for speed and reliability
  */
-function getPackageInfo(pkgName) {
+function getPackageInfo(pkgName, version = 'latest') {
     const registries = [
         'https://registry.npmmirror.com', // High speed for China
         'https://registry.npmjs.org'      // Official reliability
     ];
 
+    const target = version === 'latest' ? pkgName : `${pkgName}@${version}`;
+
     for (const registry of registries) {
-        log(`Checking ${pkgName} info from ${registry}...`);
-        const res = run('npm', ['info', pkgName, '--json', '--registry', registry]);
+        log(`Checking ${target} info from ${registry}...`);
+        const res = run('npm', ['info', target, '--json', '--registry', registry]);
         if (res.status === 0 && res.stdout) {
             try {
                 const info = JSON.parse(res.stdout);
-                if (info.dist && info.dist.tarball) {
-                    return { url: info.dist.tarball, version: info.version };
+                const data = Array.isArray(info) ? info[0] : info;
+                if (data.dist && data.dist.tarball) {
+                    return { url: data.dist.tarball.trim(), version: data.version };
                 }
             } catch (e) {}
         }
@@ -106,48 +109,100 @@ function hasAvx2() {
     return true;
 }
 
+/**
+ * Detect the fastest registry by racing HEAD requests
+ */
+function getFastestRegistry() {
+    const registries = [
+        { name: 'npmmirror', url: 'https://registry.npmmirror.com' },
+        { name: 'npmjs', url: 'https://registry.npmjs.org' }
+    ];
+    
+    log('Racing registries for speed...');
+    
+    // Simple speed check using curl to time out quickly
+    const results = registries.map(reg => {
+        const start = Date.now();
+        // Use a 2s timeout for racing
+        const res = run('curl', ['-I', '-s', '--connect-timeout', '2', reg.url]);
+        return { 
+            ...reg, 
+            time: res.status === 0 ? (Date.now() - start) : 9999 
+        };
+    });
+
+    results.sort((a, b) => a.time - b.time);
+    log(`Winner: ${results[0].name} (${results[0].time}ms)`);
+    return results;
+}
+
 function downloadAndInstall() {
     const platform = process.platform === 'win32' ? 'windows' : process.platform;
     const nativeArch = getNativeArch();
     const arch = nativeArch === 'arm64' ? 'aarch64' : 'x64';
-    const suffix = (arch === 'x64' && !hasAvx2()) ? '-baseline' : '';
-    const pkgName = `@oven/bun-${platform}-${arch}`;
+    const isBaseline = (arch === 'x64' && !hasAvx2());
+    const pkgName = `@oven/bun-${platform}-${arch}${isBaseline ? '-baseline' : ''}`;
     
-    const info = getPackageInfo(pkgName);
-    if (!info) {
-        error(`Failed to locate ${pkgName} on both npmmirror and npmjs.`);
-        return false;
-    }
-
-    const { url, version } = info;
-    const downloadUrl = url.replace('.tgz', `${suffix}.tgz`);
+    const sortedRegs = getFastestRegistry();
+    const versionsToTry = ['latest', '1.3.6'];
     const tempTgz = path.join(os.tmpdir(), `bvm-bun-${Date.now()}.tgz`);
-    log(`Downloading Bun v${version} from: ${downloadUrl}`);
-    
-    const dl = run('curl', ['-L', '-s', '-o', tempTgz, url]);
-    if (dl.status !== 0) {
-        error('Download failed. Please check your internet connection.');
-        return false;
+
+    for (const verReq of versionsToTry) {
+        log(`\n--- Attempting Bun ${verReq} ---`);
+        
+        for (const reg of sortedRegs) {
+            if (reg.time >= 9999) continue;
+
+            const target = verReq === 'latest' ? pkgName : `${pkgName}@${verReq}`;
+            log(`Checking ${target} from ${reg.name}...`);
+            
+            const infoRes = run('npm', ['info', target, '--json', '--registry', reg.url]);
+            if (infoRes.status !== 0 || !infoRes.stdout) continue;
+
+            try {
+                const info = JSON.parse(infoRes.stdout);
+                const data = Array.isArray(info) ? info[0] : info;
+                if (!data.dist || !data.dist.tarball) continue;
+
+                const url = data.dist.tarball.trim();
+                const version = data.version;
+                
+                log(`Downloading Bun v${version} from ${reg.name}...`);
+                log(`URL: ${url}`);
+
+                const dl = run('curl', [
+                    '-L', '--fail', 
+                    '--connect-timeout', '15', 
+                    '--retry', '1',
+                    '-o', tempTgz, url
+                ], { stdio: 'inherit' });
+                
+                if (dl.status === 0) {
+                    log('Extracting runtime... ');
+                    const extractDir = path.join(os.tmpdir(), `bvm-ext-${Date.now()}`);
+                    if (!fs.existsSync(extractDir)) fs.mkdirSync(extractDir, { recursive: true });
+                    const ex = run('tar', ['-xzf', tempTgz, '-C', extractDir]);
+                    
+                    if (ex.status === 0) {
+                        const exeName = IS_WINDOWS ? 'bun.exe' : 'bun';
+                        const foundBin = findBinary(extractDir, exeName);
+                        if (foundBin) {
+                            const verName = 'v' + version.replace(/^v/, '');
+                            const verDir = path.join(BVM_DIR, 'versions', verName);
+                            const binDir = path.join(verDir, 'bin');
+                            if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
+                            fs.copyFileSync(foundBin, path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun'));
+                            setupRuntimeLink(verDir, verName);
+                            log(`🎉 Successfully installed Bun ${verName} via ${reg.name}.`);
+                            try { fs.unlinkSync(tempTgz); } catch(e) {}
+                            return true;
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
     }
     
-    const extractDir = path.join(os.tmpdir(), `bvm-ext-${Date.now()}`);
-    fs.mkdirSync(extractDir, { recursive: true });
-    const ex = run('tar', ['-xzf', tempTgz, '-C', extractDir]);
-    if (ex.status !== 0) { error('Extraction failed.'); return false; }
-    
-    const exeName = IS_WINDOWS ? 'bun.exe' : 'bun';
-    const foundBin = findBinary(extractDir, exeName);
-    
-    if (foundBin) {
-        const verName = 'v' + version.replace(/^v/, '');
-        const verDir = path.join(BVM_DIR, 'versions', verName);
-        const binDir = path.join(verDir, 'bin');
-        if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
-        fs.copyFileSync(foundBin, path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun'));
-        setupRuntimeLink(verDir, verName);
-        log(`Successfully installed Bun ${verName} as BVM runtime.`);
-        return true;
-    }
     return false;
 }
 
@@ -173,14 +228,15 @@ function createWrappers() {
 
 function main() {
     log('Starting BVM post-install setup...');
+    log(`Platform: ${process.platform}, Arch: ${process.arch}`);
     
-    // Check if dist/index.js exists (it might not in dev/CI environment before build)
+    // Check if dist/index.js exists
     if (!fs.existsSync(path.join(DIST_DIR, 'index.js'))) {
         log('Development environment detected: dist/index.js missing.');
-        log('Skipping BVM runtime setup. Please run "bun run build" to generate artifacts.');
         return;
     }
     
+    log('Preparing BVM directories and assets...');
     [BVM_SRC_DIR, BVM_BIN_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
     const assets = [
         { src: 'index.js', dest: path.join(BVM_SRC_DIR, 'index.js') },
@@ -197,6 +253,7 @@ function main() {
 
     let hasValidBun = false;
     const whichCmd = IS_WINDOWS ? 'where' : 'which';
+    log(`Checking for existing Bun via "${whichCmd} bun"...`);
     const checkBun = run(whichCmd, ['bun']);
 
     if (checkBun.status === 0 && checkBun.stdout) {
@@ -204,18 +261,19 @@ function main() {
         log(`System Bun detected at: ${binPath}. Running Smoke Test...`);
         
         const verRes = run(binPath, ['--version']);
-        const ver = 'v' + (verRes.stdout || '1.3.6').trim().replace(/^v/, '');
+        const verRaw = (verRes.stdout || '').trim();
+        log(`System Bun version check output: "${verRaw}"`);
+        const ver = 'v' + (verRaw || '1.3.6').replace(/^v/, '');
         const verDir = path.join(BVM_DIR, 'versions', ver);
         
-        // Architecture match check (Native vs. Emulated)
         const sysArchRes = run(binPath, ['-e', 'console.log(process.arch)']);
         const sysArch = (sysArchRes.stdout || '').trim();
         const nativeArch = getNativeArch();
+        log(`System Bun arch: ${sysArch}, Native arch: ${nativeArch}`);
 
-        if (sysArch !== nativeArch) {
-            log(`System Bun architecture (${sysArch}) doesn't match native hardware (${nativeArch}). Skipping reuse.`);
+        if (sysArch !== nativeArch && sysArch !== '' && nativeArch !== '') {
+            log(`Architecture mismatch. Skipping reuse.`);
         } else {
-            // Register anyway to preserve user's version
             const binDir = path.join(verDir, 'bin');
             if (!fs.existsSync(binDir)) {
                 fs.mkdirSync(binDir, { recursive: true });
@@ -223,19 +281,21 @@ function main() {
                 try {
                     if (path.resolve(binPath) !== path.resolve(destBin)) {
                         fs.copyFileSync(binPath, destBin);
+                        log(`Linked system Bun to ${destBin}`);
                     }
                 } catch (e) {
                     error(`Failed to copy system Bun: ${e.message}`);
                 }
             }
 
+            log('Running internal smoke test...');
             const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
             if (test.status === 0) {
                 log('Smoke test passed. Reusing system Bun.');
                 setupRuntimeLink(verDir, ver);
                 hasValidBun = true;
             } else {
-                log('Smoke test failed. System Bun is incompatible with BVM core.');
+                log(`Smoke test failed (Exit ${test.status}). System Bun is incompatible.`);
             }
         }
     }
@@ -245,9 +305,15 @@ function main() {
         hasValidBun = downloadAndInstall();
     }
 
+    log('Creating BVM wrappers...');
     createWrappers();
     const bvmBin = path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm');
-    const setupResult = run(bvmBin, ['setup', '--silent'], { env: { BVM_DIR } });
+    
+    log('Running final "bvm setup"...');
+    const setupResult = run(bvmBin, ['setup', '--silent'], { 
+        env: Object.assign({}, process.env, { BVM_DIR, BVM_INSTALL_RUNNING: '1' }) 
+    });
+    
     if (setupResult.status !== 0) {
         error(`bvm setup failed with exit code ${setupResult.status}`);
         if (setupResult.stderr) console.error(setupResult.stderr);

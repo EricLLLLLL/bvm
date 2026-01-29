@@ -2,6 +2,9 @@
 set "BVM_DIR=%USERPROFILE%\.bvm"
 set "BUN_INSTALL=%BVM_DIR%\current"
 
+:: If BVM_INSTALL_RUNNING is set, skip shim to avoid infinite loop during postinstall
+if "%BVM_INSTALL_RUNNING%"=="1" goto fastpath
+
 :: If it's an installation command, always use the shim for self-healing (fixing global shims)
 set "USE_SHIM=0"
 if "%1"=="install" set "USE_SHIM=1"
