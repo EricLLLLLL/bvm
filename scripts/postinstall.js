@@ -22,7 +22,17 @@ function log(msg) { console.log(`[bvm] ${msg}`); }
 function error(msg) { console.error(`\x1b[31m[bvm] ERROR: ${msg}\x1b[0m`); }
 
 function run(cmd, args, opts = {}) {
-    return spawnSync(cmd, args, Object.assign({ encoding: 'utf-8', shell: IS_WINDOWS }, opts));
+    const options = Object.assign({ encoding: 'utf-8' }, opts);
+    if (IS_WINDOWS) {
+        // Avoid shell: true to prevent DEP0190, but handle .cmd manually
+        if (cmd.endsWith('.cmd') || cmd.endsWith('.bat') || cmd === 'npm') {
+             // npm might be npm.cmd or npm.ps1, safest is cmd /c
+             return spawnSync('cmd', ['/d', '/s', '/c', cmd, ...args], { ...options, windowsVerbatimArguments: true });
+        }
+        // For executables like curl.exe, tar.exe, execute directly
+        return spawnSync(cmd, args, options);
+    }
+    return spawnSync(cmd, args, Object.assign({ shell: true }, options));
 }
 
 function findBinary(dir, name) {
@@ -149,7 +159,8 @@ function downloadAndInstall() {
                 const url = data.dist.tarball.trim();
                 const version = data.version;
                 log(`Downloading Bun v${version} from ${reg.name}...`);
-                const dl = run('curl', ['-L', '--fail', '--connect-timeout', '10', '--max-time', '180', '--retry', '1', '-o', tempTgz, url], { stdio: 'inherit' });
+                // Use -C - to support resume, and increase timeout to 10 minutes (600s)
+                const dl = run('curl', ['-L', '--fail', '-C', '-', '--connect-timeout', '20', '--max-time', '600', '--retry', '3', '-o', tempTgz, url], { stdio: 'inherit' });
                 if (dl.status === 0) {
                     log('Extracting runtime... ');
                     const extractDir = path.join(os.tmpdir(), `bvm-ext-${Date.now()}`);
@@ -169,6 +180,9 @@ function downloadAndInstall() {
                             return true;
                         }
                     }
+                } else {
+                    // Cleanup partial file on complete failure of this URL attempt
+                    try { if (fs.existsSync(tempTgz)) fs.unlinkSync(tempTgz); } catch(e) {}
                 }
             } catch (e) {}
         }
