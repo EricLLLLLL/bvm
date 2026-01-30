@@ -18,16 +18,16 @@
 ## 阶段 2: 全平台命令拦截与自动刷新 (Cross-Platform Intercept & Auto-Rehash)
 本阶段实现核心的拦截逻辑，确保全局安装的命令能即装即用，并保持多平台架构一致。
 
-- [ ] Task: 重写 `bun.cmd` 拦截器模板 (Windows)
-    - [ ] 编写测试：验证 `bun.cmd` 能正确识别 `install/add` 等关键词。
-    - [ ] 实施：更新 `src/templates/win/bun.cmd`，加入 `EXIT_CODE` 检测和同步 `rehash` 调用。
-- [ ] Task: 增强 `bvm-shim.sh` 拦截逻辑 (macOS/Linux)
-    - [ ] 编写测试：验证 Unix shim 在执行安装命令后触发后台 rehash。
-    - [ ] 实施：在 `src/templates/unix/bvm-shim.sh` 中添加对 `install/add` 等命令的检测，并在成功退出后后台运行 `bvm rehash --silent`。
-- [ ] Task: 在 JS Shim 层集成自动 Rehash (通用兜底)
-    - [ ] 编写测试：验证 `bvm-shim.js` 的退出钩子逻辑。
-    - [ ] 实施：在 `bvm-shim.js` 中加入后台 `rehash` 触发逻辑，作为所有平台的通用兜底。
-- [ ] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md)
+- [x] Task: 重写 `bun.cmd` 拦截器模板 (Windows)
+    - [x] 编写测试：验证 `bun.cmd` 能正确识别 `install/add` 等关键词。
+    - [x] 实施：更新 `src/templates/win/bun.cmd`，加入 `EXIT_CODE` 检测和同步 `rehash` 调用。
+- [x] Task: 增强 `bvm-shim.sh` 拦截逻辑 (macOS/Linux)
+    - [x] 编写测试：验证 Unix shim 在执行安装命令后触发后台 rehash。
+    - [x] 实施：在 `src/templates/unix/bvm-shim.sh` 中添加对 `install/add` 等命令的检测，并在成功退出后后台运行 `bvm rehash --silent`。
+- [x] Task: 在 JS Shim 层集成自动 Rehash (通用兜底)
+    - [x] 编写测试：验证 `bvm-shim.js` 的退出钩子逻辑。
+    - [x] 实施：在 `bvm-shim.js` 中加入后台 `rehash` 触发逻辑，作为所有平台的通用兜底。
+- [x] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md) [checkpoint: 8c3c82f]
 
 ## 阶段 3: 稳定性增强与综合验证 (Stability & Final Verification)
 本阶段解决下载完整性问题，并进行最终的跨平台功能验证。
