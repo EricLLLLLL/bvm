@@ -64,7 +64,20 @@ if [ -x "$REAL_EXECUTABLE" ]; then
         export BUN_CONFIG_FILE="$VERSION_DIR/bunfig.toml"
     fi
     
-    exec "$REAL_EXECUTABLE" "$@"
+    # Execute the command
+    "$REAL_EXECUTABLE" "$@"
+    EXIT_CODE=$?
+
+    # Auto-Rehash Logic
+    if [ "$CMD_NAME" = "bun" ] && [ $EXIT_CODE -eq 0 ]; then
+        case "$1" in
+            install|i|add|a|remove|rm|upgrade|link|unlink)
+                "$BVM_DIR/bin/bvm" rehash --silent >/dev/null 2>&1 &
+                ;;
+        esac
+    fi
+    
+    exit $EXIT_CODE
 elif [ "$CMD_NAME" = "bunx" ] && [ -x "$VERSION_DIR/bin/bun" ]; then
     export BUN_INSTALL="$VERSION_DIR"
     export PATH="$VERSION_DIR/bin:$PATH"
