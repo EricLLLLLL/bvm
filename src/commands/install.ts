@@ -15,6 +15,7 @@ import { useBunVersion } from './use';
 import { rehash } from './rehash';
 import { RegistrySpeedTester, REGISTRIES } from '../utils/registry-check';
 import { BunfigManager } from '../utils/bunfig';
+import { fixWindowsShims } from '../utils/windows-shim-fixer';
 
 /**
  * Generates a bunfig.toml using the LOGICAL current path as an anchor.
@@ -178,6 +179,7 @@ export async function installBunVersion(targetVersion?: string, options: { globa
             await chmod(bunExecutablePath, 0o755);
             await generateBunfig(installDir);
             await ensureBunx(installBinDir, bunExecutablePath);
+            await fixWindowsShims(installBinDir);
         }
         
         spinner.succeed(colors.green(`Bun ${foundVersion} physically installed.`));

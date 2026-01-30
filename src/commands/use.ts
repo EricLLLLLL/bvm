@@ -5,6 +5,7 @@ import { colors } from '../utils/ui';
 import { getRcVersion } from '../rc';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
+import { fixWindowsShims } from '../utils/windows-shim-fixer';
 
 /**
  * Switches the active Bun version immediately by updating the `current` symlink.
@@ -48,6 +49,9 @@ export async function useBunVersion(targetVersion?: string, options: { silent?: 
     if (!(await pathExists(bunExecutablePath))) {
         throw new Error(`Version ${normalizedFinalResolvedVersion} is not properly installed (binary missing).`);
     }
+
+    // Ensure shims are valid before linking
+    await fixWindowsShims(join(installPath, 'bin'));
 
     // Update the 'current' directory symlink for immediate global effect
     await createSymlink(installPath, BVM_CURRENT_DIR);
