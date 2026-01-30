@@ -75,7 +75,7 @@ if ($Local) {
     $CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
 
     $TMP_TGZ = Join-Path $BVM_DIR "bvm-core.tgz"
-    & $CURL_CMD "-#SfLo" "$TMP_TGZ" "$TARBALL_URL"
+    & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$TMP_TGZ" "$TARBALL_URL"
     $EXT_DIR = Join-Path $BVM_DIR "temp_bvm_extract"
     if (Test-Path $EXT_DIR) { Remove-Item $EXT_DIR -Recurse -Force }
     New-Item -ItemType Directory -Path $EXT_DIR | Out-Null
@@ -146,7 +146,7 @@ if ($USE_SYSTEM_AS_RUNTIME) {
         } else {
             Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
             $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$($BUN_VER.TrimStart('v')).tgz"
-            & $CURL_CMD "-#SfLo" "$TMP" "$URL"
+            & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$TMP" "$URL"
         }
 
         $EXT = Join-Path $BVM_DIR "temp_extract"
@@ -213,14 +213,14 @@ if not exist ".bvmrc" (
 }
 
 # --- 7. Configure Path (Purge Old & Prepend New) ---
-Write-Host "Configuring PATH (Physical Redirector mode)..." -ForegroundColor Gray
+Write-Host "Configuring PATH (Shim Proxy mode)..." -ForegroundColor Gray
 $RawPath = [Environment]::GetEnvironmentVariable("Path", "User")
-# Aggressively remove ALL .bvm entries, especially current/bin, to ensure BVM shims priority
+# Clean previous BVM entries
 $cleanPathList = $RawPath -split ";" | Where-Object { $_ -notlike "*\.bvm*" -and -not [string]::IsNullOrEmpty($_) }
-$FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($cleanPathList -join ';')
+$FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($cleanPathList -join ';') + ";$BVM_DIR\current\bin"
 
 [Environment]::SetEnvironmentVariable("Path", $FinalPath, "User")
-$env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
+$env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path;$BVM_DIR\current\bin"
 
 # --- 8. Initialize BVM (Self-Repair) ---
 & (Join-Path $TARGET_DIR "bin\bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent
@@ -228,4 +228,4 @@ $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path"
 Write-Host "`n[OK] BVM installed successfully!" -ForegroundColor Green
 Write-Host "IMPORTANT: Please close this terminal and open a NEW one to apply changes." -ForegroundColor Cyan
 Write-Host "NOTE: Global packages (bun install -g) are isolated per version." -ForegroundColor Yellow
-Write-Host "      Ensure $($BVM_DIR)\current\bin is in your PATH." -ForegroundColor Yellow
+Write-Host "      BVM shims are used to proxy all commands safely." -ForegroundColor Yellow

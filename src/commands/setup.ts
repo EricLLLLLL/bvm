@@ -100,7 +100,9 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
   const configBlock = `${startMarker}
 # !! Contents within this block are managed by 'bvm setup' !!
 export BVM_DIR="${BVM_DIR}"
-export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$BVM_DIR/current/bin:$PATH"
+# We add shims and bin to the front of PATH for priority.
+# We add current/bin to the END of PATH to satisfy Bun's checks without interfering with BVM shims.
+export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$PATH:$BVM_DIR/current/bin"
 # Ensure current link exists for PATH consistency
 if [ ! -L "$BVM_DIR/current" ] && [ -f "$BVM_DIR/aliases/default" ]; then
     ln -sf "$BVM_DIR/versions/$(cat "$BVM_DIR/aliases/default")" "$BVM_DIR/current"
@@ -112,7 +114,8 @@ ${endMarker}`;
 set -Ux BVM_DIR "${BVM_DIR}"
 fish_add_path "$BVM_DIR/shims"
 fish_add_path "$BVM_DIR/bin"
-fish_add_path "$BVM_DIR/current/bin"
+# Append current/bin to satisfy Bun checks without overriding shims
+fish_add_path --append "$BVM_DIR/current/bin"
 # Ensure current link exists
 if not test -L "$BVM_DIR/current"
     if test -f "$BVM_DIR/aliases/default"
@@ -187,17 +190,12 @@ async function recreateShims(displayPrompt: boolean) {
         await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), BVM_SHIM_JS_TEMPLATE);
         await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
         
-        const lightningTpl = (bin: string) => `@echo off
-set "BVM_DIR=${bvmDirWin}"
-set "BUN_INSTALL=%BVM_DIR%\\current"
-
-if not exist ".bvmrc" (
-    "%BVM_DIR%\\current\\bin\\${bin}.exe" %*
-    exit /b %errorlevel%
-)
-
-"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "${bin}" %*
-`;
+        const lightningTpl = (bin: string) => {
+            if (bin === 'bunx') {
+                return `@echo off\r\nset "BVM_DIR=${bvmDirWin}"\r\nset "BUN_INSTALL=%BVM_DIR%\\current"\r\n\r\nif not exist ".bvmrc" (\r\n    "%BVM_DIR%\\current\\bin\\bun.exe" x %*\r\n    exit /b %errorlevel%\r\n)\r\n\r\n"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "bunx" %*\r\n`;
+            }
+            return `@echo off\r\nset "BVM_DIR=${bvmDirWin}"\r\nset "BUN_INSTALL=%BVM_DIR%\\current"\r\n\r\nif not exist ".bvmrc" (\r\n    "%BVM_DIR%\\current\\bin\\${bin}.exe" %*\r\n    exit /b %errorlevel%\r\n)\r\n\r\n"%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "${bin}" %*\r\n`;
+        };
         await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), lightningTpl('bun'));
         await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), lightningTpl('bunx'));
     } else {
@@ -255,11 +253,12 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     }
 
     // PowerShell script to safely update User PATH and BVM_DIR
-    // We EXCLUDE current/bin to ensure BVM redirectors in BVM_SHIMS_DIR have priority.
+    // We include current/bin for native performance. Native shims now resolve via logical anchor.
     const psCommand = `
         $targetDir = "${BVM_DIR}";
         $shimsPath = "${bvmShimsPath}";
         $binPath = "${bvmBinPath}";
+        $currentBinPath = "${join(BVM_DIR, 'current', 'bin')}";
         
         # Set BVM_DIR
         [Environment]::SetEnvironmentVariable("BVM_DIR", $targetDir, "User");
@@ -272,10 +271,12 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
         if ($paths -notcontains $shimsPath) { $newPaths += $shimsPath }
         if ($paths -notcontains $binPath) { $newPaths += $binPath }
         
-        # Aggressive Filter: remove any current/bin entries to prevent bypass
-        $filteredPaths = $paths | Where-Object { $_ -notlike "*\\.bvm\\current\\bin*" }
+        # Append current/bin if missing (to satisfy Bun checks)
+        $appendPath = ""
+        if ($paths -notcontains $currentBinPath) { $appendPath = ";$currentBinPath" }
         
-        $finalPathString = (($newPaths + $filteredPaths) -join ";").Trim(";")
+        $finalPathString = (($newPaths + $paths) -join ";") + $appendPath
+        $finalPathString = $finalPathString.Trim(";")
         [Environment]::SetEnvironmentVariable("PATH", $finalPathString, "User");
         return "SUCCESS"
     `;
@@ -332,7 +333,8 @@ export async function updatePowerShellProfile(profilePath: string, displayPrompt
     const psStr = `
 # BVM Configuration
 $env:BVM_DIR = "${BVM_DIR}"
-$env:PATH = "$env:BVM_DIR\\shims;$env:BVM_DIR\\bin;$env:BVM_DIR\\current\\bin;$env:PATH"
+# Prepend shims/bin for priority, append current/bin for Bun checks
+$env:PATH = "$env:BVM_DIR\\shims;$env:BVM_DIR\\bin;$env:PATH;$env:BVM_DIR\\current\\bin"
 # Auto-activate default version
 if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
     & "$env:BVM_DIR\\bin\\bvm.cmd" use default --silent *>$null
