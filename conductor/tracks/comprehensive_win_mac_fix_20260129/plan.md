@@ -32,10 +32,10 @@
 ## 阶段 3: 稳定性增强与综合验证 (Stability & Final Verification)
 本阶段解决下载完整性问题，并进行最终的跨平台功能验证。
 
-- [ ] Task: 增强下载重试与完整性处理
-    - [ ] 编写测试：模拟网络中断导致的损坏文件，验证 BVM 能自动清理并重试。
-    - [ ] 实施：优化 `install.ts` 中的 `downloadFileWithProgress` 和缓存清理逻辑。
-- [ ] Task: 综合冒烟测试
-    - [ ] 任务：在 Windows 和 macOS 环境上分别运行 `bvm install` -> `bun i -g <pkg>` -> `<pkg>`。
-    - [ ] 任务：确认全平台不再出现任何警告（DEP0190, PATH warn）。
-- [ ] Task: Conductor - User Manual Verification '阶段 3' (Protocol in workflow.md)
+- [x] Task: 增强下载重试与完整性处理
+    - [x] 编写测试：模拟网络中断导致的损坏文件，验证 BVM 能自动清理并重试。
+    - [x] 实施：优化 `install.ts` 中的 `downloadFileWithProgress` 和缓存清理逻辑。
+- [x] Task: 综合冒烟测试
+    - [x] 任务：在 Windows 和 macOS 环境上分别运行 `bvm install` -> `bun i -g <pkg>` -> `<pkg>`。
+    - [x] 任务：确认全平台不再出现任何警告（DEP0190, PATH warn）。
+- [x] Task: Conductor - User Manual Verification '阶段 3' (Protocol in workflow.md) [checkpoint: 3e91b0a]
