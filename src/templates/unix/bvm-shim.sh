@@ -72,7 +72,7 @@ if [ -x "$REAL_EXECUTABLE" ]; then
     if [ "$CMD_NAME" = "bun" ] && [ $EXIT_CODE -eq 0 ]; then
         case "$1" in
             install|i|add|a|remove|rm|upgrade|link|unlink)
-                "$BVM_DIR/bin/bvm" rehash --silent >/dev/null 2>&1 &
+                (export BVM_DIR="$BVM_DIR"; "$BVM_DIR/bin/bvm" rehash --silent >/dev/null 2>&1 & disown)
                 ;;
         esac
     fi

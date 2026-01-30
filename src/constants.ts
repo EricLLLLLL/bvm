@@ -41,6 +41,7 @@ export const HAS_AVX2 = checkAvx2Support();
 
 // Helper to get BVM_DIR dynamically
 export function getBvmDir() {
+    if (process.env.BVM_DIR) return process.env.BVM_DIR;
     const HOME = process.env.HOME || homedir();
     return join(HOME, '.bvm');
 }
