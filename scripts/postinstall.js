@@ -32,7 +32,8 @@ function run(cmd, args, opts = {}) {
         // For executables like curl.exe, tar.exe, execute directly
         return spawnSync(cmd, args, options);
     }
-    return spawnSync(cmd, args, Object.assign({ shell: true }, options));
+    // Unix: avoid shell: true for raw commands to prevent DEP0190
+    return spawnSync(cmd, args, options);
 }
 
 function findBinary(dir, name) {
