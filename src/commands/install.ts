@@ -68,29 +68,55 @@ async function safeRename(src: string, dest: string) {
   }
 }
 
-async function downloadFileWithProgress(url: string, destPath: string, spinner: any, versionLabel: string) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Status ${response.status}`);
-    const total = +(response.headers.get('Content-Length') || 0);
-    let loaded = 0;
-    const reader = response.body?.getReader();
-    const writer = Bun.file(destPath).writer();
-    const isWindows = OS_PLATFORM === 'win32';
-    spinner.stop();
-    if (isWindows) console.log(`Downloading Bun ${versionLabel}...`);
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            writer.write(value);
-            loaded += value.length;
+export async function downloadFileWithProgress(url: string, destPath: string, spinner: any, versionLabel: string) {
+    const maxRetries = 3;
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Status ${response.status}`);
+            
+            const total = +(response.headers.get('Content-Length') || 0);
+            let loaded = 0;
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("Could not get response body reader");
+
+            const writer = Bun.file(destPath).writer();
+            const isWindows = OS_PLATFORM === 'win32';
+            
+            if (spinner) spinner.stop();
+            if (isWindows && attempt === 1) console.log(`Downloading Bun ${versionLabel}...`);
+            else if (attempt > 1) console.log(`Retry ${attempt}/${maxRetries} for Bun ${versionLabel}...`);
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    writer.write(value);
+                    loaded += value.length;
+                }
+                await writer.end();
+                if (spinner) spinner.start();
+                return; // Success
+            } catch (e) {
+                try { await writer.end(); } catch(e2) {}
+                throw e;
+            }
+        } catch (e) {
+            lastError = e;
+            // Cleanup partial file
+            try { await rm(destPath, { force: true }); } catch (e2) {}
+            
+            if (attempt < maxRetries) {
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
         }
-        await writer.end();
-    } catch (e) {
-        try { writer.end(); } catch(e2) {}
-        spinner.start(); throw e;
     }
-    spinner.start(); 
+
+    if (spinner) spinner.start();
+    throw lastError || new Error("Download failed after multiple attempts");
 }
 
 export async function installBunVersion(targetVersion?: string, options: { global?: boolean } = {}): Promise<void> {
