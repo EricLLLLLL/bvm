@@ -13,6 +13,9 @@ hero:
       text: 快速开始
       link: /zh/guide/getting-started
     - theme: alt
+      text: 排障
+      link: /zh/guide/troubleshooting
+    - theme: alt
       text: GitHub
       link: https://github.com/EricLLLLLL/bvm
 
@@ -80,6 +83,44 @@ const copy = (text, type) => {
         {{ copied === 'npm' ? '已复制' : '复制' }}
       </button>
     </div>
+  </div>
+</div>
+
+<div class="compare-section">
+  <h2>安装方式对比（怎么选）</h2>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>方式</th>
+        <th>适合谁</th>
+        <th>备注</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Shell</strong>（macOS/Linux）</td>
+        <td>大多数用户</td>
+        <td>自动竞速选最快源 + 自动 setup</td>
+      </tr>
+      <tr>
+        <td><strong>PowerShell</strong>（Windows）</td>
+        <td>Windows 开发</td>
+        <td>与 Unix 安装体验一致</td>
+      </tr>
+      <tr>
+        <td><strong>NPM</strong></td>
+        <td>已在用 Node/NPM</td>
+        <td>依赖 postinstall；可能需要重开终端</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout-section">
+  <div class="callout-card">
+    <div class="callout-title">全局隔离不生效？</div>
+    <div class="callout-body">如果命令仍来自 <code>~/.bun</code>，请运行一次 <code>bvm setup</code>，然后检查 <code>which bun</code> 是否命中 BVM shims。</div>
+    <a class="callout-link" href="/zh/guide/troubleshooting">打开排障文档 →</a>
   </div>
 </div>
 
@@ -174,6 +215,74 @@ const copy = (text, type) => {
   color: white;
 }
 
+.compare-section {
+  margin-top: 3.5rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.compare-table {
+  width: 100%;
+  max-width: 900px;
+  border-collapse: collapse;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--vp-c-bg-alt);
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--vp-c-divider);
+  vertical-align: top;
+}
+
+.compare-table th {
+  text-align: left;
+  background: var(--vp-c-bg-soft);
+  font-size: 0.9rem;
+}
+
+.compare-table td {
+  font-size: 0.95rem;
+  color: var(--vp-c-text-1);
+}
+
+.callout-section {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.callout-card {
+  width: 100%;
+  max-width: 900px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.callout-title {
+  font-weight: 700;
+  color: var(--vp-c-text-1);
+  margin-bottom: 0.35rem;
+}
+
+.callout-body {
+  color: var(--vp-c-text-2);
+  margin-bottom: 0.6rem;
+}
+
+.callout-link {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
 .demo-section {
   margin-top: 3.5rem;
   display: flex;
@@ -190,4 +299,3 @@ const copy = (text, type) => {
   background: #000;
 }
 </style>
-

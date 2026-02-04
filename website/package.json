@@ -7,7 +7,10 @@
     "sync-docs": "bun run sync-docs.ts",
     "dev": "bun run sync-docs && vitepress dev docs",
     "build": "bun run sync-docs && vitepress build docs",
-    "preview": "vitepress preview docs"
+    "preview": "vitepress preview docs",
+    "gen:favicons": "node scripts/generate-favicons.mjs",
+    "gen:og": "node scripts/generate-og.mjs",
+    "gen:assets": "node scripts/generate-favicons.mjs && node scripts/generate-og.mjs"
   },
   "devDependencies": {
     "@types/bun": "latest",
