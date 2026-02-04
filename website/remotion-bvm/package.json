@@ -1,0 +1,21 @@
+{
+  "name": "bvm-remotion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio",
+    "render:bvm-demo": "remotion render BvmDemo ../docs/public/media/bvm-demo.mp4 --log=error",
+    "render:install-methods": "remotion render BvmInstallMethods ../docs/public/media/bvm-install-methods.mp4 --log=error"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.260"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.260",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

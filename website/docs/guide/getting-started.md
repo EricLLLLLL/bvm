@@ -10,6 +10,8 @@
   <p align="center">
     <a href="https://bvm-core.pages.dev"><strong>Official Website & Documentation »</strong></a>
     <br />
+    <a href="https://bvm-core.pages.dev/zh/"><strong>中文网站 »</strong></a>
+    <br />
     <br />
     <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
     ·
@@ -49,7 +51,7 @@ irm https://bvm-core.pages.dev/install | iex
 
 ### Method 3: NPM (Optional)
 ```bash
-npm install -g bvm-core@latest
+npm install -g bvm-core@latest --foreground-scripts
 ```
 
 ---
@@ -99,6 +101,13 @@ BVM supports automatic version switching via `.bvmrc` files. Create a file named
 ```bash
 echo "1.1.0" > .bvmrc
 ```
+
+---
+
+## Troubleshooting
+
+- **Global tools are not isolated after switching versions**: run `bvm setup`, restart your terminal, and make sure `which bun` points to `~/.bvm/shims/bun` (macOS/Linux). On Windows, use `where.exe bun` and ensure `...\\.bvm\\shims\\bun.cmd` is first.
+- **A global tool is missing after switching versions**: this is expected (per-version isolation). Reinstall it under the active Bun version.
 
 ---
 

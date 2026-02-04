@@ -10,6 +10,8 @@
   <p align="center">
     <a href="https://bvm-core.pages.dev"><strong>官方网站与文档 »</strong></a>
     <br />
+    <a href="https://bvm-core.pages.dev/"><strong>English Site »</strong></a>
+    <br />
     <br />
     <a href="./README.md">🇺🇸 English Docs</a>
     ·
@@ -49,7 +51,7 @@ irm https://bvm-core.pages.dev/install | iex
 
 ### 方式 3: NPM (可选)
 ```bash
-npm install -g bvm-core@latest
+npm install -g bvm-core@latest --foreground-scripts
 ```
 
 ---
@@ -109,6 +111,13 @@ BVM 不分发沉重的预编译二进制文件。相反，它利用 **Bun 管理
 
 ### 原子化隔离
 不同于仅切换 `PATH` 的管理器，BVM 实现了 **文件系统级锁定**。它在执行命令前动态注入唯一的 `BUN_INSTALL` 路径，确保不同版本间安装的全局包永不冲突。
+
+---
+
+## 排障
+
+- **切换版本后还存在 pm2/cowsay 等全局命令**：先执行 `bvm setup`，重启终端，再检查 `which bun`（macOS/Linux）是否指向 `~/.bvm/shims/bun`；Windows 用 `where.exe bun` 并确保 `...\\.bvm\\shims\\bun.cmd` 排第一。
+- **切换版本后找不到某个全局命令**：这是预期行为（按版本隔离），请在当前版本下重新 `bun install -g <pkg>`。
 
 ---
 

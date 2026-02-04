@@ -3,36 +3,33 @@ layout: home
 
 hero:
   name: "BVM"
-  text: "Bun Version Manager"
-  tagline: "The native, zero-dependency version manager for Bun."
+  text: "Bun 版本管理器"
+  tagline: "原生、零依赖、跨平台的 Bun 版本管理器。"
   image:
     src: /logo.svg
     alt: BVM Logo
   actions:
     - theme: brand
-      text: Get Started
-      link: /guide/getting-started
+      text: 快速开始
+      link: /zh/guide/getting-started
     - theme: alt
-      text: 中文
-      link: /zh/
-    - theme: alt
-      text: View on GitHub
+      text: GitHub
       link: https://github.com/EricLLLLLL/bvm
 
 features:
-  - title: 🚀 Zero Latency
-    details: Shim-based design ensures ~0ms shell startup overhead. No more slow terminal inits.
-  - title: 🛡️ Bunker Architecture
-    details: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
-  - title: 🌏 Smart Mirroring
-    details: Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
+  - title: 🚀 零延迟
+    details: Shim 架构带来近乎 0ms 的 shell 启动开销。
+  - title: 🛡️ 地堡架构
+    details: BVM 自带隔离运行时，即使系统 Bun 缺失/损坏也能自愈工作。
+  - title: 🌏 自动加速
+    details: 自动竞速选择最快 registry（npmmirror / npmjs），安装与下载更快。
 
 ---
 
 <script setup>
 import { ref } from 'vue'
 
-const npmCommand = "npm install -g bvm-core@latest"
+const npmCommand = "npm install -g bvm-core@latest --foreground-scripts"
 const unixCommand = "curl -fsSL https://bvm-core.pages.dev/install | bash"
 const winCommand = "irm https://bvm-core.pages.dev/install | iex"
 const copied = ref('')
@@ -45,49 +42,49 @@ const copy = (text, type) => {
 </script>
 
 <div class="install-section">
-  <h2>One-Line Installation</h2>
+  <h2>一键安装</h2>
 
   <div class="command-box recommended">
     <div class="header">
-      <span class="os">macOS / Linux (Recommended)</span>
-      <span class="badge">Universal</span>
+      <span class="os">macOS / Linux（推荐）</span>
+      <span class="badge">Shell</span>
     </div>
     <div class="code-block">
       <code>{{ unixCommand }}</code>
       <button @click="copy(unixCommand, 'unix')" :class="{ copied: copied === 'unix' }">
-        {{ copied === 'unix' ? 'Copied!' : 'Copy' }}
+        {{ copied === 'unix' ? '已复制' : '复制' }}
       </button>
     </div>
   </div>
 
   <div class="command-box recommended">
     <div class="header">
-      <span class="os">Windows (Recommended)</span>
+      <span class="os">Windows（推荐）</span>
       <span class="badge">PowerShell</span>
     </div>
     <div class="code-block">
       <code>{{ winCommand }}</code>
       <button @click="copy(winCommand, 'win')" :class="{ copied: copied === 'win' }">
-        {{ copied === 'win' ? 'Copied!' : 'Copy' }}
+        {{ copied === 'win' ? '已复制' : '复制' }}
       </button>
     </div>
   </div>
 
   <div class="command-box optional">
     <div class="header">
-      <span class="os">NPM (Optional)</span>
+      <span class="os">NPM（可选）</span>
     </div>
     <div class="code-block">
       <code>{{ npmCommand }}</code>
       <button @click="copy(npmCommand, 'npm')" :class="{ copied: copied === 'npm' }">
-        {{ copied === 'npm' ? 'Copied!' : 'Copy' }}
+        {{ copied === 'npm' ? '已复制' : '复制' }}
       </button>
     </div>
   </div>
 </div>
 
 <div class="demo-section">
-  <h2>Install methods (animated)</h2>
+  <h2>安装方式对比（动画）</h2>
   <video class="demo-video" controls playsinline preload="metadata" src="/media/bvm-install-methods.mp4"></video>
 </div>
 
@@ -102,7 +99,7 @@ const copy = (text, type) => {
 
 .command-box {
   width: 100%;
-  max-width: 600px;
+  max-width: 650px;
   background: var(--vp-c-bg-alt);
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
@@ -116,9 +113,9 @@ const copy = (text, type) => {
 }
 
 .command-box.optional {
-  opacity: 0.85;
-  transform: scale(0.98);
-  margin-top: 1rem;
+  opacity: 0.9;
+  transform: scale(0.99);
+  margin-top: 0.5rem;
 }
 
 .header {
@@ -131,6 +128,11 @@ const copy = (text, type) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.badge {
+  font-size: 0.75rem;
+  color: var(--vp-c-text-2);
 }
 
 .code-block {
@@ -156,34 +158,20 @@ const copy = (text, type) => {
   padding: 0.3rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
   font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .code-block button:hover {
   background: var(--vp-c-brand-1);
-  color: #ffffff;
+  color: white;
 }
 
 .code-block button.copied {
-  background: var(--vp-c-brand-1);
-  color: #fff !important;
-  border-color: var(--vp-c-brand-1);
-}
-
-.badge {
-  font-size: 0.7rem;
-  background: var(--vp-c-brand-1);
-  color: #fff;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-.badge.alternative {
-  background: var(--vp-c-text-3);
+  background: var(--vp-c-brand-2);
+  border-color: var(--vp-c-brand-2);
+  color: white;
 }
 
 .demo-section {
@@ -202,3 +190,4 @@ const copy = (text, type) => {
   background: #000;
 }
 </style>
+
