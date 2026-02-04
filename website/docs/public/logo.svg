@@ -10,32 +10,105 @@
     <filter id="bolt_shadow" x="-50%" y="-50%" width="200%" height="200%">
       <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
     </filter>
+
+    <!-- Soft blur for the hexagon fill -->
+    <filter id="hex_blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.2" />
+    </filter>
+
+    <!-- Ghost blur for the bun inside hex -->
+    <filter id="bun_ghost" x="-30%" y="-30%" width="160%" height="160%">
+      <!-- Blur + soften contrast to feel like a watermark -->
+      <feGaussianBlur stdDeviation="1.4" />
+      <feColorMatrix
+        type="matrix"
+        values="
+          0.95 0    0    0    0.05
+          0    0.95 0    0    0.05
+          0    0    0.95 0    0.04
+          0    0    0    0.96 0
+        "
+      />
+      <feComponentTransfer>
+        <feFuncA type="gamma" amplitude="1.0" exponent="0.70" offset="0.0" />
+      </feComponentTransfer>
+    </filter>
+
+    <clipPath id="hex_clip">
+      <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" />
+    </clipPath>
   </defs>
 
-  <!-- 1. The Bun (Bottom Layer, now with 0.7 opacity) -->
-  <g transform="translate(32, 30) scale(0.75)" opacity="0.7">
-    <!-- Body -->
-    <path d="M48 180 C 48 80, 208 80, 208 180 L 48 180 Z" fill="#ffffff" stroke="#db2777" stroke-width="6" stroke-linejoin="round"/>
-    <!-- Face -->
-    <circle cx="95" cy="140" r="12" fill="#db2777" />
-    <circle cx="161" cy="140" r="12" fill="#db2777" />
-    <path d="M118 155 Q 123 162 128 155 Q 133 162 138 155" stroke="#db2777" stroke-width="5" stroke-linecap="round" fill="none" />
-    <circle cx="75" cy="155" r="15" fill="#fecdd3" />
-    <circle cx="181" cy="155" r="15" fill="#fecdd3" />
+  <!-- 1. The Bun (Ghost Layer inside Hex) -->
+  <g clip-path="url(#hex_clip)" opacity="0.54" filter="url(#bun_ghost)">
+    <g transform="translate(0 -14) translate(128 128) scale(0.95) translate(-128 -128)">
+      <!-- Bun mascot (more lively, small-size friendly) -->
+      <!-- Ears -->
+      <ellipse
+        cx="102"
+        cy="126"
+        rx="16"
+        ry="14"
+        fill="#fff7ed"
+        stroke="#db2777"
+        stroke-opacity="0.65"
+        stroke-width="5"
+      />
+      <ellipse
+        cx="154"
+        cy="126"
+        rx="16"
+        ry="14"
+        fill="#fff7ed"
+        stroke="#db2777"
+        stroke-opacity="0.65"
+        stroke-width="5"
+      />
+
+      <!-- Head -->
+      <path
+        d="M128 104
+           C 84 104, 68 126, 68 156
+           C 68 190, 92 206, 128 206
+           C 164 206, 188 190, 188 156
+           C 188 126, 172 104, 128 104 Z"
+        fill="#fff7ed"
+        stroke="#db2777"
+        stroke-opacity="0.65"
+        stroke-width="6"
+        stroke-linejoin="round"
+      />
+
+      <!-- Face -->
+      <circle cx="112" cy="154" r="7.5" fill="#db2777" fill-opacity="0.85" />
+      <circle cx="144" cy="154" r="7.5" fill="#db2777" fill-opacity="0.85" />
+      <path
+        d="M120 170 Q 124 176 128 170 Q 132 176 136 170"
+        stroke="#db2777"
+        stroke-opacity="0.80"
+        stroke-width="4"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <circle cx="98" cy="172" r="11" fill="#fecdd3" fill-opacity="0.70" />
+      <circle cx="158" cy="172" r="11" fill="#fecdd3" fill-opacity="0.70" />
+    </g>
   </g>
 
   <!-- 2. Pink Hexagon (Middle Layer) -->
   <!-- Fill (Transparent) -->
-  <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" fill="url(#pink_grad)" opacity="0.4" />
+  <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" fill="url(#pink_grad)" opacity="0.4" filter="url(#hex_blur)" />
   <!-- Stroke (Solid) -->
   <path d="M128 24L224 80V176L128 232L32 176V80L128 24Z" stroke="#db2777" stroke-width="8" stroke-linejoin="round" />
 
   <!-- 3. The Lightning Bolt (Top Layer, Extra Large, Pure Gold) -->
   <g filter="url(#bolt_shadow)">
+    <g transform="translate(-20 0)">
       <path d="M175 10 L85 135 H160 L105 250 L210 135 H135 L175 10 Z" 
             fill="#facc15" 
             stroke="#facc15" 
             stroke-width="8" 
             stroke-linejoin="round" />
+    </g>
   </g>
 </svg>

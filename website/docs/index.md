@@ -16,6 +16,9 @@ hero:
       text: 中文
       link: /zh/
     - theme: alt
+      text: Troubleshooting
+      link: /guide/troubleshooting
+    - theme: alt
       text: View on GitHub
       link: https://github.com/EricLLLLLL/bvm
 
@@ -83,6 +86,44 @@ const copy = (text, type) => {
         {{ copied === 'npm' ? 'Copied!' : 'Copy' }}
       </button>
     </div>
+  </div>
+</div>
+
+<div class="compare-section">
+  <h2>Install methods (choose the best fit)</h2>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Best for</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Shell</strong> (macOS/Linux)</td>
+        <td>Most users</td>
+        <td>Fastest mirror + auto setup</td>
+      </tr>
+      <tr>
+        <td><strong>PowerShell</strong> (Windows)</td>
+        <td>Windows dev</td>
+        <td>Same flow as Unix installer</td>
+      </tr>
+      <tr>
+        <td><strong>NPM</strong></td>
+        <td>Already using Node</td>
+        <td>Runs postinstall; reopen terminal may be needed</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout-section">
+  <div class="callout-card">
+    <div class="callout-title">Having trouble with global isolation?</div>
+    <div class="callout-body">If tools still come from <code>~/.bun</code>, run <code>bvm setup</code> and verify <code>which bun</code> points to BVM shims.</div>
+    <a class="callout-link" href="/guide/troubleshooting">Open Troubleshooting →</a>
   </div>
 </div>
 
@@ -184,6 +225,74 @@ const copy = (text, type) => {
 
 .badge.alternative {
   background: var(--vp-c-text-3);
+}
+
+.compare-section {
+  margin-top: 3.5rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.compare-table {
+  width: 100%;
+  max-width: 900px;
+  border-collapse: collapse;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--vp-c-bg-alt);
+}
+
+.compare-table th,
+.compare-table td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--vp-c-divider);
+  vertical-align: top;
+}
+
+.compare-table th {
+  text-align: left;
+  background: var(--vp-c-bg-soft);
+  font-size: 0.9rem;
+}
+
+.compare-table td {
+  font-size: 0.95rem;
+  color: var(--vp-c-text-1);
+}
+
+.callout-section {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.callout-card {
+  width: 100%;
+  max-width: 900px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.callout-title {
+  font-weight: 700;
+  color: var(--vp-c-text-1);
+  margin-bottom: 0.35rem;
+}
+
+.callout-body {
+  color: var(--vp-c-text-2);
+  margin-bottom: 0.6rem;
+}
+
+.callout-link {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
 }
 
 .demo-section {

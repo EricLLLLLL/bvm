@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f9cedf" />
+      <stop offset="1" stop-color="#f472b6" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#bg)" />
+
+  <!-- Simplified lightning bolt (high-contrast, small-size friendly) -->
+  <path
+    d="M21.8 3.2L10.5 16.2H17.8L13.1 28.8L25.0 16.2H18.6L21.8 3.2Z"
+    fill="#facc15"
+    stroke="#eab308"
+    stroke-width="1.1"
+    stroke-linejoin="round"
+  />
+</svg>
+
