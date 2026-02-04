@@ -6,18 +6,14 @@ describe("bun.cmd Interceptor Template", () => {
     const templatePath = join(__dirname, "../src/templates/win/bun.cmd");
     const content = readFileSync(templatePath, "utf-8");
 
-    it("should intercept installation commands", () => {
-        expect(content).toContain('if "%1"=="install" set "NEED_REHASH=1"');
-        expect(content).toContain('if "%1"=="add" set "NEED_REHASH=1"');
-        expect(content).toContain('if "%1"=="upgrade" set "NEED_REHASH=1"');
-        expect(content).toContain('if "%1"=="link" set "NEED_REHASH=1"');
+    it("should delegate to bvm-shim.js", () => {
+        expect(content).toContain('set "BVM_DIR=__BVM_DIR__"');
+        expect(content).toContain('%BVM_DIR%\\bin\\bvm-shim.js');
+        expect(content).toContain('"bun" %*');
     });
 
-    it("should call bvm rehash after successful execution", () => {
-        expect(content).toContain(':check_rehash');
-        expect(content).toContain('if "%EXIT_CODE%"=="0"');
-        expect(content).toContain('if "%NEED_REHASH%"=="1"');
-        // Escape backslashes for the test string literal
-        expect(content).toContain('call "%BVM_DIR%\\bin\\bvm.cmd" rehash --silent');
+    it("should execute the bvm runtime bun binary", () => {
+        expect(content).toContain('%BVM_DIR%\\runtime\\current\\bin\\bun.exe');
+        expect(content).toContain('exit /b %errorlevel%');
     });
 });

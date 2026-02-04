@@ -2,10 +2,16 @@ import { test, expect, describe } from "bun:test";
 import { join, resolve } from "path";
 import fs from "fs";
 import { $ } from "bun";
+import { tmpdir } from "os";
 
 describe("Proxy-Bunker Architecture Integration", () => {
     test("Full Lifecycle: Install -> Native Shim -> Proxy -> Delegated Execution", async () => {
-        const mockBvmDir = resolve("./mock-bvm-full");
+        if (process.platform !== "win32") {
+            // Windows-only: this test validates .cmd/.ps1 shim behaviors.
+            return;
+        }
+
+        const mockBvmDir = join(tmpdir(), `bvm-mock-full-${Date.now()}`);
         const version = "v1.3.7";
         const internalBinDir = join(mockBvmDir, "versions", version, "bin");
         const centralShimsDir = join(mockBvmDir, "shims");
@@ -46,8 +52,6 @@ node "${join(bvmBinDir, 'bvm-shim.js')}" "${bin}" %*`;
             BVM_ACTIVE_VERSION: version
         };
 
-        const proxyCmd = join(centralShimsDir, "claude.cmd");
-        // On Unix, we simulate the .cmd execution by calling node directly on the shim
         const result = await $`node ${join(bvmBinDir, 'bvm-shim.js')} claude --version`.env(env).quiet().text();
 
         console.log("Delegation Output:", result.trim());

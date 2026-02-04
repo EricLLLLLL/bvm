@@ -1,33 +1,19 @@
-import { describe, it, expect, mock, beforeAll } from "bun:test";
+import { describe, it, expect, mock, afterAll } from "bun:test";
 import { generateBunfig } from "../src/commands/install";
 
-// Mock constants to simulate Windows environment
-mock.module("../src/constants", () => ({
-    OS_PLATFORM: "win32",
-    BVM_DIR: "/mock/.bvm",
-    BVM_VERSIONS_DIR: "/mock/.bvm/versions",
-    BVM_CACHE_DIR: "/mock/.bvm/cache",
-    EXECUTABLE_NAME: "bun.exe",
-    IS_TEST_MODE: true,
-    BVM_ALIAS_DIR: "/mock/.bvm/aliases",
-    BVM_CURRENT_DIR: "/mock/.bvm/current",
-}));
-
-// Mock RegistrySpeedTester to return a specific registry
-mock.module("../src/utils/registry-check", () => ({
-    RegistrySpeedTester: {
-        getFastestRegistry: () => Promise.resolve("https://registry.npmmirror.com")
-    },
-    REGISTRIES: []
-}));
-
 describe("Bunfig Generation", () => {
+    const originalWrite = Bun.write;
+
+    afterAll(() => {
+        Bun.write = originalWrite;
+    });
+
     it("should escape backslashes on Windows", async () => {
         const mockWrite = mock(() => Promise.resolve(0));
         Bun.write = mockWrite;
 
         const testPath = "C:\\Users\\User\\.bvm\\versions\\v1.0.0";
-        await generateBunfig(testPath);
+        await generateBunfig(testPath, { platform: "win32", registryUrl: "https://registry.npmmirror.com" });
 
         const callArgs = mockWrite.mock.calls[0];
         const content = callArgs[1] as string;
@@ -42,7 +28,7 @@ describe("Bunfig Generation", () => {
         Bun.write = mockWrite;
 
         const testPath = "C:\\Users\\User\\.bvm\\versions\\v1.0.0";
-        await generateBunfig(testPath);
+        await generateBunfig(testPath, { platform: "win32", registryUrl: "https://registry.npmmirror.com" });
 
         const content = mockWrite.mock.calls[0][1] as string;
         

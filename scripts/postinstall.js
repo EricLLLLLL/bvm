@@ -214,14 +214,46 @@ function main() {
     log('Starting BVM post-install setup...');
     if (!fs.existsSync(path.join(DIST_DIR, 'index.js'))) return;
     [BVM_SRC_DIR, BVM_BIN_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+    
+    // Windows-specific diagnostics
+    if (IS_WINDOWS) {
+        log('Windows detected. Checking PATH configuration...');
+        const userPath = process.env.PATH || '';
+        const bvmInPath = userPath.includes('.bvm\\shims') || userPath.includes('.bvm\\bin');
+        if (!bvmInPath) {
+            console.log('\x1b[33m[bvm] WARNING: BVM directories not found in PATH.\x1b[0m');
+            console.log('\x1b[33m[bvm] After installation, please run: bvm setup\x1b[0m');
+        }
+    }
     const assets = [ { src: 'index.js', dest: path.join(BVM_SRC_DIR, 'index.js') }, { src: 'bvm-shim.sh', dest: path.join(BVM_BIN_DIR, 'bvm-shim.sh') }, { src: 'bvm-shim.js', dest: path.join(BVM_BIN_DIR, 'bvm-shim.js') } ];
     assets.forEach(a => { const srcPath = path.join(DIST_DIR, a.src); if (fs.existsSync(srcPath)) fs.copyFileSync(srcPath, a.dest); });
+
+    function normalizeForCompare(p) {
+        try { return path.resolve(p).replace(/\\/g, '/').toLowerCase(); } catch { return String(p).replace(/\\/g, '/').toLowerCase(); }
+    }
+
+    function isLikelyScript(p) {
+        const lower = p.toLowerCase();
+        if (IS_WINDOWS) {
+            return lower.endsWith('.cmd') || lower.endsWith('.bat') || lower.endsWith('.ps1');
+        }
+        try {
+            const buf = fs.readFileSync(p, { encoding: 'utf-8' });
+            return buf.startsWith('#!');
+        } catch {
+            return false;
+        }
+    }
 
     let hasValidBun = false;
     const checkBun = run(IS_WINDOWS ? 'where' : 'which', ['bun']);
     if (checkBun.status === 0 && checkBun.stdout) {
-        const candidates = checkBun.stdout.trim().split('\n').map(p => p.trim());
-        const binPath = candidates.find(p => !p.includes('.bvm\shims') && !p.includes('.bvm\bin') && !p.includes('.bvm/shims') && !p.includes('.bvm/bin'));
+        const candidates = checkBun.stdout.trim().split(/\r?\n/).map(p => p.trim()).filter(Boolean);
+        const bvmDirNorm = normalizeForCompare(BVM_DIR) + '/';
+
+        // Prefer a bun binary that is NOT under *this* BVM_DIR (fresh install),
+        // but allow other bun installs (including other .bvm locations) to bootstrap.
+        const binPath = candidates.find((p) => !normalizeForCompare(p).startsWith(bvmDirNorm)) || candidates[0];
         if (binPath) {
             log(`System Bun detected at: ${binPath}. Running Smoke Test...`);
             const verRes = run(binPath, ['--version']);
@@ -231,7 +263,10 @@ function main() {
                 const bunkerDir = path.join(BVM_DIR, 'runtime', ver);
                 if (!fs.existsSync(path.join(bunkerDir, 'bin'))) {
                     fs.mkdirSync(path.join(bunkerDir, 'bin'), { recursive: true });
-                    try { fs.copyFileSync(binPath, path.join(bunkerDir, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun')); } catch (e) {}
+                    // Only copy real executables; avoid copying shims/scripts.
+                    if (!isLikelyScript(binPath)) {
+                        try { fs.copyFileSync(binPath, path.join(bunkerDir, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun')); } catch (e) {}
+                    }
                 }
                 const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
                 if (test.status === 0) {
@@ -243,8 +278,23 @@ function main() {
     }
     if (!hasValidBun) hasValidBun = downloadAndInstall();
     createWrappers();
-    run(path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm'), ['setup', '--silent'], { env: Object.assign({}, process.env, { BVM_DIR, BVM_INSTALL_RUNNING: '1' }) });
+    const bvmEntry = path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm');
+    const baseEnv = Object.assign({}, process.env, { BVM_DIR, BVM_INSTALL_RUNNING: '1' });
+    run(bvmEntry, ['setup', '--silent'], { env: baseEnv });
+    // Ensure user shims are updated to the latest template logic (critical for Windows isolation).
+    run(bvmEntry, ['rehash', '--silent'], { env: baseEnv });
     log('🎉 BVM initialized successfully.');
+    
+    // Final Windows instructions
+    if (IS_WINDOWS) {
+        console.log('\n\x1b[36m[bvm] Next steps for Windows:\x1b[0m');
+        console.log('  1. Close and reopen your terminal/PowerShell');
+        console.log('  2. Run: bvm --version');
+        console.log('  3. If command not found, run: bvm setup');
+        console.log('  4. Add BVM to PATH manually if needed:');
+        console.log(`     %USERPROFILE%\\.bvm\\shims`);
+        console.log(`     %USERPROFILE%\\.bvm\\bin`);
+    }
 }
 
 try { main(); } catch (e) { error(e.message); process.exit(1); }

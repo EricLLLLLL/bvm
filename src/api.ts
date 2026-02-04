@@ -1,11 +1,11 @@
 import { join } from 'path';
-import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, IS_TEST_MODE, TEST_REMOTE_VERSIONS, BVM_CACHE_DIR } from './constants';
+import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, isTestMode, TEST_REMOTE_VERSIONS, BVM_CACHE_DIR } from './constants';
 import { normalizeVersion } from './utils';
 import { valid, rcompare, parse, compareParsed } from './utils/semver-lite';
 import { colors } from './utils/ui';
 import { getBunNpmPackage, getBunDownloadUrl } from './utils/npm-lookup';
 import { runCommand } from './helpers/process';
-import { getFastestRegistry, fetchWithTimeout } from './utils/network-utils';
+import { getFastestRegistry, fetchWithTimeout, REGISTRIES } from './utils/network-utils';
 
 const VERSIONS_CACHE_FILE = 'bun-versions.json';
 const VERSIONS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -15,7 +15,7 @@ const VERSIONS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
  * Uses the fastest available registry based on race strategy.
  */
 export async function fetchBunVersionsFromNpm(): Promise<string[]> {
-  if (IS_TEST_MODE) {
+  if (isTestMode()) {
     return [...TEST_REMOTE_VERSIONS];
   }
 
@@ -87,7 +87,7 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
  * Backup method: No API rate limits, no tokens required.
  */
 export async function fetchBunVersionsFromGit(): Promise<string[]> {
-  if (IS_TEST_MODE) {
+  if (isTestMode()) {
     return [...TEST_REMOTE_VERSIONS];
   }
   return new Promise((resolve, reject) => {
@@ -130,7 +130,7 @@ export async function fetchBunVersionsFromGit(): Promise<string[]> {
  * Main function to get Bun versions. Tries NPM, then falls back to Git.
  */
 export async function fetchBunVersions(): Promise<string[]> {
-  if (IS_TEST_MODE) {
+  if (isTestMode()) {
     return [...TEST_REMOTE_VERSIONS];
   }
   // Strategy 1: NPM
@@ -165,8 +165,8 @@ export async function fetchBunVersions(): Promise<string[]> {
  * This avoids fetching the entire version list for exact version installs.
  */
 export async function checkBunVersionExists(version: string): Promise<boolean> {
-  if (IS_TEST_MODE) {
-      return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
+  if (isTestMode()) {
+	      return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
   }
   
   const registry = await getFastestRegistry();
@@ -201,7 +201,7 @@ export async function checkBunVersionExists(version: string): Promise<boolean> {
  * Used to resolve 'latest' without fetching the full version list.
  */
 export async function fetchBunDistTags(): Promise<Record<string, string>> {
-  if (IS_TEST_MODE) return { latest: '1.1.20' };
+  if (isTestMode()) return { latest: '1.1.20' };
 
   const registry = await getFastestRegistry();
   const url = `${registry}/-/package/bun/dist-tags`;
@@ -231,7 +231,7 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
         console.error(colors.red(`Invalid version provided to findBunDownloadUrl: ${targetVersion}`));
         return null;
     }
-    if (IS_TEST_MODE) {
+    if (isTestMode()) {
         return {
           url: `https://example.com/${getBunAssetName(fullVersion)}`,
           foundVersion: fullVersion,
@@ -261,8 +261,12 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
     // Strip 'v' from version for NPM (1.1.0 not v1.1.0)
     const plainVersion = fullVersion.replace(/^v/, '');
     const url = getBunDownloadUrl(npmPackage, plainVersion, registry);
+    
+    // Always provide mirror URL for fallback (use npmmirror as reliable mirror)
+    const mirrorRegistry = REGISTRIES.TAOBAO; // npmmirror
+    const mirrorUrl = getBunDownloadUrl(npmPackage, plainVersion, mirrorRegistry);
 
-    return { url, foundVersion: fullVersion };
+    return { url, mirrorUrl, foundVersion: fullVersion };
 }
 
 /**

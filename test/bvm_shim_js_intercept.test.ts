@@ -7,13 +7,13 @@ describe("bvm-shim.js Interceptor", () => {
     const content = readFileSync(templatePath, "utf-8");
 
     it("should intercept installation commands", () => {
-        expect(content).toContain("const installCmds = ['install', 'i', 'add', 'a', 'remove', 'rm', 'upgrade', 'link', 'unlink'];");
-        expect(content).toContain("if (installCmds.includes(ARGS[0])) isInstall = true;");
+        expect(content).toContain("const installCmds = ['install', 'i', 'add', 'a', 'remove', 'rm', 'uninstall', 'upgrade', 'link', 'unlink'];");
+        expect(content).toContain("needRehash = hasGlobalFlag;");
     });
 
-    it("should trigger background rehash", () => {
-        expect(content).toContain("spawn(bvmCmd, ['rehash', '--silent']");
-        expect(content).toContain("detached: true");
-        expect(content).toContain("stdio: 'ignore'");
+    it("should trigger rehash after successful global install", () => {
+        expect(content).toContain("spawnSync(bvmCmd, ['rehash', '--silent']");
+        expect(content).toContain("Updating command registry");
+        expect(content).toContain("New commands are now available");
     });
 });

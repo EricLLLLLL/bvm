@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { BVM_CACHE_DIR, IS_TEST_MODE } from '../constants';
+import { BVM_CACHE_DIR, isTestMode } from '../constants';
 import { pathExists, readTextFile, writeTextFile, ensureDir } from '../utils';
 import { fetchLatestBvmReleaseInfo } from '../api';
 import { gt } from './semver-lite';
@@ -14,7 +14,7 @@ const CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
  * This is non-blocking and writes the result to a local cache.
  */
 export async function triggerUpdateCheck(): Promise<void> {
-    if (process.env.CI || IS_TEST_MODE) return;
+    if (process.env.CI || isTestMode()) return;
 
     const cachePath = join(BVM_CACHE_DIR, UPDATE_CACHE_FILE);
     
@@ -47,7 +47,7 @@ export async function triggerUpdateCheck(): Promise<void> {
  * Returns a formatted notification string if an update is available.
  */
 export async function getUpdateNotification(): Promise<string | null> {
-    if (process.env.CI || IS_TEST_MODE) return null;
+    if (process.env.CI || isTestMode()) return null;
 
     const currentVersion = packageJson.version;
     const cachePath = join(BVM_CACHE_DIR, UPDATE_CACHE_FILE);

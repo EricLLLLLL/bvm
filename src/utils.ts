@@ -1,4 +1,8 @@
-import { readdir, mkdir, stat, symlink, unlink, rm, readlink, realpath } from 'fs/promises';
+import { readdir, mkdir, stat as statImpl, symlink, unlink, rm, readlink, realpath, lstat as lstatImpl } from 'fs/promises';
+
+// Re-export stat functions for compatibility
+export const stat = statImpl;
+export const lstat = lstatImpl;
 import { join, dirname, basename } from 'path';
 import { valid, satisfies, rcompare } from './utils/semver-lite';
 import { BVM_VERSIONS_DIR } from './constants';

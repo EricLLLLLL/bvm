@@ -4,50 +4,66 @@ import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
 import { pathExists, normalizeVersion } from '../utils';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
-import { runCommand } from '../helpers/process';
+import { spawn } from 'child_process';
 
 /**
- * Executes an arbitrary command using a specific Bun version's environment.
- * This sets up the PATH to prioritize the specified Bun version.
- * @param targetVersion The Bun version whose environment to use.
- * @param command The command to execute (e.g., 'bun', 'node', 'npm', 'yarn', 'ls').
- * @param args Additional arguments for the command.
+ * Executes a command using a specific Bun version.
+ * @param targetVersion The Bun version to use.
+ * @param command The command to execute.
+ * @param args Additional arguments to pass to the command.
  */
 export async function execWithBunVersion(targetVersion: string, command: string, args: string[]): Promise<void> {
   await withSpinner(
-    `Preparing environment for Bun ${targetVersion} to execute '${command}'...`,
+    `Preparing to execute with Bun ${targetVersion}...`,
     async (spinner) => {
     // Resolve alias or 'latest' or 'current'
     let resolvedVersion = await resolveLocalVersion(targetVersion);
+    
     if (!resolvedVersion) {
         resolvedVersion = normalizeVersion(targetVersion);
     }
 
     const installPath = join(BVM_VERSIONS_DIR, resolvedVersion);
     const installBinPath = join(installPath, 'bin');
-    const bunExecutablePath = join(installBinPath, EXECUTABLE_NAME); // Path to the bun executable itself
+    const bunExecutablePath = join(installBinPath, EXECUTABLE_NAME);
 
-    // 1. Check if the specified Bun version is installed locally
-      if (!(await pathExists(bunExecutablePath))) {
-        spinner.fail(colors.red(`Bun ${targetVersion} (resolved: ${resolvedVersion}) is not installed.`));
+    // Check if the version is installed locally
+    if (!(await pathExists(bunExecutablePath))) {
+      spinner.fail(colors.red(`Bun ${targetVersion} (resolved: ${resolvedVersion}) is not installed.`));
       console.log(colors.yellow(`You can install it using: bvm install ${targetVersion}`));
       return;
     }
 
     spinner.stop();
-    // spinner.update() here was useless because stop() clears the line immediately.
 
-    try {
-      await runCommand([command, ...args], {
+    // Execute the command with the specified Bun version in PATH
+    const env = {
+      ...process.env,
+      PATH: `${installBinPath}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}`,
+      BUN_INSTALL: installPath,
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      const child = spawn(command, args, {
+        stdio: 'inherit',
+        shell: true,
+        env,
         cwd: process.cwd(),
-        prependPath: installBinPath,
       });
-      process.exit(0);
-    } catch (error: any) {
-      console.error(error.message);
-      process.exit(1);
-    }
+
+      child.on('exit', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Command exited with code ${code}`));
+        }
+      });
+
+      child.on('error', (err) => {
+        reject(err);
+      });
+    });
     },
-    { failMessage: `Failed to execute command with Bun ${targetVersion}'s environment` },
+    { failMessage: `Failed to execute command with Bun ${targetVersion}` },
   );
 }

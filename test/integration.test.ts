@@ -77,7 +77,8 @@ describe("CLI Integration Suite", () => {
 
     const { exitCode, allOutput } = await runBvm(["install"], rcInstallDir);
     expect(exitCode).toBe(0);
-    expect(allOutput).toContain("v1.0.0 installed");
+    expect(allOutput).toContain("v1.0.0");
+    expect(allOutput).toContain("physically installed");
 
     const installedBinPath = join(TEST_BVM_DIR, "versions", "v1.0.0", "bin", "bun");
     expect(await Bun.file(installedBinPath).exists()).toBe(true);

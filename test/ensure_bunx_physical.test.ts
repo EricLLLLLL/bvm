@@ -1,36 +1,50 @@
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
 import { join } from "path";
-import { rm, mkdir, lstat } from "fs/promises";
-import { EXECUTABLE_NAME, BVM_VERSIONS_DIR } from "../src/constants";
-import { installBunVersion } from "../src/commands/install";
-import { pathExists, normalizeVersion } from "../src/utils";
+import { tmpdir } from "os";
+import { existsSync } from "fs";
 
 describe("Physical bunx existence", () => {
     const TEST_VERSION = "1.1.20";
-    const versionDir = join(BVM_VERSIONS_DIR, `v${TEST_VERSION}`);
+    const normalized = `v${TEST_VERSION}`;
 
     beforeEach(async () => {
-        // Ensure clean state
-        process.env.BVM_TEST_MODE = "true";
-        await rm(versionDir, { recursive: true, force: true });
+        // no-op
     });
 
     afterEach(async () => {
-        await rm(versionDir, { recursive: true, force: true });
+        // no-op
     });
 
     test("should ensure bunx exists after installation", async () => {
-        await installBunVersion(TEST_VERSION);
-        
-        const bunPath = join(versionDir, "bin", EXECUTABLE_NAME);
-        const bunxName = EXECUTABLE_NAME.replace("bun", "bunx");
+        const tempHome = join(tmpdir(), `bvm-bunx-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+        const bvmDir = join(tempHome, ".bvm");
+        const versionDir = join(bvmDir, "versions", normalized);
+        const bunName = process.platform === "win32" ? "bun.exe" : "bun";
+        const bunxName = process.platform === "win32" ? "bunx.exe" : "bunx";
+
+        const scriptPath = join(process.cwd(), "src/index.ts");
+        const bunExe = process.execPath;
+        const proc = Bun.spawn([bunExe, "run", scriptPath, "install", TEST_VERSION], {
+            env: {
+                ...process.env,
+                HOME: tempHome,
+                USERPROFILE: tempHome,
+                BVM_DIR: bvmDir,
+                BVM_TEST_MODE: "true",
+                NO_COLOR: "1",
+            },
+            stdout: "pipe",
+            stderr: "pipe",
+        });
+        await proc.exited;
+        expect(proc.exitCode).toBe(0);
+
+        const bunPath = join(versionDir, "bin", bunName);
         const bunxPath = join(versionDir, "bin", bunxName);
 
-        expect(await pathExists(bunPath)).toBe(true);
-        expect(await pathExists(bunxPath)).toBe(true);
-        
-        // Verify it's either a symlink or a file
-        const stats = await lstat(bunxPath);
-        expect(stats.isFile() || stats.isSymbolicLink()).toBe(true);
+        expect(existsSync(bunPath)).toBe(true);
+        expect(existsSync(bunxPath)).toBe(true);
+
+        await Bun.$`rm -rf ${tempHome}`.nothrow();
     }, 30000);
 });

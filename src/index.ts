@@ -144,7 +144,8 @@ async function main() {
   const app = new App('bvm');
 
   app.command('rehash', 'Regenerate shims for all installed binaries')
-    .action(async () => { await rehash(); });
+    .option('--silent', 'Suppress output')
+    .action(async (_args, flags) => { await rehash({ silent: flags.silent }); });
 
   app.command('install [version]', 'Install a Bun version and set as current')
     .option('--global, -g', 'Install as a global tool (not just default)')
@@ -160,7 +161,14 @@ async function main() {
     .action(async () => { await listRemoteVersions(); });
 
   app.command('use <version>', 'Switch the active Bun version immediately (all terminals)')
-    .action(async (args) => { if (!args[0]) throw new Error('Version is required'); await useBunVersion(args[0]); });
+    .option('--fix-path', 'Auto-run setup if shims not active')
+    .option('--yes, -y', 'Assume yes for prompts')
+    .action(async (args, flags) => {
+      if (!args[0]) throw new Error('Version is required');
+      const fixPath = !!(flags as any).fixPath || !!(flags as any)['fix-path'];
+      const yes = !!(flags as any).yes || !!(flags as any).y;
+      await useBunVersion(args[0], { fixPath, yes });
+    });
 
   app.command('shell <version>', 'Switch Bun version for the current shell session')
     .action(async (args) => { if (!args[0]) throw new Error('Version is required'); await shellBunVersion(args[0]); });

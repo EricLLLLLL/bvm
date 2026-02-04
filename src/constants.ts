@@ -6,7 +6,11 @@ import { spawnSync } from 'child_process';
 // Platform detection
 export const OS_PLATFORM = process.platform;
 export const IS_TEST_MODE = process.env.BVM_TEST_MODE === 'true';
-export const TEST_REMOTE_VERSIONS = ['v1.3.4', 'v1.2.23', 'v1.0.0', 'bun-v1.4.0-canary'];
+export const TEST_REMOTE_VERSIONS = ['v1.3.4', 'v1.2.23', 'v1.1.21', 'v1.1.20', 'v1.1.0', 'v1.0.0', 'bun-v1.4.0-canary'];
+
+export function isTestMode(): boolean {
+    return process.env.BVM_TEST_MODE === 'true';
+}
 
 function getNativeArch() {
     const arch = process.arch;
@@ -49,6 +53,7 @@ export function getBvmDir() {
 export const BVM_DIR = getBvmDir();
 export const BVM_SRC_DIR = join(BVM_DIR, 'src');
 export const BVM_VERSIONS_DIR = join(BVM_DIR, 'versions');
+export const BVM_RUNTIME_DIR = join(BVM_DIR, 'runtime');
 export const BVM_BIN_DIR = join(BVM_DIR, 'bin');
 export const BVM_SHIMS_DIR = join(BVM_DIR, 'shims');
 export const BVM_CURRENT_DIR = join(BVM_DIR, 'current');

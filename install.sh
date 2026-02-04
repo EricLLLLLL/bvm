@@ -33,7 +33,8 @@ error() { echo -e "${RED}✖${RESET} $1"; exit 1; }
 download_file() {
     local url="$1" dest="$2" desc="$3"
     echo -n -e "${BLUE}ℹ${RESET} $desc "
-    curl -L -s -S -f "$url" -o "$dest" &
+    # Add -C - for resume support and increase max-time to 10 minutes
+    curl -L -C - --connect-timeout 20 --max-time 600 --retry 3 -s -S -f "$url" -o "$dest" &
     local pid=$!
     local delay=0.1
     local spinstr='|/-\'
@@ -343,4 +344,4 @@ case "$CURRENT_SHELL" in
   fish) DP="$HOME/.config/fish/config.fish" ;; 
   *) DP="$HOME/.profile" ;; 
 esac
-echo -e "\nTo start using bvm:\n  ${YELLOW}1. Refresh your shell:${RESET}\n     source $DP\n\n  ${YELLOW}2. Verify:${RESET}\n     bvm --version\n\n  ${YELLOW}3. Note:${RESET}\n     Global packages (bun install -g) are isolated per version.\n     Ensure ~/.bvm/current/bin is in your PATH."
+echo -e "\nTo start using bvm:\n  ${YELLOW}1. Refresh your shell:${RESET}\n     source $DP\n\n  ${YELLOW}2. Verify:${RESET}\n     bvm --version\n\n  ${YELLOW}3. Note:${RESET}\n     Global packages (bun install -g) are isolated per version.\n     BVM shims are used to proxy all commands safely."

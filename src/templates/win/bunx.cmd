@@ -1,11 +1,10 @@
 @echo off
 set "BVM_DIR=__BVM_DIR__"
-set "BUN_INSTALL=%BVM_DIR%\current"
-
-:: On Windows, bunx is always 'bun x'
-if not exist ".bvmrc" (
-    "%BVM_DIR%\current\bin\bun.exe" x %*
+:: Always delegate to JS shim to guarantee version isolation.
+if exist "%BVM_DIR%\runtime\current\bin\bun.exe" (
+    "%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bunx" %*
     exit /b %errorlevel%
+) else (
+    echo BVM Error: Bun runtime not found at "%BVM_DIR%\runtime\current\bin\bun.exe"
+    exit /b 1
 )
-
-"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bunx" %*

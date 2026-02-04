@@ -85,12 +85,17 @@ async function fixCmdShim(filePath: string) {
         // Try to blindly replace the relative prefix.
         // It's risky to regex replace all `\..\`
         
-        // Let's iterate likely relative paths
+        // Bun generates shims with pattern: %~dp0..\node_modules (NO backslash after ~dp0)
+        // We must match BOTH variations for compatibility
         const candidates = [
-            '%~dp0\\..\\node_modules',
+            '%~dp0\\..\\node_modules',      // With backslash (older/lucky pattern)
             '%dp0%\\..\\node_modules',
+            '%~dp0..\\node_modules',        // Without backslash (actual bun pattern!)
+            '%dp0%..\\node_modules',
             '%~dp0\\..\\install\\global\\node_modules',
-            '%dp0%\\..\\install\\global\\node_modules'
+            '%dp0%\\..\\install\\global\\node_modules',
+            '%~dp0..\\install\\global\\node_modules',
+            '%dp0%..\\install\\global\\node_modules'
         ];
         
         let fixed = false;

@@ -1,131 +1,139 @@
-// scripts/verify-e2e-npm.ts
-import { $ } from "bun";
-import { join } from "path";
-import { homedir } from "os";
-import { existsSync, readdirSync, mkdirSync, writeFileSync, chmodSync, rmSync } from "fs";
-
-const HOME = homedir();
-const BVM_DIR = join(HOME, ".bvm");
-const SHIMS_DIR = join(BVM_DIR, "shims");
-const BIN_DIR = join(BVM_DIR, "bin");
+import { $ } from 'bun';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { existsSync, readdirSync, rmSync, mkdirSync, writeFileSync } from 'fs';
+import { randomBytes } from 'crypto';
 
 export class E2ESandbox {
-    public bvmDir: string;
-    public shimsDir: string;
-    public binDir: string;
-    private tempHome: string;
+  public homeDir: string;
+  public bvmDir: string;
+  public npmPrefix: string;
 
-    constructor() {
-        this.tempHome = join(process.cwd(), `.tmp-npm-verify-${Date.now()}`);
-        this.bvmDir = join(this.tempHome, ".bvm");
-        this.shimsDir = join(this.bvmDir, "shims");
-        this.binDir = join(this.bvmDir, "bin");
-        if (!existsSync(this.tempHome)) mkdirSync(this.tempHome, { recursive: true });
-    }
+  constructor() {
+    const id = randomBytes(4).toString('hex');
+    this.homeDir = join(tmpdir(), `bvm-e2e-npm-${id}`);
+    this.bvmDir = join(this.homeDir, '.bvm');
+    this.npmPrefix = join(this.homeDir, '.npm-prefix');
+  }
 
-    async installLocal() {
-        // Mock implementation for testing safety/upgrade logic without full NPM network hit
-        if (!existsSync(this.bvmDir)) mkdirSync(this.bvmDir, { recursive: true });
-        if (!existsSync(this.shimsDir)) mkdirSync(this.shimsDir, { recursive: true });
-        if (!existsSync(this.binDir)) mkdirSync(this.binDir, { recursive: true });
-        
-        const bvmBin = join(this.binDir, "bvm");
-        const bvmSrcDir = join(this.bvmDir, "src");
-        if (!existsSync(bvmSrcDir)) mkdirSync(bvmSrcDir, { recursive: true });
-        
-        // Marker for NPM install
-        const marker = join(this.bvmDir, ".npm-install");
-        writeFileSync(marker, "true");
-        
-        // Dummy wrapper
-        writeFileSync(bvmBin, `#!/bin/bash\nexport BVM_INSTALL_SOURCE="npm"\nexec ${process.execPath} ${join(this.bvmDir, "src", "index.js")} "$@"\n`);
-        chmodSync(bvmBin, 0o755);
-        
-        // Dummy source
-        writeFileSync(join(bvmSrcDir, "index.js"), "import '...'; console.log('bvm')");
-    }
+  env(extra: Record<string, string> = {}) {
+    const npmBinDir = process.platform === 'win32' ? this.npmPrefix : join(this.npmPrefix, 'bin');
+    const sep = process.platform === 'win32' ? ';' : ':';
+    // Make sure BVM shims/bin take precedence in THIS process too (avoid interactive prompts).
+    const bvmShimDir = join(this.bvmDir, 'shims');
+    const bvmBinDir = join(this.bvmDir, 'bin');
+    const path = `${bvmShimDir}${sep}${bvmBinDir}${sep}${npmBinDir}${sep}${process.env.PATH || ''}`;
+    return {
+      ...process.env,
+      HOME: this.homeDir,
+      USERPROFILE: this.homeDir,
+      BVM_DIR: this.bvmDir,
+      CI: '1',
+      npm_config_prefix: this.npmPrefix,
+      NPM_CONFIG_PREFIX: this.npmPrefix,
+      PATH: path,
+      NO_COLOR: '1',
+      ...extra,
+    };
+  }
 
-    cleanup() {
-        if (existsSync(this.tempHome)) rmSync(this.tempHome, { recursive: true, force: true });
-    }
+  cleanup() {
+    try { rmSync(this.homeDir, { recursive: true, force: true }); } catch {}
+  }
 }
 
 async function runProtocol() {
-    console.log("\n🚀 Starting E2E NPM Verification Protocol...\n");
+  console.log('\n🚀 Starting E2E NPM Verification (Sandboxed)...\n');
 
-    try {
-        // 1. Cleanup
-        console.log(`🧹 Cleaning up environment (${BVM_DIR})...`);
-        await $`rm -rf ${BVM_DIR}`;
-        await $`rm -f bvm-core-*.tgz`.nothrow(); // Use nothrow to avoid error if no tgz exists
+  const sandbox = new E2ESandbox();
+  const env = sandbox.env();
+  const shimsDir = join(sandbox.bvmDir, 'shims');
+  const binDir = join(sandbox.bvmDir, 'bin');
+  const bunShim = join(shimsDir, process.platform === 'win32' ? 'bun.cmd' : 'bun');
+  const bvmCmd = join(binDir, process.platform === 'win32' ? 'bvm.cmd' : 'bvm');
 
-        // 2. Build & Pack
-        console.log("📦 Building and Packing...");
-        // Using simple shell command to ensure npm run build executes correctly
-        await $`npm run build`.quiet(); 
-        await $`npm pack`.quiet();
+  try {
+    // 1) Clean sandbox + old tarballs in repo root
+    await $`rm -rf ${sandbox.homeDir}`.nothrow();
+    await $`rm -f bvm-core-*.tgz`.nothrow();
 
-        // Find the tarball
-        const files = readdirSync(process.cwd());
-        const tarball = files.find(f => f.startsWith("bvm-core-") && f.endsWith(".tgz"));
-        if (!tarball) throw new Error("Tarball not found after packing!");
-        console.log(`📝 Found tarball: ${tarball}`);
+    // 2) Build + Pack
+    console.log('📦 Building and packing...');
+    await $`bun run build`.env(env).quiet();
+    await $`bun pm pack`.env(env).quiet();
 
-        // 3. Install
-        console.log("💿 Installing globally via NPM (this may take a moment)...");
-        // We capture stdout/stderr to show it only on failure, or stream it?
-        // Let's stream it to be transparent as requested.
-        await $`npm install -g ./${tarball} --foreground-scripts --force`;
+    const files = readdirSync(process.cwd());
+    const tarball = files.find((f) => f.startsWith('bvm-core-') && f.endsWith('.tgz'));
+    if (!tarball) throw new Error('Tarball not found after packing.');
+    console.log(`📝 Found tarball: ${tarball}`);
 
-        // 4. Verify Physical Structure
-        console.log("🔍 Verifying filesystem structure...");
-        
-        if (!existsSync(SHIMS_DIR)) throw new Error(`❌ Shims directory missing: ${SHIMS_DIR}`);
-        if (!existsSync(join(SHIMS_DIR, "bun"))) throw new Error(`❌ Bun shim missing`);
-        if (!existsSync(join(BIN_DIR, "bvm"))) throw new Error(`❌ BVM binary missing`);
+    // 3) Install into sandboxed npm prefix (NOT system-global)
+    console.log('💿 Installing via npm (sandbox prefix)...');
+    await $`npm install -g ./${tarball} --foreground-scripts --force`.env(env);
 
-        console.log("   ✅ Shims directory exists.");
-        console.log("   ✅ Bun shim exists.");
+    // 4) Verify filesystem structure
+    console.log('🔍 Verifying filesystem structure...');
+    if (!existsSync(shimsDir)) throw new Error(`Shims directory missing: ${shimsDir}`);
+    if (!existsSync(binDir)) throw new Error(`Bin directory missing: ${binDir}`);
+    if (!existsSync(bunShim)) throw new Error(`Bun shim missing: ${bunShim}`);
+    if (!existsSync(bvmCmd)) throw new Error(`BVM wrapper missing: ${bvmCmd}`);
 
-        // 5. Functional Verification
-        console.log("🧪 Verifying BVM functionality...");
-        const bvmExec = join(BIN_DIR, "bvm");
-        const output = await $`${bvmExec} ls`.text();
-        console.log(output.trim());
-
-        if (!output.includes("Locally installed Bun versions")) {
-            throw new Error("❌ 'bvm ls' output is unexpected.");
-        }
-
-        // 6. Global Package Isolation Verification (NEW)
-        console.log("📦 Verifying Global Package Isolation (Option B)...");
-        // Ensure we are using a version
-        await $`${bvmExec} use default`.quiet();
-        // Simulate bun install -g
-        console.log("   Installing dummy global package...");
-        await $`${join(SHIMS_DIR, "bun")} install -g fake-pkg-test-bvm`.quiet().catch(() => {}); 
-        
-        const currentBin = join(BVM_DIR, "current", "bin");
-        console.log(`   Checking if current bin path is correctly set up: ${currentBin}`);
-        
-        // We check if current/bin is in the PATH reported by setup
-        const zshrc = await $`cat ${join(HOME, ".zshrc")}`.text();
-        if (!zshrc.includes("current/bin")) {
-            throw new Error("❌ .zshrc does not contain 'current/bin' in PATH");
-        }
-
-        console.log("\n✅ \x1b[32mE2E VERIFICATION PASSED!\x1b[0m");
-        console.log("   BVM is installed, shims exist, and CLI works.");
-        console.log(`   Run 'source ~/.zshrc' (or your shell config) to start using it.`);
-
-    } catch (e) {
-        console.error("\n💥 \x1b[31mVERIFICATION FAILED:\x1b[0m");
-        console.error(e);
-        process.exit(1);
+    // 5) Verify CLI runs
+    console.log('🧪 Verifying bvm CLI...');
+    const out = await $`${bvmCmd} ls`.env(env).text();
+    if (!out.includes('Locally installed Bun versions')) {
+      throw new Error(`Unexpected 'bvm ls' output:\n${out}`);
     }
+
+    // 6) Verify global package isolation (no ~/.bun in this sandbox HOME)
+    console.log('📦 Verifying global install isolation (no ~/.bun leakage)...');
+    await $`${bvmCmd} use default`.env(env).quiet();
+
+    // Avoid network dependency for release verification: install a local dummy package globally.
+    const localPkgDir = join(sandbox.homeDir, 'local-global-pkg');
+    mkdirSync(localPkgDir, { recursive: true });
+    writeFileSync(
+      join(localPkgDir, 'package.json'),
+      JSON.stringify(
+        {
+          name: 'bvm-local-global-pkg',
+          version: '0.0.0',
+          bin: {
+            'bvm-local-cmd': 'cli.js',
+          },
+        },
+        null,
+        2,
+      ) + '\n',
+      'utf-8',
+    );
+    writeFileSync(
+      join(localPkgDir, 'cli.js'),
+      '#!/usr/bin/env node\nconsole.log("bvm-local-cmd ok");\n',
+      'utf-8',
+    );
+
+    await $`${bunShim} install -g ${localPkgDir}`.env(env);
+    if (existsSync(join(sandbox.homeDir, '.bun'))) {
+      throw new Error(`Detected unexpected ~/.bun directory inside sandbox HOME: ${join(sandbox.homeDir, '.bun')}`);
+    }
+    // Ensure new command is exposed via shims after install
+    await $`${bvmCmd} rehash --silent`.env(env).quiet();
+    const localCmdShim = join(shimsDir, process.platform === 'win32' ? 'bvm-local-cmd.cmd' : 'bvm-local-cmd');
+    if (!existsSync(localCmdShim)) {
+      throw new Error(`Global command shim missing after local install: ${localCmdShim}`);
+    }
+
+    console.log('\n✅ E2E NPM verification passed (sandboxed).');
+  } finally {
+    sandbox.cleanup();
+  }
 }
 
-// Check if this script is being run directly
 if (import.meta.main) {
-    runProtocol();
+  runProtocol().catch((e) => {
+    console.error('\n💥 E2E NPM verification failed:');
+    console.error(e);
+    process.exit(1);
+  });
 }

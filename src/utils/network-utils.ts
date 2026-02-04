@@ -1,4 +1,44 @@
 import { colors } from './ui';
+import { join } from 'path';
+import { homedir } from 'os';
+import { pathExists, ensureDir } from '../utils';
+
+const BVM_DIR = process.env.BVM_DIR || join(homedir(), '.bvm');
+const REGISTRY_CACHE_FILE = join(BVM_DIR, 'cache', 'registry-cache.json');
+const REGISTRY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Load cached registry from disk
+ */
+async function loadCachedRegistry(): Promise<{ registry: string; timestamp: number } | null> {
+  try {
+    if (!await pathExists(REGISTRY_CACHE_FILE)) return null;
+    const content = await Bun.file(REGISTRY_CACHE_FILE).text();
+    const data = JSON.parse(content);
+    // Check if cache is still valid
+    if (Date.now() - data.timestamp < REGISTRY_CACHE_TTL) {
+      return data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save cached registry to disk
+ */
+async function saveCachedRegistry(registry: string): Promise<void> {
+  try {
+    await ensureDir(join(BVM_DIR, 'cache'));
+    await Bun.write(REGISTRY_CACHE_FILE, JSON.stringify({
+      registry,
+      timestamp: Date.now()
+    }));
+  } catch {
+    // Ignore cache write errors
+  }
+}
 
 /**
  * Enhanced fetch with timeout support.
