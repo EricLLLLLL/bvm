@@ -13,6 +13,8 @@ import BVM_BUN_CMD_TEMPLATE from "./win/bun.cmd" with { type: "text" };
 import BVM_BUNX_CMD_TEMPLATE from "./win/bunx.cmd" with { type: "text" };
 // @ts-ignore
 import BVM_WRAPPER_CMD_TEMPLATE from "./win/bvm.cmd" with { type: "text" };
+// @ts-ignore
+import BVM_INIT_PS1_TEMPLATE from "./win/bvm-init.ps1" with { type: "text" };
 
 export {
     BVM_INIT_SH_TEMPLATE,
@@ -21,5 +23,6 @@ export {
     BVM_SHIM_JS_TEMPLATE,
     BVM_BUN_CMD_TEMPLATE,
     BVM_BUNX_CMD_TEMPLATE,
-    BVM_WRAPPER_CMD_TEMPLATE
+    BVM_WRAPPER_CMD_TEMPLATE,
+    BVM_INIT_PS1_TEMPLATE
 };

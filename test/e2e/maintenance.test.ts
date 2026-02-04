@@ -41,8 +41,8 @@ describe("BVM E2E: Maintenance Commands", () => {
     it("should run 'rehash'", async () => {
         const result = await runBvm(["rehash"], sandboxDir);
         expect(result.exitCode).toBe(0);
-        expect(result.all).toContain("Regenerated");
-        expect(result.all).toContain("shims");
+        expect(result.all).toContain("Managed");
+        expect(result.all).toContain("proxies");
     });
 
     it("should run 'deactivate'", async () => {

@@ -47,10 +47,10 @@ const runGit = (...args: string[]) => run('git', args);
     
     console.log('\n🧪 Running Unit & Integration Tests...');
     // Run main test suite (excludes test/isolated/ and test/e2e/ by default glob behavior)
-    run('bash', ['-c', `${BUN_EXE} test test/*.test.ts`]);
+    run('bash', ['-c', `${BUN_EXE} test ./test/*.test.ts`]);
     
     console.log('\n🧪 Running Isolated Tests...');
-    run('bash', ['-c', `${BUN_EXE} test test/isolated/*.test.ts`]);
+    run('bash', ['-c', `${BUN_EXE} test ./test/isolated/*.test.ts`]);
 
     console.log('\n🛡️ Running E2E NPM Verification...');
     run(BUN_EXE, ['run', 'test:e2e:npm']);
@@ -93,7 +93,7 @@ const runGit = (...args: string[]) => run('git', args);
 
     // --- Build with new version ---
     console.log(`\n🏗️  Building BVM v${newVersion}...`);
-    run('bun', ['run', 'build']);
+    run(BUN_EXE, ['run', 'build']);
 
     // --- Update hardcoded default version in install scripts (Cross-platform) ---
     console.log(`\n📝 Updating hardcoded default version to ${tagName}...`);
@@ -136,7 +136,7 @@ const runGit = (...args: string[]) => run('git', args);
 
     // --- Sync to Website ---
     console.log(`\n🌐 Syncing documentation to website...`);
-    run('bun', ['run', 'website/sync-docs.ts']);
+    run(BUN_EXE, ['run', 'website/sync-docs.ts']);
 
     // Commit
     runGit('add', 'package.json', 'package-lock.json', 'install.sh', 'install.ps1', 'website/docs/guide', ...updatedDocs);

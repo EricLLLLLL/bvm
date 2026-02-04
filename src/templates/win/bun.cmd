@@ -1,12 +1,12 @@
 @echo off
-set "BVM_DIR=%USERPROFILE%\.bvm"
-set "BUN_INSTALL=%BVM_DIR%\current"
-
-:: Fast-path: If no .bvmrc in current directory, run default directly
-if not exist ".bvmrc" (
-    "%BVM_DIR%\runtime\current\bin\bun.exe" %*
+set "BVM_DIR=__BVM_DIR__"
+:: Always delegate to JS shim to guarantee version isolation:
+:: - Correct per-version BUN_INSTALL / bunfig.toml injection
+:: - Consistent behavior with/without .bvmrc
+if exist "%BVM_DIR%\runtime\current\bin\bun.exe" (
+    "%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bun" %*
     exit /b %errorlevel%
+) else (
+    echo BVM Error: Bun runtime not found at "%BVM_DIR%\runtime\current\bin\bun.exe"
+    exit /b 1
 )
-
-:: Slow-path: Hand over to JS shim for version resolution
-"%BVM_DIR%\runtime\current\bin\bun.exe" "%BVM_DIR%\bin\bvm-shim.js" "bun" %*

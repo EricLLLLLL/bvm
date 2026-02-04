@@ -1,6 +1,6 @@
 import { colors } from '../utils/ui';
 import { valid, gt } from '../utils/semver-lite';
-import { IS_TEST_MODE, BVM_DIR, OS_PLATFORM, BVM_FINGERPRINTS_FILE } from '../constants';
+import { isTestMode, BVM_DIR, OS_PLATFORM, BVM_FINGERPRINTS_FILE } from '../constants';
 import { fetchLatestBvmReleaseInfo } from '../api';
 import { fetchWithTimeout, getFastestRegistry } from '../utils/network-utils';
 import packageJson from '../../package.json';
@@ -42,7 +42,7 @@ export async function upgradeBvm(): Promise<void> {
     await withSpinner(
       'Checking for BVM updates...',
       async (spinner) => {
-        const latest = IS_TEST_MODE
+        const latest = isTestMode()
           ? {
               version: process.env.BVM_TEST_LATEST_VERSION?.replace('v', '') || CURRENT_VERSION,
               tarball: 'https://example.com/bvm-test.tgz',
@@ -67,7 +67,7 @@ export async function upgradeBvm(): Promise<void> {
         }
 
         spinner.text = `Updating BVM to v${latestVersion}...`;
-        if (IS_TEST_MODE && !process.env.BVM_TEST_REAL_UPGRADE) {
+        if (isTestMode() && !process.env.BVM_TEST_REAL_UPGRADE) {
           spinner.succeed(colors.green('BVM updated successfully (test mode).'));
           return;
         }
@@ -79,7 +79,7 @@ export async function upgradeBvm(): Promise<void> {
         
         const tarballPath = join(tempDir, 'bvm-core.tgz');
         
-        if (IS_TEST_MODE) {
+        if (isTestMode()) {
             // Mock tarball creation for tests
             await writeTextFile(tarballPath, 'mock-tarball');
             // Mock extraction result
@@ -146,4 +146,3 @@ export async function upgradeBvm(): Promise<void> {
     throw new Error(`Failed to upgrade BVM: ${error.message}`);
   }
 }
-

@@ -58,7 +58,30 @@ REAL_EXECUTABLE="$VERSION_DIR/bin/$CMD_NAME"
 if [ -x "$REAL_EXECUTABLE" ]; then
     export BUN_INSTALL="$VERSION_DIR"
     export PATH="$VERSION_DIR/bin:$PATH"
-    exec "$REAL_EXECUTABLE" "$@"
+    
+    # Inject version-specific config if present
+    if [ -f "$VERSION_DIR/bunfig.toml" ]; then
+        export BUN_CONFIG_FILE="$VERSION_DIR/bunfig.toml"
+    fi
+    
+    # Execute the command
+    "$REAL_EXECUTABLE" "$@"
+    EXIT_CODE=$?
+
+    # Auto-Rehash Logic
+    if [ "$CMD_NAME" = "bun" ] && [ $EXIT_CODE -eq 0 ]; then
+        case "$1" in
+            install|i|add|a|remove|rm|upgrade|link|unlink)
+                (export BVM_DIR="$BVM_DIR"; "$BVM_DIR/bin/bvm" rehash --silent >/dev/null 2>&1 & disown)
+                ;;
+        esac
+    fi
+    
+    exit $EXIT_CODE
+elif [ "$CMD_NAME" = "bunx" ] && [ -x "$VERSION_DIR/bin/bun" ]; then
+    export BUN_INSTALL="$VERSION_DIR"
+    export PATH="$VERSION_DIR/bin:$PATH"
+    exec "$VERSION_DIR/bin/bun" x "$@"
 else
     echo "BVM Error: Command '$CMD_NAME' not found in Bun $VERSION." >&2
     exit 127

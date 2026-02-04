@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { join } from 'path';
-import { existsSync, mkdirSync, rmSync, readlinkSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, readlinkSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../src/constants';
 
@@ -28,7 +28,7 @@ describe('Bunx Consistency', () => {
         
         // Simulate the logic in install.ts:
         if (!existsSync(bunxPath)) {
-            await require('fs/promises').symlink('bun', bunxPath);
+            symlinkSync('bun', bunxPath);
         }
         
         expect(existsSync(bunxPath)).toBe(true);

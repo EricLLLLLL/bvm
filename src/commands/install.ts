@@ -1,6 +1,6 @@
-import { join, basename, dirname } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, IS_TEST_MODE, OS_PLATFORM, BVM_ALIAS_DIR } from '../constants';
-import { ensureDir, pathExists, removeDir, resolveVersion, normalizeVersion, readDir, getActiveVersion } from '../utils';
+import path, { join, basename, dirname } from 'path';
+import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, isTestMode, OS_PLATFORM, BVM_ALIAS_DIR, BVM_DIR, BVM_CURRENT_DIR, BVM_RUNTIME_DIR } from '../constants';
+import { ensureDir, pathExists, removeDir, resolveVersion, normalizeVersion, readDir, getActiveVersion, createSymlink, linkToRegistry } from '../utils';
 import { findBunDownloadUrl, fetchBunVersions, checkBunVersionExists, fetchBunDistTags } from '../api';
 import { colors, ProgressBar } from '../utils/ui';
 import { extractArchive } from '../utils/archive';
@@ -13,15 +13,59 @@ import { withSpinner } from '../command-runner';
 import { runCommand } from '../helpers/process';
 import { useBunVersion } from './use';
 import { rehash } from './rehash';
-import { RegistrySpeedTester, REGISTRIES } from '../utils/registry-check';
 import { BunfigManager } from '../utils/bunfig';
+import { fixWindowsShims } from '../utils/windows-shim-fixer';
+import { getFastestRegistry } from '../utils/network-utils';
+
+/**
+ * Generates a bunfig.toml using the LOGICAL current path as an anchor.
+ * This is the secret to zero-drift execution on Windows.
+ * Also configures cache directory for version isolation.
+ */
+export async function generateBunfig(
+    versionPhysicalDir: string,
+    options: { platform?: string; registryUrl?: string } = {},
+) {
+    const bunfigPath = join(versionPhysicalDir, "bunfig.toml");
+
+    // We use the PHYSICAL path to anchor Bun's internal logic.
+    let globalDir = versionPhysicalDir;
+    let globalBinDir = join(versionPhysicalDir, "bin");
+    let cacheDir = join(versionPhysicalDir, "install", "cache");
+
+    // Correctly escape backslashes for TOML on Windows
+    // Also normalize forward slashes to backslashes for consistency on Windows
+    const platform = options.platform || OS_PLATFORM;
+    if (platform === 'win32') {
+        globalDir = globalDir.replace(/\//g, "\\").replace(/\\/g, "\\\\");
+        globalBinDir = globalBinDir.replace(/\//g, "\\").replace(/\\/g, "\\\\");
+        cacheDir = cacheDir.replace(/\//g, "\\").replace(/\\/g, "\\\\");
+    }
+
+    let content = `[install]
+globalDir = "${globalDir}"
+globalBinDir = "${globalBinDir}"
+
+[install.cache]
+dir = "${cacheDir}"`;
+
+    // Inject fastest registry
+    try {
+        const fastestRegistry = options.registryUrl || await getFastestRegistry();
+        if (fastestRegistry) {
+            content += `\n\n[install.registry]\nurl = "${fastestRegistry}"\n`;
+        }
+    } catch (e) {
+        // Fallback to default if check fails
+    }
+
+    await Bun.write(bunfigPath, content);
+}
 
 async function ensureBunx(binDir: string, bunPath: string) {
   const bunxName = EXECUTABLE_NAME.replace('bun', 'bunx');
   const bunxPath = join(binDir, bunxName);
-
   if (await pathExists(bunxPath)) return;
-
   try {
     await symlink(EXECUTABLE_NAME, bunxPath);
   } catch (e) {
@@ -31,323 +75,223 @@ async function ensureBunx(binDir: string, bunPath: string) {
 }
 
 async function safeRename(src: string, dest: string) {
-  try {
-    await rename(src, dest);
-  } catch (e) {
+  try { await rename(src, dest); } catch (e) {
     await Bun.write(Bun.file(dest), Bun.file(src));
     await rm(src, { force: true });
   }
 }
 
-async function downloadFileWithProgress(url: string, destPath: string, spinner: any, versionLabel: string) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Status ${response.status}`);
-    
-    const total = +(response.headers.get('Content-Length') || 0);
-    let loaded = 0;
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('No response body');
-    
-    const writer = Bun.file(destPath).writer();
-    const isWindows = OS_PLATFORM === 'win32';
-    
-    // Stop spinner to hand over to specific progress handler
-    spinner.stop();
-    
-    let bar: any = null;
-    let lastReportedPct = -1;
+export async function downloadFileWithProgress(url: string, destPath: string, spinner: any, versionLabel: string) {
+    const maxRetries = 3;
+    let lastError: any;
 
-    if (!isWindows) {
-        // Mac/Linux: Use fancy progress bar
-        bar = new ProgressBar(total || 40 * 1024 * 1024);
-        bar.start();
-    } else {
-        // Windows: Use ancient stable method (console.log)
-        console.log(`Downloading Bun ${versionLabel}...`);
-    }
-    
-    try {
-        const startTime = Date.now();
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            writer.write(value);
-            loaded += value.length;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Status ${response.status}`);
             
-            if (!isWindows && bar) {
-                const elapsed = (Date.now() - startTime) / 1000;
-                const speed = elapsed > 0 ? (loaded / 1024 / elapsed).toFixed(0) : '0';
-                bar.update(loaded, { speed });
-            } else if (isWindows && total) {
-                const pct = Math.floor((loaded / total) * 10); // report every 10%
-                if (pct > lastReportedPct) {
-                    console.log(`  > ${pct * 10}%`);
-                    lastReportedPct = pct;
+            const total = +(response.headers.get('Content-Length') || 0);
+            let loaded = 0;
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("Could not get response body reader");
+
+            const writer = Bun.file(destPath).writer();
+            const isWindows = OS_PLATFORM === 'win32';
+            let nextPercentLog = 0;
+            
+            if (spinner) spinner.stop();
+            if (isWindows && attempt === 1) console.log(`Downloading Bun ${versionLabel}...`);
+            else if (attempt > 1) console.log(`Retry ${attempt}/${maxRetries} for Bun ${versionLabel}...`);
+
+            // Create progress bar if we know the total size
+            let progressBar: ProgressBar | null = null;
+            if (total > 0 && !isWindows) {
+                progressBar = new ProgressBar(total);
+                progressBar.start();
+            } else if (!isWindows) {
+                console.log(`Downloading Bun ${versionLabel}...`);
+            }
+
+            try {
+                if (isWindows && total > 0) {
+                    console.log('> 0%');
+                    nextPercentLog = 10;
                 }
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    writer.write(value);
+                    loaded += value.length;
+                    
+                    // Update progress bar
+                    if (progressBar) {
+                        progressBar.update(loaded);
+                    }
+
+                    // Windows: print coarse progress in 10% increments (robust across consoles)
+                    if (isWindows && total > 0) {
+                        const percent = Math.floor((loaded / total) * 100);
+                        while (percent >= nextPercentLog && nextPercentLog <= 100) {
+                            console.log(`> ${nextPercentLog}%`);
+                            nextPercentLog += 10;
+                        }
+                    }
+                }
+                await writer.end();
+                
+                if (progressBar) {
+                    progressBar.stop();
+                }
+
+                if (isWindows && total > 0 && nextPercentLog <= 100) {
+                    console.log('> 100%');
+                }
+                
+                if (spinner) spinner.start();
+                return; // Success
+            } catch (e) {
+                try { await writer.end(); } catch(e2) {}
+                if (progressBar) {
+                    progressBar.stop();
+                }
+                throw e;
+            }
+        } catch (e) {
+            lastError = e;
+            // Cleanup partial file
+            try { await rm(destPath, { force: true }); } catch (e2) {}
+            
+            if (attempt < maxRetries) {
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             }
         }
-        await writer.end();
-        
-        if (!isWindows && bar) {
-            bar.stop();
-        } else {
-            console.log(`  > 100% [Done]`);
-        }
-    } catch (e) {
-        try { writer.end(); } catch(e2) {} 
-        if (!isWindows && bar) bar.stop();
-        else console.log(`  > Download Failed`);
-        spinner.start(); 
-        throw e;
     }
-    
-    spinner.start(); 
+
+    if (spinner) spinner.start();
+    throw lastError || new Error("Download failed after multiple attempts");
 }
 
-/**
- * Installs a specific Bun version.
- * @param targetVersion The version to install (e.g., "1.0.0", "latest"). Optional if .bvmrc exists.
- */
 export async function installBunVersion(targetVersion?: string, options: { global?: boolean } = {}): Promise<void> {
-  let versionToInstall = targetVersion;
-  let installedVersion: string | null = null;
-  let shouldConfigureShell = false;
-
+  let versionToInstall = targetVersion || await getRcVersion() || undefined;
   if (!versionToInstall) {
-    versionToInstall = await getRcVersion() || undefined;
-  }
-
-  if (!versionToInstall) {
-    console.error(colors.red('No version specified and no .bvmrc found. Usage: bvm install <version>'));
+    console.error(colors.red('No version specified.'));
     return;
   }
 
+  let installedVersion: string | null = null;
+  let shouldConfigureShell = false;
+
   try {
-    await withSpinner(
-      `Finding Bun ${versionToInstall} release...`,
-      async (spinner) => {
-        let resolvedVersion: string | null = null;
-        const normVersion = normalizeVersion(versionToInstall!);
+	        await withSpinner(`Finding Bun ${versionToInstall}...`, async (spinner) => {
+	        let resolvedVersion: string | null = null;
+	        const normVersion = normalizeVersion(versionToInstall!);
 
-        // Strategy 0: Direct Lookup (Fastest, Crash-safe)
-        // If the user requests an exact version (e.g., "1.1.20"), check it directly.
-        if (/^v?\d+\.\d+\.\d+$/.test(versionToInstall!) && !versionToInstall!.includes('canary')) {
-             spinner.update(`Checking if Bun ${normVersion} exists...`);
-             if (await checkBunVersionExists(normVersion)) {
-                 resolvedVersion = normVersion;
-             } else {
-                 spinner.fail(colors.red(`Bun version ${normVersion} not found on registry.`));
-                 throw new Error(`Bun version ${normVersion} not found on registry.`);
-             }
-        }
-        
-        // Strategy 1: Handle 'latest' via dist-tags (Fast, Small JSON)
-        else if (versionToInstall === 'latest') {
-             spinner.update('Checking latest version...');
-             const tags = await fetchBunDistTags();
-             if (tags.latest) {
-                 resolvedVersion = normalizeVersion(tags.latest);
-             } else {
-                 throw new Error('Could not resolve "latest" version.');
-             }
-        }
+	        // Safety: do not allow partial/range installs (fuzzy matching) for install.
+	        // Only exact x.y.z, explicit "latest", or fully qualified canary tags are supported.
+	        const raw = versionToInstall!.trim();
+	        const isPartial = /^v?\d+\.\d+$/.test(raw);
+	        const looksLikeRange = /[xX\*\^\~\<\>\=]/.test(raw);
+	        if (isPartial || looksLikeRange) {
+	            throw new Error('Fuzzy matching (e.g. "1.1") is disabled for install. Please specify a full version like "1.1.20".');
+	        }
 
-        // Strategy 2: Block Fuzzy Matching to prevent crashes
-        // We do NOT fetch the full list (1200+ items) automatically anymore.
-        else {
-            spinner.fail(colors.yellow(`Fuzzy matching (e.g. "1.1") is disabled for stability.`));
-            console.log(colors.dim(`  Please specify the exact version (e.g. "1.1.20") or "latest".`));
-            console.log(colors.dim(`  To see available versions, run: bvm ls-remote`));
-            throw new Error('Fuzzy matching disabled');
-        }
+	        if (/^v?\d+\.\d+\.\d+$/.test(versionToInstall!) && !versionToInstall!.includes('canary')) {
+	             if (await checkBunVersionExists(normVersion)) resolvedVersion = normVersion;
+	             else throw new Error(`Version ${normVersion} not found.`);
+	        } else if (versionToInstall === 'latest') {
+	             const tags = await fetchBunDistTags();
+	             if (tags.latest) resolvedVersion = normalizeVersion(tags.latest);
+	        }
 
-        if (!resolvedVersion) {
-            spinner.fail(colors.red(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`));
-            throw new Error(`Could not find a Bun release for '${versionToInstall}' compatible with your system.`);
-        }
-
+        if (!resolvedVersion) throw new Error(`Could not resolve version.`);
         const result = await findBunDownloadUrl(resolvedVersion);
-        if (!result) {
-          throw new Error(`Could not find a Bun release for ${resolvedVersion} compatible with your system.`);
-        }
-        const { url, mirrorUrl, foundVersion } = result;
+        if (!result) throw new Error(`Incompatible system.`);
+	        const { url, mirrorUrl, foundVersion } = result;
 
-        const installDir = join(BVM_VERSIONS_DIR, foundVersion);
-        const installBinDir = join(installDir, 'bin');
-        const bunExecutablePath = join(installBinDir, EXECUTABLE_NAME);
+	        // On Windows, install to runtime/ first, then create versions/ as junction
+	        // This ensures global packages go to runtime/ and shims work correctly
+	        const runtimeDir = join(BVM_RUNTIME_DIR, foundVersion);
+	        const versionsDir = join(BVM_VERSIONS_DIR, foundVersion);
+        const runtimeBinDir = join(runtimeDir, 'bin');
+        const bunExecutablePath = join(runtimeBinDir, EXECUTABLE_NAME);
 
-        if (await pathExists(bunExecutablePath)) {
-          spinner.succeed(colors.green(`Bun ${foundVersion} is already installed.`));
-          await ensureBunx(installBinDir, bunExecutablePath);
-          installedVersion = foundVersion;
-          shouldConfigureShell = true;
-        } else {
-            const currentRuntimeVersion = normalizeVersion(Bun.version);
-            if (currentRuntimeVersion === foundVersion && !IS_TEST_MODE) {
-                spinner.info(colors.cyan(`Requested version ${foundVersion} matches current BVM runtime. Creating symlink...`));
-                await ensureDir(installBinDir);
-                // Create a relative symlink to avoid disk duplication
-                const runtimeBinPath = process.execPath;
-                try {
-                  const { symlink } = await import('fs/promises');
-                  await symlink(runtimeBinPath, bunExecutablePath);
-                } catch (e) {
-                  // Fallback to copy if symlink fails (e.g., on Windows without admin)
-                  await Bun.write(Bun.file(bunExecutablePath), Bun.file(runtimeBinPath));
-                  await chmod(bunExecutablePath, 0o755);
-                }
-                spinner.succeed(colors.green(`Bun ${foundVersion} linked from local runtime.`));
-                await ensureBunx(installBinDir, bunExecutablePath);
-                installedVersion = foundVersion;
-                shouldConfigureShell = true;
-            } else if (IS_TEST_MODE) {
-                await ensureDir(installBinDir);
-                await writeTestBunBinary(bunExecutablePath, foundVersion);
-                await ensureBunx(installBinDir, bunExecutablePath);
-                installedVersion = foundVersion;
-                shouldConfigureShell = true;
-            } else {
-                // Bun.write doesn't support progress events, so we update spinner text
-                spinner.update(`Downloading Bun ${foundVersion} to cache...`);
-                
+	        if (!(await pathExists(bunExecutablePath))) {
+	            await ensureDir(runtimeBinDir);
+	            if (normalizeVersion(Bun.version) === foundVersion && !isTestMode()) {
+	                await Bun.write(Bun.file(bunExecutablePath), Bun.file(process.execPath));
+	            } else if (isTestMode()) {
+	                await writeTestBunBinary(bunExecutablePath, foundVersion);
+	            } else {
                 await ensureDir(BVM_CACHE_DIR);
                 const cachedArchivePath = join(BVM_CACHE_DIR, `${foundVersion}-${basename(url)}`);
-
-                if (await pathExists(cachedArchivePath)) {
-                    spinner.succeed(colors.green(`Using cached Bun ${foundVersion} archive.`));
-                } else {
-                    const tempDownloadPath = `${cachedArchivePath}.${Date.now()}.tmp`;
-                    
-                    try {
-                        await downloadFileWithProgress(url, tempDownloadPath, spinner, foundVersion);
-                        
-                        // Rename .tmp to actual file
-                        await safeRename(tempDownloadPath, cachedArchivePath);
-                    } catch (error: any) {
-                        try { await rm(tempDownloadPath, { force: true }); } catch {}
-                        
-                        spinner.update(`Download failed, trying mirror...`);
-                        console.log(colors.dim(`
-Debug: ${error.message}`)); // Visible if spinner fails
-
-                        // Strategy 2: Failover to Mirror
-                        if (mirrorUrl) {
-                            const mirrorHost = new URL(mirrorUrl).hostname;
-                            spinner.update(`Downloading from mirror (${mirrorHost})...`);
-                            await downloadFileWithProgress(mirrorUrl, tempDownloadPath, spinner, foundVersion);
-                            await safeRename(tempDownloadPath, cachedArchivePath);
-                        } else {
-                            throw error;
+                if (!(await pathExists(cachedArchivePath))) {
+                    const tmp = `${cachedArchivePath}.tmp`;
+                    // Log download source for debugging
+                    console.log(colors.dim(`  Downloading from: ${url.replace(/\/[^\/]*$/, '/...')}`));
+                    try { 
+                        await downloadFileWithProgress(url, tmp, spinner, foundVersion); 
+                        await safeRename(tmp, cachedArchivePath); 
+                    }
+                    catch (e) {
+                        if (mirrorUrl) { 
+                            console.log(colors.yellow(`  Primary source failed, trying mirror...`));
+                            await downloadFileWithProgress(mirrorUrl, tmp, spinner, foundVersion); 
+                            await safeRename(tmp, cachedArchivePath); 
                         }
-                    }
-
-                    // Progress bar logic removed as Bun.write is atomic
-                }
-
-                spinner.update(`Extracting Bun ${foundVersion}...`);
-                await ensureDir(installDir);
-                await extractArchive(cachedArchivePath, installDir);
-        
-                let foundSourceBunPath = '';
-                // Updated Path Discovery for NPM packages (package/bin/bun) and GitHub zips (bun-xxx/bun)
-                const possiblePaths = [
-                    join(installDir, EXECUTABLE_NAME),
-                    join(installDir, 'bin', EXECUTABLE_NAME),
-                    join(installDir, 'package', 'bin', EXECUTABLE_NAME) // NPM .tgz structure
-                ];
-                const dirEntries = await readDir(installDir);
-                for (const entry of dirEntries) {
-                    if (entry.startsWith('bun-')) {
-                        possiblePaths.push(join(installDir, entry, EXECUTABLE_NAME));
-                        possiblePaths.push(join(installDir, entry, 'bin', EXECUTABLE_NAME));
+                        else throw e;
                     }
                 }
-                for (const p of possiblePaths) { if (await pathExists(p)) { foundSourceBunPath = p; break; } }
-                
-                if (!foundSourceBunPath) throw new Error(`Could not find bun executable in ${installDir}`);
-                
-                // If found in package/bin/bun, we might want to move it or keep the structure?
-                // For simplicity and consistency with old BVM, let's move it to installBinDir and clean up.
-                await ensureDir(installBinDir);
-                if (foundSourceBunPath !== bunExecutablePath) {
-                    await safeRename(foundSourceBunPath, bunExecutablePath);
-                    
-                    const pDir = dirname(foundSourceBunPath);
-                    if (pDir !== installDir && pDir !== installBinDir) await removeDir(pDir);
-                }
-                await chmod(bunExecutablePath, 0o755);
-                spinner.succeed(colors.green(`Bun ${foundVersion} installed successfully.`));
-                await ensureBunx(installBinDir, bunExecutablePath);
-                installedVersion = foundVersion;
-                shouldConfigureShell = true;
+                spinner.update(`Extracting...`);
+                await extractArchive(cachedArchivePath, runtimeDir);
+                const possible = [join(runtimeDir, EXECUTABLE_NAME), join(runtimeDir, 'bin', EXECUTABLE_NAME), join(runtimeDir, 'package', 'bin', EXECUTABLE_NAME)];
+                let found = '';
+                for (const p of possible) { if (await pathExists(p)) { found = p; break; } }
+                if (found && found !== bunExecutablePath) await safeRename(found, bunExecutablePath);
             }
-        }
-      },
-      { failMessage: `Failed to install Bun ${versionToInstall}` },
-    );
-  } catch (error: any) {
-    throw new Error(`Failed to install Bun: ${error.message}`);
-  }
+            await chmod(bunExecutablePath, 0o755);
 
-  if (shouldConfigureShell) {
-    await configureShell(false);
-  }
+            // Create cache directory for version isolation (Bun 1.3.8+)
+            const cacheDir = join(runtimeDir, 'install', 'cache');
+            await ensureDir(cacheDir);
 
-  // Auto-switch to the newly installed version (unless global/alias logic overrides in future)
+            // Generate bunfig in runtime directory
+            await generateBunfig(runtimeDir);
+            await ensureBunx(runtimeBinDir, bunExecutablePath);
+            await fixWindowsShims(runtimeBinDir);
+
+	        }
+
+	        // Always ensure versions/ link exists (even if runtime was already present).
+	        await ensureDir(BVM_VERSIONS_DIR);
+
+	        // Create versions/vX.X.X as a junction to runtime/vX.X.X on Windows
+	        // On Unix, create a relative symlink
+	        if (!(await pathExists(versionsDir))) {
+	            if (OS_PLATFORM === 'win32') {
+	                await createSymlink(runtimeDir, versionsDir);
+	            } else {
+	                await symlink('../runtime/' + foundVersion, versionsDir, 'dir');
+	            }
+	        }
+	        
+	        spinner.succeed(colors.green(`Bun ${foundVersion} physically installed.`));
+	        installedVersion = foundVersion;
+	        shouldConfigureShell = true;
+	    });
+  } catch (e: any) { throw new Error(`Failed: ${e.message}`); }
+
+  if (shouldConfigureShell) await configureShell(false);
   if (installedVersion) {
-      try {
-          await useBunVersion(installedVersion, { silent: true });
-          
-          // Auto-set default alias if it doesn't exist (first install)
-          const defaultAliasPath = join(BVM_ALIAS_DIR, 'default');
-          if (!(await pathExists(defaultAliasPath))) {
-              await createAlias('default', installedVersion, { silent: true });
-          }
-      } catch (e) {
-          // Ignore if switch fails (though unlikely if installed)
-      }
+      await useBunVersion(installedVersion, { silent: true });
+      if (!(await pathExists(join(BVM_ALIAS_DIR, 'default')))) await createAlias('default', installedVersion, { silent: true });
   }
-
-  await rehash();
-
-  // --- Smart Registry Auto-Config ---
-  if (installedVersion && !IS_TEST_MODE) {
-    try {
-      const bunfig = new BunfigManager();
-      // Only auto-configure if no registry is explicitly set
-      if (!bunfig.getRegistry()) {
-        await withSpinner('Checking network speed for registry optimization...', async (spinner) => {
-             const tester = new RegistrySpeedTester(3000); // 3s timeout
-             const fastest = await tester.getFastestRegistry();
-             
-             if (fastest === REGISTRIES.NPM_MIRROR) {
-               bunfig.setRegistry(REGISTRIES.NPM_MIRROR);
-               spinner.succeed(colors.green('⚡ Auto-configured global bunfig.toml to use npmmirror.com for faster installs.'));
-             } else {
-               spinner.stop(); // Official is fast enough or wins
-             }
-        }, { failMessage: 'Registry check failed (harmless)' });
-      }
-    } catch (e) {
-      // Ignore errors silently
-    }
-  }
-
-  // Final success messages (moved here to appear after Rehash log)
-  if (installedVersion) {
-      console.log(colors.cyan(`\n✓ Bun ${installedVersion} installed and active.`));
-      console.log(colors.dim(`  To verify, run: bun --version or bvm ls`));
-  }
+  // Note: rehash() is called by useBunVersion, no need to call again here
 }
 
-async function writeTestBunBinary(targetPath: string, version: string): Promise<void> {
-  const plainVersion = version.replace(/^v/, '');
-  const script = `#!/usr/bin/env bash
-set -euo pipefail
-if [[ $# -gt 0 && "$1" == "--version" ]]; then echo "${plainVersion}"; exit 0; fi
-echo "Bun ${plainVersion} stub invoked with: $@"
-exit 0
-`;
+async function writeTestBunBinary(targetPath: string, version: string) {
+  const v = version.replace(/^v/, '');
+  const script = `#!/usr/bin/env bash\nif [[ $# -gt 0 && "$1" == "--version" ]]; then echo "${v}"; exit 0; fi\nexit 0\n`;
   await Bun.write(targetPath, script);
   await chmod(targetPath, 0o755);
 }

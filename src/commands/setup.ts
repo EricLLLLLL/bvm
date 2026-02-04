@@ -1,25 +1,123 @@
-import { join, dirname } from 'path';
+import { join, dirname, basename } from 'path';
 import { homedir } from 'os';
-import { pathExists, removeDir, getInstalledVersions, normalizeVersion, resolveVersion, createSymlink } from '../utils';
-import { mkdir } from 'fs/promises'; // Import mkdir
-import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_DIR } from '../constants';
+import { pathExists, removeDir, getInstalledVersions, normalizeVersion, resolveVersion, createSymlink, readDir, stat, readTextFile } from '../utils';
+import { mkdir, rm } from 'fs/promises';
+import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_DIR, BVM_RUNTIME_DIR, OS_PLATFORM, BVM_ALIAS_DIR } from '../constants';
 import { colors, confirm } from '../utils/ui';
 import { chmod } from 'fs/promises';
-import { useBunVersion } from './use';
-import { 
-    BVM_INIT_SH_TEMPLATE, 
-    BVM_INIT_FISH_TEMPLATE, 
-    BVM_SHIM_SH_TEMPLATE, 
+import {
+    BVM_INIT_SH_TEMPLATE,
+    BVM_INIT_FISH_TEMPLATE,
+    BVM_SHIM_SH_TEMPLATE,
     BVM_SHIM_JS_TEMPLATE,
     BVM_BUN_CMD_TEMPLATE,
     BVM_BUNX_CMD_TEMPLATE,
-    BVM_WRAPPER_CMD_TEMPLATE
+    BVM_WRAPPER_CMD_TEMPLATE,
+    BVM_INIT_PS1_TEMPLATE
 } from '../templates/init-scripts';
+
+/**
+ * Ensures versions/vX.X.X is a junction to runtime/vX.X.X on Windows.
+ * This fixes issues where install.sh created Unix symlinks instead of Windows junctions.
+ */
+async function ensureVersionJunctions(): Promise<void> {
+    if (OS_PLATFORM !== 'win32') return;
+
+    try {
+        if (!await pathExists(BVM_VERSIONS_DIR)) return;
+
+        const versions = await readDir(BVM_VERSIONS_DIR);
+        for (const version of versions) {
+            if (!version.startsWith('v')) continue;
+
+            const versionsPath = join(BVM_VERSIONS_DIR, version);
+            const runtimePath = join(BVM_RUNTIME_DIR, version);
+
+            // Check if versionsPath is a real directory (not a junction)
+            try {
+                const stats = await stat(versionsPath);
+                if (!stats.isDirectory()) continue;
+
+                // Check if it's a junction/symlink
+                const isJunction = stats.mode !== undefined; // This is a rough check
+            } catch {
+                continue;
+            }
+
+            // Check if it's actually a junction by trying to read it as symlink
+            try {
+                const { readlink, lstat } = await import('fs/promises');
+                const lstats = await lstat(versionsPath);
+                if (lstats.isSymbolicLink()) continue; // Already a symlink/junction
+            } catch {
+                // Not a symlink, continue to fix
+            }
+
+            // versionsPath is a real directory, need to convert to junction
+            console.log(colors.yellow(`[bvm] Fixing: versions/${version} -> runtime/${version}`));
+
+            // Check content
+            let versionsContent: string[] = [];
+            let runtimeContent: string[] = [];
+            try {
+                versionsContent = await readDir(versionsPath);
+            } catch {}
+            try {
+                runtimeContent = await readDir(runtimePath);
+            } catch {}
+
+            // Move content if runtime is empty
+            if (runtimeContent.length === 0 && versionsContent.length > 0) {
+                console.log(colors.gray(`  Moving content from versions to runtime...`));
+                // Move files and directories
+                for (const item of versionsContent) {
+                    const src = join(versionsPath, item);
+                    const dest = join(runtimePath, item);
+                    try {
+                        await rename(src, dest);
+                    } catch (e) {
+                        // If rename fails, try copy then delete
+                        try {
+                            await Bun.write(Bun.file(dest), Bun.file(src));
+                            await rm(src);
+                        } catch {}
+                    }
+                }
+            }
+
+            // Remove the real directory
+            try {
+                await rm(versionsPath, { recursive: true, force: true });
+            } catch (e) {
+                console.log(colors.gray(`  Could not remove versions dir: ${e}`));
+                continue;
+            }
+
+            // Create junction using createSymlink (which uses junction type on Windows)
+            try {
+                await createSymlink(runtimePath, versionsPath);
+                console.log(colors.green(`  [OK] Junction created`));
+            } catch (e) {
+                console.log(colors.red(`  [FAIL] Could not create junction: ${e}`));
+            }
+        }
+    } catch (e) {
+        // Ignore errors
+    }
+}
+
+async function rename(src: string, dest: string) {
+    const { rename } = await import('fs/promises');
+    await rename(src, dest);
+}
 
 /**
  * Detects the user's shell and configures the PATH.
  */
 export async function configureShell(displayPrompt: boolean = true): Promise<void> {
+  // 0. Fix versions -> runtime junction structure on Windows
+  await ensureVersionJunctions();
+
   // 1. Refresh shims and wrappers (Self-Healing)
   await recreateShims(displayPrompt);
 
@@ -31,40 +129,41 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
 
   // Unix Support (Mac/Linux)
   const shell = process.env.SHELL || '';
+  const home = process.env.HOME || homedir();
   let configFile = '';
   let shellName = '';
 
   if (shell.includes('zsh')) {
     shellName = 'zsh';
-    configFile = join(homedir(), '.zshrc');
+    configFile = join(home, '.zshrc');
   } else if (shell.includes('bash')) {
     shellName = 'bash';
     if (process.platform === 'darwin') {
-        if (await pathExists(join(homedir(), '.bashrc'))) {
-             configFile = join(homedir(), '.bashrc');
+        if (await pathExists(join(home, '.bashrc'))) {
+             configFile = join(home, '.bashrc');
         } else {
-             configFile = join(homedir(), '.bash_profile');
+             configFile = join(home, '.bash_profile');
         }
     } else {
-        configFile = join(homedir(), '.bashrc');
+        configFile = join(home, '.bashrc');
     }
   } else if (shell.includes('fish')) {
     shellName = 'fish';
-    configFile = join(homedir(), '.config', 'fish', 'config.fish');
+    configFile = join(home, '.config', 'fish', 'config.fish');
   } else {
     // Fallback: Detect based on config file existence
-    if (await pathExists(join(homedir(), '.zshrc'))) {
+    if (await pathExists(join(home, '.zshrc'))) {
         shellName = 'zsh';
-        configFile = join(homedir(), '.zshrc');
-    } else if (await pathExists(join(homedir(), '.config', 'fish', 'config.fish'))) {
+        configFile = join(home, '.zshrc');
+    } else if (await pathExists(join(home, '.config', 'fish', 'config.fish'))) {
         shellName = 'fish';
-        configFile = join(homedir(), '.config', 'fish', 'config.fish');
-    } else if (await pathExists(join(homedir(), '.bashrc'))) {
+        configFile = join(home, '.config', 'fish', 'config.fish');
+    } else if (await pathExists(join(home, '.bashrc'))) {
         shellName = 'bash';
-        configFile = join(homedir(), '.bashrc');
-    } else if (await pathExists(join(homedir(), '.bash_profile'))) {
+        configFile = join(home, '.bashrc');
+    } else if (await pathExists(join(home, '.bash_profile'))) {
         shellName = 'bash';
-        configFile = join(homedir(), '.bash_profile');
+        configFile = join(home, '.bash_profile');
     } else {
         if (displayPrompt) {
             console.log(colors.yellow(`Could not detect a supported shell (zsh, bash, fish). Please manually add ${BVM_BIN_DIR} to your PATH.`));
@@ -100,7 +199,13 @@ export async function configureShell(displayPrompt: boolean = true): Promise<voi
   const configBlock = `${startMarker}
 # !! Contents within this block are managed by 'bvm setup' !!
 export BVM_DIR="${BVM_DIR}"
-export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$BVM_DIR/current/bin:$PATH"
+# We add shims and bin to the front of PATH for priority.
+# We add current/bin to the END of PATH to satisfy Bun's checks without interfering with BVM shims.
+export PATH="$BVM_DIR/shims:$BVM_DIR/bin:$PATH:$BVM_DIR/current/bin"
+# Shell integration (self-heal PATH order + refresh hash on bvm use)
+if [ -f "$BVM_DIR/bin/bvm-init.sh" ]; then
+    source "$BVM_DIR/bin/bvm-init.sh"
+fi
 # Ensure current link exists for PATH consistency
 if [ ! -L "$BVM_DIR/current" ] && [ -f "$BVM_DIR/aliases/default" ]; then
     ln -sf "$BVM_DIR/versions/$(cat "$BVM_DIR/aliases/default")" "$BVM_DIR/current"
@@ -112,7 +217,12 @@ ${endMarker}`;
 set -Ux BVM_DIR "${BVM_DIR}"
 fish_add_path "$BVM_DIR/shims"
 fish_add_path "$BVM_DIR/bin"
-fish_add_path "$BVM_DIR/current/bin"
+# Append current/bin to satisfy Bun checks without overriding shims
+fish_add_path --append "$BVM_DIR/current/bin"
+# Shell integration (self-heal PATH order + refresh on bvm use)
+if test -f "$BVM_DIR/bin/bvm-init.fish"
+    source "$BVM_DIR/bin/bvm-init.fish"
+end
 # Ensure current link exists
 if not test -L "$BVM_DIR/current"
     if test -f "$BVM_DIR/aliases/default"
@@ -155,37 +265,60 @@ end
         console.log(colors.yellow(`Please restart your terminal or run "source ${configFile}" to apply changes.`));
     }
 
-    // Ensure 'current' symlink is established
-    try {
-        await useBunVersion('default', { silent: true });
-    } catch (e) {
-        // Ignore if no default version set yet
-    }
+    // Ensure 'current' symlink exists (do NOT switch versions here)
+    await ensureCurrentSymlinkFromDefaultAlias();
   } catch (error: any) {
     console.error(colors.red(`Failed to write to ${configFile}: ${error.message}`));
   }
 }
 
+async function ensureCurrentSymlinkFromDefaultAlias(): Promise<void> {
+    try {
+        const defaultAliasPath = join(BVM_ALIAS_DIR, 'default');
+        if (!(await pathExists(defaultAliasPath))) return;
+
+        const raw = (await readTextFile(defaultAliasPath)).trim();
+        const resolvedVersion = normalizeVersion(raw);
+        const target = join(BVM_VERSIONS_DIR, resolvedVersion);
+        if (!(await pathExists(target))) return;
+
+        // If current already exists, leave it as-is.
+        if (!(await pathExists(BVM_CURRENT_DIR))) {
+            await createSymlink(target, BVM_CURRENT_DIR);
+        }
+
+        // Windows: keep runtime/current in sync with the active runtime.
+        if (OS_PLATFORM === 'win32') {
+            const runtimeTarget = join(BVM_RUNTIME_DIR, resolvedVersion);
+            const runtimeCurrent = join(BVM_RUNTIME_DIR, 'current');
+            const runtimePath = (await pathExists(runtimeTarget)) ? runtimeTarget : target;
+            if (!(await pathExists(runtimeCurrent))) {
+                await createSymlink(runtimePath, runtimeCurrent);
+            }
+        }
+    } catch {
+        // best-effort
+    }
+}
+
 async function recreateShims(displayPrompt: boolean) {
     if (displayPrompt) console.log(colors.cyan('Refreshing shims and wrappers...'));
     
-    // Debug: Log the paths we are trying to create
-    if (!displayPrompt) {
-        console.log(`[DEBUG] BIN_DIR: ${BVM_BIN_DIR}`);
-        console.log(`[DEBUG] SHIMS_DIR: ${BVM_SHIMS_DIR}`);
-    }
-
     await mkdir(BVM_BIN_DIR, { recursive: true }); // Use mkdir
     await mkdir(BVM_SHIMS_DIR, { recursive: true }); // Use mkdir
 
     const isWindows = process.platform === 'win32';
+    const bvmDirWin = BVM_DIR.replace(/\//g, '\\');
 
     if (isWindows) {
-        // Use external templates for Windows
+        // Use external templates for Windows and inject absolute paths
         await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), BVM_SHIM_JS_TEMPLATE);
-        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE);
-        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE);
-        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE);
+        await Bun.write(join(BVM_BIN_DIR, 'bvm.cmd'), BVM_WRAPPER_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+        await Bun.write(join(BVM_BIN_DIR, 'bvm-init.ps1'), BVM_INIT_PS1_TEMPLATE);
+        
+        // Use the FULL templates with auto-rehash support (consistent with rehash.ts)
+        await Bun.write(join(BVM_SHIMS_DIR, 'bun.cmd'), BVM_BUN_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+        await Bun.write(join(BVM_SHIMS_DIR, 'bunx.cmd'), BVM_BUNX_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
     } else {
         // Create bvm-shim.sh
         const bvmShimShPath = join(BVM_BIN_DIR, 'bvm-shim.sh');
@@ -235,39 +368,38 @@ fi
 async function configureWindows(displayPrompt: boolean = true): Promise<void> {
     const bvmBinPath = join(BVM_BIN_DIR);
     const bvmShimsPath = join(BVM_SHIMS_DIR);
-    const bvmCurrentBinPath = join(BVM_DIR, 'current', 'bin');
 
     if (displayPrompt) {
         console.log(colors.cyan('Configuring Windows environment variables (Registry)...'));
     }
 
     // PowerShell script to safely update User PATH and BVM_DIR
-    // 1. Sets BVM_DIR
-    // 2. Prepend shims, bin and current/bin to PATH if not already present
+    // We include current/bin for native performance. Native shims now resolve via logical anchor.
     const psCommand = `
         $targetDir = "${BVM_DIR}";
         $shimsPath = "${bvmShimsPath}";
         $binPath = "${bvmBinPath}";
-        $currentBinPath = "${bvmCurrentBinPath}";
+        $currentBinPath = "${join(BVM_DIR, 'current', 'bin')}";
         
         # Set BVM_DIR
         [Environment]::SetEnvironmentVariable("BVM_DIR", $targetDir, "User");
         
         # Get current PATH
         $oldPath = [Environment]::GetEnvironmentVariable("PATH", "User");
-        $paths = $oldPath -split ";"
+        $paths = $oldPath -split ";" | Where-Object { $_ -ne "" }
         
         $newPaths = @()
         if ($paths -notcontains $shimsPath) { $newPaths += $shimsPath }
         if ($paths -notcontains $binPath) { $newPaths += $binPath }
-        if ($paths -notcontains $currentBinPath) { $newPaths += $currentBinPath }
         
-        if ($newPaths.Count -gt 0) {
-            $newPathString = (($newPaths + $paths) -join ";").Trim(";")
-            [Environment]::SetEnvironmentVariable("PATH", $newPathString, "User");
-            return "SUCCESS"
-        }
-        return "ALREADY_SET"
+        # Append current/bin if missing (to satisfy Bun checks)
+        $appendPath = ""
+        if ($paths -notcontains $currentBinPath) { $appendPath = ";$currentBinPath" }
+        
+        $finalPathString = (($newPaths + $paths) -join ";") + $appendPath
+        $finalPathString = $finalPathString.Trim(";")
+        [Environment]::SetEnvironmentVariable("PATH", $finalPathString, "User");
+        return "SUCCESS"
     `;
 
     try {
@@ -319,14 +451,16 @@ async function configureWindows(displayPrompt: boolean = true): Promise<void> {
 }
 
 export async function updatePowerShellProfile(profilePath: string, displayPrompt: boolean = true): Promise<void> {
+    const startMarker = '# >>> bvm initialize >>>';
+    const endMarker = '# <<< bvm initialize <<<';
     const psStr = `
-# BVM Configuration
+${startMarker}
+# !! Contents within this block are managed by 'bvm setup' !!
 $env:BVM_DIR = "${BVM_DIR}"
-$env:PATH = "$env:BVM_DIR\\shims;$env:BVM_DIR\\bin;$env:BVM_DIR\\current\\bin;$env:PATH"
-# Auto-activate default version
-if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
-    & "$env:BVM_DIR\\bin\\bvm.cmd" use default --silent *>$null
+if (Test-Path "$env:BVM_DIR\\bin\\bvm-init.ps1") {
+    . "$env:BVM_DIR\\bin\\bvm-init.ps1"
 }
+${endMarker}
 `;
 
     try {
@@ -337,24 +471,32 @@ if (Test-Path "$env:BVM_DIR\\bin\\bvm.cmd") {
             await Bun.write(profilePath, '');
         }
 
-        if (existingContent.includes('$env:BVM_DIR')) {
-            if (displayPrompt) {
-                 console.log(colors.gray('✓ Configuration is already up to date.'));
-            }
-            return;
+        let newContent = existingContent;
+        if (existingContent.includes(startMarker)) {
+            const escapedStart = startMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedEnd = endMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const blockRegex = new RegExp(`${escapedStart}[\\s\\S]*?${escapedEnd}`, 'g');
+            newContent = existingContent.replace(blockRegex, '').trim();
         }
 
         if (displayPrompt) {
             console.log(colors.cyan(`Configuring PowerShell environment in ${profilePath}...`));
         }
 
-        await Bun.write(profilePath, existingContent + `\r\n${psStr}`);
+        newContent = (newContent ? newContent + `\r\n\r\n` : '') + psStr.trim() + `\r\n`;
+        await Bun.write(profilePath, newContent);
         
         if (displayPrompt) {
             console.log(colors.green(`✓ Successfully configured BVM path in ${profilePath}`));
             console.log(colors.yellow(`Please restart your terminal to apply changes.`));
+            console.log(colors.gray(`Tip (no restart): run ". $env:BVM_DIR\\bin\\bvm-init.ps1" in the current session.`));
         }
     } catch (error: any) {
         console.error(colors.red(`Failed to write to ${profilePath}: ${error.message}`));
+        if (displayPrompt) {
+            console.log(colors.yellow('You can still enable BVM for the current PowerShell session by running:'));
+            console.log(colors.gray(`  $env:BVM_DIR = "${BVM_DIR}"`));
+            console.log(colors.gray(`  . "$env:BVM_DIR\\bin\\bvm-init.ps1"`));
+        }
     }
 }

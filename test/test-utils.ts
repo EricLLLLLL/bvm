@@ -11,7 +11,7 @@ export async function resetTestHome() {
   await rmSync(TEST_HOME, { recursive: true, force: true });
   await mkdirSync(TEST_HOME, { recursive: true });
   await mkdirSync(TEST_BVM_DIR, { recursive: true });
-  await mkdirSync(join(TEST_BVM_DIR, "alias"), { recursive: true });
+  await mkdirSync(join(TEST_BVM_DIR, "aliases"), { recursive: true });
 }
 
 export async function cleanupTestHome() {
@@ -30,10 +30,16 @@ export async function runBvm(args: string[], cwd: string = process.cwd(), envOve
     env: {
       ...process.env,
       HOME: TEST_HOME, // Mock HOME
+      BVM_DIR: TEST_BVM_DIR, // Never leak to developer's real ~/.bvm
       PATH: constructedPath,
       BVM_GITHUB_TOKEN: process.env.BVM_GITHUB_TOKEN,
       BVM_TEST_MODE: 'true',
+      BVM_ACTIVE_VERSION: '', // Avoid host shell forcing a version
       NO_COLOR: '1', // Disable color in tests via env!
+      BUN_INSTALL: '',
+      BUN_INSTALL_GLOBAL_DIR: '',
+      BUN_INSTALL_GLOBAL_BIN: '',
+      BUN_CONFIG_FILE: '',
       ...envOverrides
     },
     stdout: "pipe",

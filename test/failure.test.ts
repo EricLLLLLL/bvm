@@ -19,10 +19,10 @@ describe("Failure & Edge Cases Suite", () => {
       // If we ask for a version not in that list and fuzzy matching fails?
       // Actually fuzzy matching might try its best.
       // But let's try a very weird version.
-      const { exitCode, allOutput } = await runBvm(["install", "999.999.999"]);
-      expect(exitCode).not.toBe(0);
-      expect(allOutput).toContain("not found on registry");
-  });
+	      const { exitCode, allOutput } = await runBvm(["install", "999.999.999"]);
+	      expect(exitCode).not.toBe(0);
+	      expect(allOutput.toLowerCase()).toContain("not found");
+	  });
 
   // --- Use Failures ---
   test("use fails if version directory exists but binary is missing (corrupt install)", async () => {
@@ -61,7 +61,7 @@ describe("Failure & Edge Cases Suite", () => {
       try {
         chmodSync(customBvm, 0o500); // Read/Execute only, no Write
 
-        const { exitCode, allOutput } = await runBvm(["install", "1.0.0"], process.cwd(), { HOME: customHome });
+        const { exitCode, allOutput } = await runBvm(["install", "1.0.0"], process.cwd(), { HOME: customHome, BVM_DIR: customBvm });
       
         // Should fail to create directory/write
         expect(exitCode).not.toBe(0);
