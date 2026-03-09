@@ -1,0 +1,32 @@
+# BVM Documentation
+
+> LLM-friendly index for BVM docs. Use page Markdown mirrors (`/xxx/index.md`) for cleaner context, or use the full aggregate file.
+
+## Primary Context
+
+- [LLMs Full Context](https://bvm-core.pages.dev/llms-full.txt): Full combined documentation for retrieval and long-context models.
+
+## English Docs
+
+- [Home](https://bvm-core.pages.dev/): Mirror at [/index.md](https://bvm-core.pages.dev/index.md)
+- [From NPM](https://bvm-core.pages.dev/from/npm): Mirror at [/from/npm/index.md](https://bvm-core.pages.dev/from/npm/index.md)
+- [WeChat](https://bvm-core.pages.dev/wechat): Mirror at [/wechat/index.md](https://bvm-core.pages.dev/wechat/index.md)
+- [Getting Started](https://bvm-core.pages.dev/guide/getting-started): Mirror at [/guide/getting-started/index.md](https://bvm-core.pages.dev/guide/getting-started/index.md)
+- [Troubleshooting](https://bvm-core.pages.dev/guide/troubleshooting): Mirror at [/guide/troubleshooting/index.md](https://bvm-core.pages.dev/guide/troubleshooting/index.md)
+- [Architecture](https://bvm-core.pages.dev/guide/architecture): Mirror at [/guide/architecture/index.md](https://bvm-core.pages.dev/guide/architecture/index.md)
+- [For AI Clients](https://bvm-core.pages.dev/for-ai-clients): Mirror at [/for-ai-clients/index.md](https://bvm-core.pages.dev/for-ai-clients/index.md)
+
+## 中文文档
+
+- [首页](https://bvm-core.pages.dev/zh/): 镜像 [/zh/index.md](https://bvm-core.pages.dev/zh/index.md)
+- [来自 NPM](https://bvm-core.pages.dev/zh/from/npm): 镜像 [/zh/from/npm/index.md](https://bvm-core.pages.dev/zh/from/npm/index.md)
+- [公众号](https://bvm-core.pages.dev/zh/wechat): 镜像 [/zh/wechat/index.md](https://bvm-core.pages.dev/zh/wechat/index.md)
+- [快速开始](https://bvm-core.pages.dev/zh/guide/getting-started): 镜像 [/zh/guide/getting-started/index.md](https://bvm-core.pages.dev/zh/guide/getting-started/index.md)
+- [排障](https://bvm-core.pages.dev/zh/guide/troubleshooting): 镜像 [/zh/guide/troubleshooting/index.md](https://bvm-core.pages.dev/zh/guide/troubleshooting/index.md)
+- [架构](https://bvm-core.pages.dev/zh/guide/architecture): 镜像 [/zh/guide/architecture/index.md](https://bvm-core.pages.dev/zh/guide/architecture/index.md)
+- [AI 客户端接入](https://bvm-core.pages.dev/zh/for-ai-clients): 镜像 [/zh/for-ai-clients/index.md](https://bvm-core.pages.dev/zh/for-ai-clients/index.md)
+
+## Optional
+
+- [GitHub Repository](https://github.com/EricLLLLLL/bvm)
+- [AI Installer Guide](https://github.com/EricLLLLLL/bvm/blob/main/install.md)

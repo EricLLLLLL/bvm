@@ -2,6 +2,12 @@
 
 # Check if BVM_DIR is set
 if not set -q BVM_DIR
+  echo "[bvm:init] initialization failed: BVM_DIR is not set. Run 'bvm setup'." >&2
+  return
+end
+
+if not test -x "$BVM_DIR/bin/bvm"
+  echo "[bvm:init] initialization failed: $BVM_DIR/bin/bvm not found. Run 'bvm setup'." >&2
   return
 end
 

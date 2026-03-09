@@ -12,6 +12,10 @@
     <br />
     <a href="https://bvm-core.pages.dev/"><strong>English Site »</strong></a>
     <br />
+    <a href="https://bvm-core.pages.dev/zh/from/npm"><strong>从 NPM 来？从这里开始 »</strong></a>
+    <br />
+    <a href="https://bvm-core.pages.dev/zh/wechat"><strong>关注公众号 »</strong></a>
+    <br />
     <br />
     <a href="./README.md">🇺🇸 English Docs</a>
     ·
@@ -35,9 +39,13 @@
 
 ---
 
+想在 Windows、macOS、Linux 间稳定切换 Bun 版本，并避免 PATH 漂移和全局包冲突？
+
 ## ⚡ 一键极速安装
 
 BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用户会自动切换至淘宝镜像源，海外用户使用官方源，无需手动配置。
+
+给 AI 助手自动执行（安装 + setup + 验证 + 生成 Skill）：[install.md](./install.md)
 
 ### 方式 1: Shell 脚本 (推荐 - macOS / Linux)
 ```bash
@@ -101,6 +109,46 @@ BVM 支持通过 `.bvmrc` 文件自动切换版本。在项目根目录下创建
 ```bash
 echo "1.1.0" > .bvmrc
 ```
+
+---
+
+## 常见问题 / FAQ
+
+<details>
+<summary><strong>Windows / macOS / Linux 怎么快速切换 Bun 版本？</strong></summary>
+
+安装 BVM 后，直接使用 `bvm install <version>` 安装版本，再用 `bvm use <version>` 切换即可。三大平台命令一致。
+</details>
+
+<details>
+<summary><strong>BVM 是 Bun 版的 nvm/fnm 吗？</strong></summary>
+
+可以这么理解。BVM 是 Bun 的版本管理器，在 nvm/fnm 思路上补充了 Bun 场景的版本隔离、shim 机制和自举运行时能力。
+</details>
+
+<details>
+<summary><strong>为什么切换 Bun 版本后，全局包命令不见了？</strong></summary>
+
+这是预期行为。BVM 采用“按版本隔离”的全局包目录。你需要在目标 Bun 版本下重新安装对应全局工具。
+</details>
+
+<details>
+<summary><strong>`.bvmrc` 怎么做项目级版本锁定？</strong></summary>
+
+在项目根目录创建 `.bvmrc`，写入版本号（例如 `1.1.0`）。BVM 会按该版本解析并用于项目工作流。
+</details>
+
+<details>
+<summary><strong>支持 skills 自动安装吗（例如读取 SKILL.md 自动装）？</strong></summary>
+
+不支持。BVM 只负责 Bun 运行时和版本切换；skills 的安装与管理由 AI Agent 框架或对应工具链负责。
+</details>
+
+<details>
+<summary><strong>怎么快速定位 BVM 环境问题？</strong></summary>
+
+运行 `bvm doctor`。它会检查 `BVM_DIR`、`PATH`、shell 类型、目录权限和网络连通性，并输出可直接复制的修复命令。
+</details>
 
 ---
 

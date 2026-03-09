@@ -1,0 +1,32 @@
+# BVM (Bun Version Manager)
+
+> BVM is a native, zero-dependency version manager for Bun. It helps developers install, switch, and isolate Bun versions across macOS, Linux, and Windows, with built-in diagnostics and cross-shell support.
+
+## Quick Start
+
+- [AI Installer Guide](https://github.com/EricLLLLLL/bvm/blob/main/install.md): Step-by-step instructions for AI assistants to install, configure, verify, and generate a reusable SKILL.md.
+- [README (English)](https://github.com/EricLLLLLL/bvm/blob/main/README.md): Installation methods, common commands, and troubleshooting.
+- [README (中文)](https://github.com/EricLLLLLL/bvm/blob/main/README.zh-CN.md): 中文安装、命令和排障说明。
+- [Official Site](https://bvm-core.pages.dev): Documentation portal.
+- [Docs LLM Index](https://bvm-core.pages.dev/llms.txt): LLM-friendly site index.
+- [Docs LLM Full Context](https://bvm-core.pages.dev/llms-full.txt): Aggregated markdown context for documentation.
+- [From NPM (Start Here)](https://bvm-core.pages.dev/from/npm): NPM users onboarding path.
+- [Getting Started](https://bvm-core.pages.dev/guide/getting-started): Step-by-step setup and first usage.
+- [中文快速开始](https://bvm-core.pages.dev/zh/guide/getting-started): 中文入门指引。
+
+## Core Commands
+
+- [CLI Overview](https://github.com/EricLLLLLL/bvm/blob/main/README.md): `bvm install`, `bvm use`, `bvm default`, `bvm ls`, `bvm ls-remote`, `bvm uninstall`, `bvm upgrade`.
+- [Runtime Command Execution](https://github.com/EricLLLLLL/bvm/blob/main/README.md): `bvm run <version> <entry>`.
+- [Project Version Pinning](https://github.com/EricLLLLLL/bvm/blob/main/README.md): `.bvmrc` support for automatic project-level version switching.
+
+## Troubleshooting
+
+- [Troubleshooting (English)](https://bvm-core.pages.dev/guide/troubleshooting): PATH, shim, and environment diagnostics.
+- [排障（中文）](https://bvm-core.pages.dev/zh/guide/troubleshooting): 中文排障指南。
+- [Issue Tracker](https://github.com/EricLLLLLL/bvm/issues): Report bugs and edge cases.
+
+## Optional
+
+- [Architecture Notes](https://bvm-core.pages.dev/guide/architecture): Bunker architecture and isolation model.
+- [WeChat Official Account](https://bvm-core.pages.dev/wechat): Product updates and announcements.

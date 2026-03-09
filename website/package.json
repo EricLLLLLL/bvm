@@ -5,8 +5,9 @@
   "private": true,
   "scripts": {
     "sync-docs": "bun run sync-docs.ts",
-    "dev": "bun run sync-docs && vitepress dev docs",
-    "build": "bun run sync-docs && vitepress build docs",
+    "gen:ai-docs": "bun run generate-ai-docs.ts",
+    "dev": "bun run sync-docs && bun run gen:ai-docs && vitepress dev docs",
+    "build": "bun run sync-docs && bun run gen:ai-docs && vitepress build docs",
     "preview": "vitepress preview docs",
     "gen:favicons": "node scripts/generate-favicons.mjs",
     "gen:og": "node scripts/generate-og.mjs",

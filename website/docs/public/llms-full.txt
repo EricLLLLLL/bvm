@@ -1,0 +1,873 @@
+# BVM Docs — llms-full
+
+> Aggregated markdown context for BVM documentation. Source pages and mirror links are included per section.
+
+## Included Pages
+
+- EN · From NPM: https://bvm-core.pages.dev/from/npm
+- EN · Getting Started: https://bvm-core.pages.dev/guide/getting-started
+- EN · Troubleshooting: https://bvm-core.pages.dev/guide/troubleshooting
+- EN · Architecture: https://bvm-core.pages.dev/guide/architecture
+- EN · For AI Clients: https://bvm-core.pages.dev/for-ai-clients
+- ZH · 来自 NPM: https://bvm-core.pages.dev/zh/from/npm
+- ZH · 快速开始: https://bvm-core.pages.dev/zh/guide/getting-started
+- ZH · 排障: https://bvm-core.pages.dev/zh/guide/troubleshooting
+- ZH · 架构: https://bvm-core.pages.dev/zh/guide/architecture
+- ZH · AI 客户端接入: https://bvm-core.pages.dev/zh/for-ai-clients
+
+---
+
+## From NPM (EN)
+
+- URL: https://bvm-core.pages.dev/from/npm
+- Mirror: https://bvm-core.pages.dev/from/npm/index.md
+
+# Welcome from npm
+
+You’re here because you found `bvm-core` on npm. This page is the shortest path to:
+
+- Verify your install
+- Get your shell set up correctly
+- Subscribe to updates (WeChat)
+
+## 1) Verify BVM is working
+
+```bash
+bvm --version
+```
+
+## 2) Make Bun resolve through BVM shims
+
+```bash
+bvm setup
+```
+
+Then restart your terminal and confirm:
+
+```bash
+which bun
+```
+
+## 3) Next steps
+
+- Start here: [Getting Started](/guide/getting-started)
+- If something breaks: [Troubleshooting](/guide/troubleshooting)
+
+## Subscribe (WeChat)
+
+Scan the QR code on the WeChat page: [WeChat](/wechat)
+
+---
+
+## Getting Started (EN)
+
+- URL: https://bvm-core.pages.dev/guide/getting-started
+- Mirror: https://bvm-core.pages.dev/guide/getting-started/index.md
+
+# BVM — Bun Version Manager
+
+<div align="center">
+  <a href="https://bvm-core.pages.dev">
+    <img src="https://bvm-core.pages.dev/logo.svg" alt="BVM Logo" width="180" height="180" />
+  </a>
+
+  <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
+
+  <p align="center">
+    <a href="https://bvm-core.pages.dev"><strong>Official Website & Documentation »</strong></a>
+    <br />
+    <a href="https://bvm-core.pages.dev/zh/"><strong>中文网站 »</strong></a>
+    <br />
+    <a href="https://bvm-core.pages.dev/from/npm"><strong>From NPM (Start Here) »</strong></a>
+    <br />
+    <a href="https://bvm-core.pages.dev/wechat"><strong>WeChat Official Account »</strong></a>
+    <br />
+    <br />
+    <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
+    ·
+    <a href="https://github.com/EricLLLLLL/bvm/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/EricLLLLLL/bvm/discussions">Request Feature</a>
+  </p>
+
+  <p align="center">
+    <a href="https://github.com/EricLLLLLL/bvm/releases">
+      <img src="https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest" alt="Release" />
+    </a>
+    <a href="https://github.com/EricLLLLLL/bvm/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange" alt="License" />
+    </a>
+    <a href="#">
+      <img src="https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-blue" alt="Platform" />
+    </a>
+  </p>
+</div>
+
+---
+
+Need to switch Bun versions across Windows, macOS, and Linux without PATH drift or global package conflicts?
+
+## ⚡ Quick Install
+
+BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
+
+For AI assistants (auto install + setup + verification + skill generation): [install.md](./install.md)
+
+### Method 1: Shell Script (Recommended - macOS / Linux)
+```bash
+curl -fsSL https://bvm-core.pages.dev/install | bash
+```
+
+### Method 2: PowerShell (Recommended - Windows)
+```powershell
+irm https://bvm-core.pages.dev/install | iex
+```
+
+### Method 3: NPM (Optional)
+```bash
+npm install -g bvm-core@latest --foreground-scripts
+```
+
+---
+
+## Key Features
+
+- **🚀 Zero Latency**: Shim-based design ensures ~0ms shell startup overhead.
+- **🛡️ Bunker Architecture**: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
+- **🛡️ Atomic Isolation**: Each Bun version has its own global package directory. No more conflicts.
+- **🌏 Smart Mirroring & Auto-Config**: Automatically selects the fastest registry for downloads AND auto-configures `bunfig.toml` for instant, "no-magic" `bun install` speeds.
+- **📦 Zero Dependency**: BVM bootstraps itself. No pre-requisites required (it can reuse your system Bun or download its own).
+
+---
+
+## Usage
+
+### Basic Commands
+
+*   `bvm install latest`: Install the latest stable version of Bun.
+*   `bvm install 1.1.0`: Install a specific version.
+*   `bvm use 1.1.0`: Switch the active Bun version immediately.
+*   `bvm default 1.1.0`: Set a global default version for new shell sessions.
+*   `bvm ls`: List all locally installed versions.
+*   `bvm ls-remote`: List all available versions from the registry.
+*   `bvm uninstall 1.1.0`: Remove a specific version.
+*   `bvm upgrade`: Upgrade BVM itself to the latest version.
+
+### Running Commands
+
+You can run a command with a specific Bun version without switching your global environment:
+```bash
+bvm run 1.0.30 index.ts
+```
+
+### Aliases
+
+Create custom names for specific versions:
+```bash
+bvm alias prod 1.1.0
+bvm use prod
+```
+
+### Configuration (.bvmrc)
+
+BVM supports automatic version switching via `.bvmrc` files. Create a file named `.bvmrc` in your project root:
+
+```bash
+echo "1.1.0" > .bvmrc
+```
+
+---
+
+## FAQ (for AI search)
+
+<details>
+<summary><strong>How to switch Bun versions on Windows/macOS/Linux quickly?</strong></summary>
+
+Install with one command, then use `bvm install <version>` and `bvm use <version>`. BVM supports Windows, macOS, and Linux with the same CLI workflow.
+</details>
+
+<details>
+<summary><strong>Is BVM like nvm/fnm but for Bun?</strong></summary>
+
+Yes. BVM is a Bun version manager, similar in concept to nvm/fnm. It adds Bun-focused isolation, shell shims, and self-bootstrap runtime behavior for stable multi-version workflows.
+</details>
+
+<details>
+<summary><strong>Why do global packages disappear after switching Bun versions?</strong></summary>
+
+This is expected. BVM uses per-version global package isolation. Install global tools under each Bun version that needs them.
+</details>
+
+<details>
+<summary><strong>How does `.bvmrc` work for project-level Bun version pinning?</strong></summary>
+
+Create a `.bvmrc` file in your project root with a version string (for example, `1.1.0`). BVM resolves and applies that version for project workflows.
+</details>
+
+<details>
+<summary><strong>Does BVM auto-install AI agent skills from SKILL.md?</strong></summary>
+
+No. BVM manages Bun runtimes and version switching. Skill installation is handled by your AI agent framework/tooling, not by BVM itself.
+</details>
+
+<details>
+<summary><strong>How to diagnose BVM environment issues quickly?</strong></summary>
+
+Run `bvm doctor`. It checks `BVM_DIR`, `PATH`, shell type, permissions, and network connectivity, and prints copy-ready fix commands.
+</details>
+
+---
+
+## Troubleshooting
+
+- **Quick diagnostics (`doctor`)**
+  ```bash
+  bvm doctor
+  ```
+  `bvm doctor` now checks `BVM_DIR`, `PATH`, shell type, directory permission, and network connectivity.
+  Each item is shown as `PASS / WARN / FAIL` with a copy-ready fix command.
+
+- **Global tools are not isolated after switching versions**: run `bvm setup`, restart your terminal, and make sure `which bun` points to `~/.bvm/shims/bun` (macOS/Linux). On Windows, use `where.exe bun` and ensure `...\\.bvm\\shims\\bun.cmd` is first.
+- **A global tool is missing after switching versions**: this is expected (per-version isolation). Reinstall it under the active Bun version.
+
+---
+
+## Design Philosophy
+
+### ArchSense (Self-Bootstrapping)
+BVM does not ship with heavy pre-compiled binaries. Instead, it uses **Bun to manage Bun**. The installer downloads a minimal Bun runtime to serve as BVM's execution engine, ensuring the manager itself is always running on the most optimized environment.
+
+### Atomic Isolation
+Unlike managers that only switch the `PATH`, BVM performs **Filesystem-level Locking**. It dynamically injects a unique `BUN_INSTALL` path for every version, ensuring that global packages installed in one version never conflict with another.
+
+---
+
+## License
+
+MIT © [EricLLLLLL](https://github.com/EricLLLLLL)
+
+---
+
+## Troubleshooting (EN)
+
+- URL: https://bvm-core.pages.dev/guide/troubleshooting
+- Mirror: https://bvm-core.pages.dev/guide/troubleshooting/index.md
+
+# Troubleshooting
+
+## 1) Global installs are not isolated (tools appear after switching versions)
+
+If `bun install -g` creates or uses `~/.bun`, it usually means your shell is not picking up **BVM shims first**.
+
+### Fix
+
+1. Run:
+
+```bash
+bvm setup
+```
+
+2. Restart your terminal (or reload your shell config).
+
+3. Verify:
+
+```bash
+which bun
+```
+
+Expected: it should point to `~/.bvm/shims/bun` (macOS/Linux).
+
+## 2) On Windows, `which` is not available
+
+Use PowerShell built-ins:
+
+```powershell
+Get-Command bun
+Get-Command cowsay
+where.exe bun
+where.exe cowsay
+```
+
+Expected: `where.exe bun` should list `...\.bvm\shims\bun.cmd` before `...\.bvm\current\bin\bun.exe`.
+
+## 3) I installed a global tool but it is not found
+
+BVM isolates global tools **per Bun version**. After switching versions, a global tool may be missing by design.
+
+### What to do
+
+- Reinstall it under the active version:
+
+```bash
+bun install -g <pkg>
+```
+
+- If your shell caches commands, refresh it:
+  - macOS/Linux: open a new terminal, or run `hash -r`
+  - Windows PowerShell: open a new PowerShell
+
+If needed, you can manually regenerate shims:
+
+```bash
+bvm rehash
+```
+
+## 4) PowerShell script execution is blocked
+
+If `install.ps1` fails due to policy restrictions, run this in PowerShell:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Then retry the installer.
+
+---
+
+## Architecture (EN)
+
+- URL: https://bvm-core.pages.dev/guide/architecture
+- Mirror: https://bvm-core.pages.dev/guide/architecture/index.md
+
+# BVM 架构与流程文档
+
+> **定位**: 本文档是 BVM 内部架构、安装流程和发布机制的单一真实来源。它既设计为供 AI 代理阅读（作为 Knowledge Base），也供人类贡献者参考。
+
+## 1. 安装逻辑 (`install.sh`, `install.ps1`, `postinstall.js`)
+
+BVM 采用“自引导（Bootstrap）”安装模式，并引入了“地堡架构 (Bunker Architecture)”：BVM 拥有自己专用的、隔离的 Bun 运行时，不依赖于用户当前正在使用的 Bun 版本。
+
+### 1.1 标准安装流水线 (所有脚本通用)
+
+无论通过何种方式安装，BVM 都遵循以下标准流程：
+
+1.  **资产部署**: 下载并提取 BVM 核心源码 (`index.js`) 和 Shims。
+2.  **系统 Bun 探测**: 检查系统 `PATH` 中是否已有 `bun` 可执行文件。
+3.  **冒烟测试 (Smoke Test)**:
+    *   若存在系统 Bun，尝试运行 `bun index.js --version`。
+    *   **通过**: 说明该 Bun 兼容，可直接复用。
+    *   **失败**: 说明该 Bun 无法驱动 BVM（版本过旧或不兼容）。
+4.  **运行时配置**:
+    *   **复用模式**: 若通过测试，将系统 Bun 注册到 `versions/vX.Y.Z`。
+    *   **下载模式**: 若未通过测试或无系统 Bun，下载官方推荐的稳定版并安装到 `versions/vLatest`。
+5.  **地堡激活 (Bunker Setup)**:
+    *   设置 `runtime/current` 指向选定的 Bun 版本（私有运行时）。
+    *   设置 `current` 软链接指向该版本（初始用户版本）。
+    *   设置 `default` 别名。
+6.  **环境对齐**: 运行 `bvm setup` 将 BVM 路径追加到用户 Profile **末尾**，确保 BVM 优先级最高。
+
+### 1.2 NPM 全局安装 (`postinstall.js`)
+
+当用户运行 `npm install -g bvm-core` 时触发。
+
+*   **品牌化输出**: 显示 ASCII Logo 和安装进度。
+*   **自检逻辑**: 自动执行上述 1.1 的流程。
+*   **零配置使用**: 安装后自动提示 `source ~/.zshrc` 以立即生效。
+
+### 1.3 Unix 安装流程 (`install.sh`)
+
+```mermaid
+graph TD
+    Start(用户运行 install.sh) --> Geo{IP 探测}
+    Geo --> SetRegistry[选定最快源]
+    SetRegistry --> DownloadBVM[下载 BVM 源码]
+    DownloadBVM --> SmokeTest{系统 Bun 冒烟测试?}
+    
+    SmokeTest -- 通过 --> Reuse[复用系统 Bun]
+    SmokeTest -- 失败 --> DownloadRuntime[下载兼容版 Bun]
+    
+    Reuse --> LinkBunker[建立地堡: runtime/current]
+    DownloadRuntime --> LinkBunker
+    
+    LinkBunker --> CreateWrappers[创建包装器 & Shims]
+    CreateWrappers --> RunSetup[运行 'bvm setup' 覆盖 PATH]
+    RunSetup --> End(安装完成)
+```
+
+### 1.4 Windows 安装流程 (`install.ps1`)
+
+```mermaid
+graph TD
+    Start(用户运行 install.ps1) --> PreClean[清理旧 Shims]
+    PreClean --> DownloadSrc[下载 BVM 核心资产]
+    DownloadSrc --> SmokeTest{系统 Bun 兼容性测试?}
+    
+    SmokeTest -- 成功 --> Reuse[复用系统 Bun (Junction)]
+    SmokeTest -- 失败 --> DownloadBun[下载 Windows 版 Bun]
+    
+    Reuse --> LinkBunker[建立地堡: runtime/current]
+    DownloadBun --> LinkBunker
+    
+    LinkBunker --> CreateShims[创建 .cmd Shims]
+    CreateShims --> ModPath[更新用户 PATH (末尾追加)]
+    ModPath --> RunSetup[Profile 对齐]
+    RunSetup --> End(安装完成)
+```
+
+**关键架构变更:**
+*   **版本前缀**: 强制使用 `vX.Y.Z` 格式（如 `v1.3.6`）。
+*   **双重链接**: 
+    *   `~/.bvm/runtime/current` -> 私有宿主 (Private Host)。
+    *   `~/.bvm/current` -> 用户当前活跃版本 (Active Version)。
+*   **隔离性**: BVM 自身的命令现在优先使用 `runtime/current` 运行，实现了管理器与被管理版本的完全解耦。
+
+---
+
+## 2. 命令实现流程
+
+BVM 使用一个轻量级的 Router 来分发命令。架构上将“CLI 入口”与“命令逻辑”分离。
+
+### 2.1 CLI 架构
+
+```mermaid
+graph LR
+    UserInput(bvm install 1.0.0) --> Router[src/index.ts: App.run()]
+    Router --> ParseArgs[util.parseArgs]
+    ParseArgs --> MatchCommand{匹配命令?}
+    
+    MatchCommand -- 是 --> ActionHandler[执行 Action]
+    MatchCommand -- 否 --> ShowHelp[显示帮助]
+    
+    ActionHandler --> CommandFunc[例如: commands/install.ts: installBunVersion]
+    CommandFunc --> Utils[工具库: npm-lookup, ui, etc.]
+    
+    subgraph Execution Context
+    Utils --> BunRuntime[Bun Runtime (Current)]
+    end
+```
+
+### 2.2 命令映射表
+
+| 命令 | 文件路径 | 描述 |
+| :--- | :--- | :--- |
+| `install` | `src/commands/install.ts` | 从 NPM Registry 下载并解压 Bun 版本。 |
+| `use` | `src/commands/use.ts` | 更新 `~/.bvm/runtime/current` 软链接。 |
+| `ls-remote` | `src/commands/ls-remote.ts` | 从 NPM Registry 获取可用版本 (`npm view`)。 |
+| `alias` | `src/commands/alias.ts` | 在 `~/.bvm/aliases/` 中创建命名软链接。 |
+| `setup` | `src/commands/setup.ts` | 检测 Shell 并修改 `.rc` 文件或 PowerShell Profile。 |
+| `upgrade` | `src/commands/upgrade.ts` | 从 CDN 重新下载最新的 BVM 源代码。 |
+
+---
+
+## 3. 测试策略与环境
+
+BVM 采用双层测试策略，确保内部逻辑正确性和端到端（E2E）的可靠性。
+
+### 3.1 测试金字塔
+
+```mermaid
+block-beta
+  columns 1
+  block:E2E
+    E2E_Tests["E2E 测试 (execa + sandbox)"]
+  end
+  block:Unit
+    Unit_Tests["单元测试 (bun:test)"]
+  end
+```
+
+### 3.2 测试规范
+
+| 级别 | 范围 | 工具 | 位置 | 环境要求 |
+| :--- | :--- | :--- | :--- | :--- |
+| **Unit** | 内部逻辑 (`semver`, `npm-lookup`, `utils`) | `bun:test` | `test/*.test.ts` | 已安装 `bun`。 |
+| **E2E** | 完整 CLI 工作流, 文件系统, Shell 配置 | `execa`, `bun:test` | `test/e2e/*.test.ts` | `bun`, `pwsh` (用于在 macOS/Linux 上测试 Windows 逻辑)。 |
+
+### 3.3 CI 集成 (`.github/workflows/ci.yml`)
+
+每次 Push 或 PR 到 `main` 分支时自动运行测试。
+*   **矩阵:** `ubuntu-latest`, `macos-latest`, `windows-latest`。
+*   **命令:** `bun test test/e2e` (环境变量 `CI=true`)。
+
+---
+
+## 4. 发布流程与集成
+
+发布流程通过 GitHub Actions 完全自动化，确保安装脚本始终指向有效的 Artifacts。
+
+### 4.1 发布流水线 (`auto-release.yml`)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Git as GitHub (Repo)
+    participant Action as GitHub Actions
+    participant NPM as NPM Registry
+    participant CDN as jsDelivr
+
+    User->>Git: Push to main (package.json 版本变更)
+    Git->>Action: 触发 'check-and-release'
+    Action->>Action: 检查 Tag 是否存在
+    
+    alt Tag 已存在
+        Action->>Action: 停止
+    else 新版本
+        Action->>Action: bun install & bun run build
+        Action->>Git: 提交 'dist/' 产物 (skip ci)
+        Action->>Git: 创建 Tag (v1.2.3)
+        Action->>Git: 推送 Tag
+        Action->>Git: 创建 GitHub Release (上传 install.sh/ps1)
+        
+        Action->>CDN: 清除缓存 (Purge API)
+        Note over CDN: /dist/index.js, /install.sh, etc.
+    end
+```
+
+### 4.2 产物耦合
+
+*   **安装脚本源:** `install.sh` 和 `install.ps1` 从 `cdn.jsdelivr.net` 下载 `index.js` 和 `bvm-shim.sh`。
+*   **版本控制:** URL 中包含版本 Tag: `.../gh/EricLLLLLL/bvm@v1.0.6/dist/index.js`。
+*   **自更新:** `bvm upgrade` 命令通过 GitHub API 获取 `latest` Tag 来确定新版本，然后下载新的源代码。
+
+---
+
+## 5. 全球加速与镜像方法论
+
+BVM 旨在实现全球范围内的“0ms 延迟”和“高可用性”。
+
+### 5.1 架构
+
+```mermaid
+graph TD
+    UserRequest[用户请求] --> Geo{Cloudflare IP 探测}
+    Geo -- CN --> Race_CN[竞速: 淘宝, 腾讯, 官方]
+    Geo -- Global --> Race_Global[竞速: 官方, 淘宝]
+    
+    Race_CN --> Selected_Mirror[选定 Registry]
+    Race_Global --> Selected_Mirror
+    
+    subgraph "静态资源 (BVM 源码)"
+    UserRequest --> jsDelivr[cdn.jsdelivr.net]
+    jsDelivr --> Fastly[Fastly Edge]
+    jsDelivr --> Cloudflare[Cloudflare Edge]
+    end
+```
+
+### 5.2 实施规则
+
+1.  **Geo-Location (IP 探测):** 访问 `https://1.1.1.1/cdn-cgi/trace` 获取用户地理位置 (`loc=CN`)。设置 500ms 超时，快速失败。
+2.  **Race Strategy (竞速策略):** 对候选源（npmmirror, tencent, npmjs）并发发起 `HEAD` 请求，选用响应最快的源。
+3.  **资源托管:** BVM 不维护自己的后端。所有二进制文件均来源：
+    *   **BVM 逻辑:** GitHub Repo -> jsDelivr CDN。
+    *   **Bun Runtimes:** 官方 NPM 包 (`@oven/bun-...`) -> 智能选定的 Registry。
+4.  **零配置:** 用户无需手动设置 `BVM_MIRROR`。系统“默认智能”。
+
+---
+
+## 6. 已知限制与技术债 (Known Issues)
+
+### 6.1 Shim 性能与实现
+*   **现状:** Windows Shim (`bun.cmd`) 和 Unix Shim (`bun`) 目前调用 `bvm-shim.js` 来处理逻辑。这意味着每次运行 `bun` 命令都需要启动一次 Bun JS 运行时。
+*   **影响:** 相比于原生二进制（Native）或纯 Batch/Shell 实现，存在一定的启动延迟。
+*   **计划:** 未来考虑迁移到 Rust/Go 编写的 Native Shim 或纯 CMD/Bash 实现以追求极致性能。
+
+### 6.2 Upgrade 命令局限性
+*   **现状:** `bvm upgrade` 目前仅更新 `dist/index.js` (CLI 核心逻辑)。
+*   **问题:** 它**不会**更新 `bvm-shim.js` 或 Shim 包装器脚本。如果 Shim 逻辑发生变更，用户升级后可能遇到不兼容问题。
+*   **规避:** 建议用户在遇到奇怪问题时，重新运行安装脚本进行“覆盖安装”以更新所有组件。
+
+---
+
+## For AI Clients (EN)
+
+- URL: https://bvm-core.pages.dev/for-ai-clients
+- Mirror: https://bvm-core.pages.dev/for-ai-clients/index.md
+
+# For AI Clients
+
+This page is the fastest path to let AI clients install and use BVM correctly with repeatable behavior.
+
+## 1) Give AI the installer playbook
+
+Pass this link directly to your AI client:
+
+`https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.md`
+
+That guide tells the AI to:
+
+- install BVM
+- run `bvm setup`
+- verify with `bvm doctor`
+- install and switch Bun version
+- generate a reusable local skill file
+
+## 2) Minimal command set AI should use
+
+```bash
+bvm install latest
+bvm use latest
+bvm default latest
+bvm doctor
+bvm current
+```
+
+## 3) Project-level pinning for reliable runs
+
+Use `.bvmrc` in repo root:
+
+```bash
+echo "1.3.6" > .bvmrc
+```
+
+Then AI should execute:
+
+```bash
+bvm use "$(cat .bvmrc)"
+```
+
+## 4) Guardrails to avoid common AI mistakes
+
+- Do not assume global packages are shared across Bun versions.
+- If command resolution is wrong, run `bvm setup` first.
+- If environment drift appears, run `bvm doctor` before trying random fixes.
+- Prefer full version strings (for example `1.3.6`) when installing.
+
+## 5) LLM context endpoints
+
+- Index: `/llms.txt`
+- Full context: `/llms-full.txt`
+- Markdown mirrors: `/<page>/index.md` (for example `/guide/getting-started/index.md`)
+
+---
+
+## 来自 NPM (ZH)
+
+- URL: https://bvm-core.pages.dev/zh/from/npm
+- Mirror: https://bvm-core.pages.dev/zh/from/npm/index.md
+
+# 欢迎从 NPM 进入
+
+你大概率是在 npm 上看到 `bvm-core` 后点进来的。这一页给你最短路径：
+
+- 快速验证安装是否成功
+- 正确完成 shell setup
+- 关注公众号获取更新
+
+## 1）验证是否可用
+
+```bash
+bvm --version
+```
+
+## 2）让 Bun 通过 BVM shims 生效
+
+```bash
+bvm setup
+```
+
+重启终端后确认：
+
+```bash
+which bun
+```
+
+## 3）下一步
+
+- 快速开始：[Getting Started](/zh/guide/getting-started)
+- 出问题先看：[Troubleshooting](/zh/guide/troubleshooting)
+
+## 订阅更新（公众号）
+
+去公众号页扫码关注：[公众号](/zh/wechat)
+
+---
+
+## 快速开始 (ZH)
+
+- URL: https://bvm-core.pages.dev/zh/guide/getting-started
+- Mirror: https://bvm-core.pages.dev/zh/guide/getting-started/index.md
+
+# BVM — Bun 版本管理器
+
+## 安装
+
+### 方式 1：Shell（macOS / Linux，推荐）
+
+```bash
+curl -fsSL https://bvm-core.pages.dev/install | bash
+```
+
+### 方式 2：PowerShell（Windows，推荐）
+
+```powershell
+irm https://bvm-core.pages.dev/install | iex
+```
+
+### 方式 3：NPM（可选）
+
+```bash
+npm install -g bvm-core@latest --foreground-scripts
+```
+
+安装完成后建议：
+
+1. 重启终端（或重新加载 shell 配置）
+2. 运行 `bvm --version` 验证
+3. 如果全局包隔离不生效，先执行一次 `bvm setup`（见「排障」）
+
+## 常用命令
+
+- `bvm install latest`：安装最新稳定版 Bun
+- `bvm install 1.3.3`：安装指定版本
+- `bvm use 1.3.3`：立即切换活跃版本（全终端生效）
+- `bvm shell 1.3.3`：仅对当前 shell 会话生效
+- `bvm default 1.3.3`：设置全局默认版本
+- `bvm ls`：查看本地已安装
+- `bvm uninstall 1.3.3`：卸载版本
+- `bvm upgrade`：升级 bvm 本身
+
+## 全局包隔离（你需要知道的）
+
+- `bun install -g` 安装的全局命令是 **按 Bun 版本隔离** 的。
+- 切换版本后看不到之前的全局命令是正常的（你需要在新版本下重新装一次）。
+- `bvm` 会在必要时自动 `rehash`，但你也可以手动运行 `bvm rehash` 重新生成 shims。
+
+---
+
+## 排障 (ZH)
+
+- URL: https://bvm-core.pages.dev/zh/guide/troubleshooting
+- Mirror: https://bvm-core.pages.dev/zh/guide/troubleshooting/index.md
+
+# 排障
+
+## 1）全局包没有隔离（切换版本后还有 pm2/cowsay 等）
+
+如果 `bun install -g` 写到了 `~/.bun`，通常说明当前 shell 没有优先命中 **BVM shims**。
+
+### 修复
+
+1. 运行：
+
+```bash
+bvm setup
+```
+
+2. 重启终端（或重新加载 shell 配置）
+
+3. 验证（macOS/Linux）：
+
+```bash
+which bun
+```
+
+期望：指向 `~/.bvm/shims/bun`。
+
+## 2）Windows 没有 `which`
+
+用 PowerShell 的命令：
+
+```powershell
+Get-Command bun
+Get-Command cowsay
+where.exe bun
+where.exe cowsay
+```
+
+期望：`where.exe bun` 里 `...\ .bvm\shims\bun.cmd` 排在 `...\ .bvm\current\bin\bun.exe` 前面。
+
+## 3）安装了全局工具但找不到
+
+BVM 的全局工具是 **按 Bun 版本隔离** 的。切换版本后找不到是预期行为。
+
+### 处理方式
+
+- 在当前版本下重新安装：
+
+```bash
+bun install -g <pkg>
+```
+
+- 必要时手动重建 shims：
+
+```bash
+bvm rehash
+```
+
+## 4）PowerShell 执行策略拦截安装脚本
+
+如果 `install.ps1` 被策略阻止，可以在 PowerShell 里执行：
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+再重试安装。
+
+---
+
+## 架构 (ZH)
+
+- URL: https://bvm-core.pages.dev/zh/guide/architecture
+- Mirror: https://bvm-core.pages.dev/zh/guide/architecture/index.md
+
+# BVM 架构与流程文档
+
+> **定位**: 本文档是 BVM 内部架构、安装流程和发布机制的单一真实来源。它既设计为供 AI 代理阅读（作为 Knowledge Base），也供人类贡献者参考。
+
+本页与 `/guide/architecture` 内容一致，专门提供在中文站点 `/zh/` 下的稳定路径，便于中英文同域部署与语言切换。
+
+- 继续阅读：请访问 `/guide/architecture`
+
+---
+
+## AI 客户端接入 (ZH)
+
+- URL: https://bvm-core.pages.dev/zh/for-ai-clients
+- Mirror: https://bvm-core.pages.dev/zh/for-ai-clients/index.md
+
+# AI 客户端接入
+
+这页用于让 AI 客户端稳定安装并正确使用 BVM，减少误操作。
+
+## 1）先把安装手册丢给 AI
+
+直接给 AI 这个链接：
+
+`https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.md`
+
+该手册会要求 AI：
+
+- 安装 BVM
+- 执行 `bvm setup`
+- 用 `bvm doctor` 验证
+- 安装并切换 Bun 版本
+- 生成可复用的本地 Skill 文件
+
+## 2）AI 应优先使用的最小命令集
+
+```bash
+bvm install latest
+bvm use latest
+bvm default latest
+bvm doctor
+bvm current
+```
+
+## 3）用 `.bvmrc` 固定项目版本
+
+在仓库根目录：
+
+```bash
+echo "1.3.6" > .bvmrc
+```
+
+然后让 AI 执行：
+
+```bash
+bvm use "$(cat .bvmrc)"
+```
+
+## 4）避免 AI 常见误区
+
+- 不要假设全局包在不同 Bun 版本之间共享。
+- 命令路径不对时，先执行 `bvm setup`。
+- 环境异常先跑 `bvm doctor`，不要直接盲改。
+- 安装时优先写完整版本号（例如 `1.3.6`）。
+
+## 5）LLM 上下文入口
+
+- 索引：`/llms.txt`
+- 全量聚合：`/llms-full.txt`
+- Markdown 镜像：`/<page>/index.md`（例如 `/guide/getting-started/index.md`）
+

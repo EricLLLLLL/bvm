@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect x="0" y="0" width="512" height="512" rx="32" fill="#0b0f19"/>
+  <rect x="32" y="32" width="448" height="448" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <g fill="#e5e7eb" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" text-anchor="middle">
+    <text x="256" y="170" font-size="28" font-weight="700">WeChat QR Code</text>
+    <text x="256" y="215" font-size="16" opacity="0.85">Replace this placeholder</text>
+    <text x="256" y="250" font-size="16" opacity="0.85">with your Official Account QR</text>
+  </g>
+  <g>
+    <rect x="96" y="300" width="320" height="96" rx="16" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+    <g fill="#93c5fd" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace" text-anchor="middle">
+      <text x="256" y="347" font-size="14">website/docs/public/media</text>
+      <text x="256" y="372" font-size="14">/wechat-qrcode.svg</text>
+    </g>
+  </g>
+</svg>
+
