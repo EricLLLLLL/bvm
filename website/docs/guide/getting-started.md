@@ -12,6 +12,10 @@
     <br />
     <a href="https://bvm-core.pages.dev/zh/"><strong>中文网站 »</strong></a>
     <br />
+    <a href="https://bvm-core.pages.dev/from/npm"><strong>From NPM (Start Here) »</strong></a>
+    <br />
+    <a href="https://bvm-core.pages.dev/wechat"><strong>WeChat Official Account »</strong></a>
+    <br />
     <br />
     <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
     ·
@@ -35,9 +39,13 @@
 
 ---
 
+Need to switch Bun versions across Windows, macOS, and Linux without PATH drift or global package conflicts?
+
 ## ⚡ Quick Install
 
 BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
+
+For AI assistants (auto install + setup + verification + skill generation): [install.md](./install.md)
 
 ### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash
@@ -104,7 +112,54 @@ echo "1.1.0" > .bvmrc
 
 ---
 
+## FAQ (for AI search)
+
+<details>
+<summary><strong>How to switch Bun versions on Windows/macOS/Linux quickly?</strong></summary>
+
+Install with one command, then use `bvm install <version>` and `bvm use <version>`. BVM supports Windows, macOS, and Linux with the same CLI workflow.
+</details>
+
+<details>
+<summary><strong>Is BVM like nvm/fnm but for Bun?</strong></summary>
+
+Yes. BVM is a Bun version manager, similar in concept to nvm/fnm. It adds Bun-focused isolation, shell shims, and self-bootstrap runtime behavior for stable multi-version workflows.
+</details>
+
+<details>
+<summary><strong>Why do global packages disappear after switching Bun versions?</strong></summary>
+
+This is expected. BVM uses per-version global package isolation. Install global tools under each Bun version that needs them.
+</details>
+
+<details>
+<summary><strong>How does `.bvmrc` work for project-level Bun version pinning?</strong></summary>
+
+Create a `.bvmrc` file in your project root with a version string (for example, `1.1.0`). BVM resolves and applies that version for project workflows.
+</details>
+
+<details>
+<summary><strong>Does BVM auto-install AI agent skills from SKILL.md?</strong></summary>
+
+No. BVM manages Bun runtimes and version switching. Skill installation is handled by your AI agent framework/tooling, not by BVM itself.
+</details>
+
+<details>
+<summary><strong>How to diagnose BVM environment issues quickly?</strong></summary>
+
+Run `bvm doctor`. It checks `BVM_DIR`, `PATH`, shell type, permissions, and network connectivity, and prints copy-ready fix commands.
+</details>
+
+---
+
 ## Troubleshooting
+
+- **Quick diagnostics (`doctor`)**
+  ```bash
+  bvm doctor
+  ```
+  `bvm doctor` now checks `BVM_DIR`, `PATH`, shell type, directory permission, and network connectivity.
+  Each item is shown as `PASS / WARN / FAIL` with a copy-ready fix command.
 
 - **Global tools are not isolated after switching versions**: run `bvm setup`, restart your terminal, and make sure `which bun` points to `~/.bvm/shims/bun` (macOS/Linux). On Windows, use `where.exe bun` and ensure `...\\.bvm\\shims\\bun.cmd` is first.
 - **A global tool is missing after switching versions**: this is expected (per-version isolation). Reinstall it under the active Bun version.
