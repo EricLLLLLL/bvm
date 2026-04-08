@@ -4,7 +4,6 @@ import { normalizeVersion } from './utils';
 import { valid, rcompare, parse, compareParsed } from './utils/semver-lite';
 import { colors } from './utils/ui';
 import { getBunNpmPackage, getBunDownloadUrl } from './utils/npm-lookup';
-import { runCommand } from './helpers/process';
 import { getFastestRegistry, fetchWithTimeout, REGISTRIES } from './utils/network-utils';
 
 const VERSIONS_CACHE_FILE = 'bun-versions.json';
@@ -166,34 +165,23 @@ export async function fetchBunVersions(): Promise<string[]> {
  */
 export async function checkBunVersionExists(version: string): Promise<boolean> {
   if (isTestMode()) {
-	      return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
+    return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
   }
-  
+
   const registry = await getFastestRegistry();
-  // NPM Registry URL must not have the 'v' prefix
   const plainVersion = version.replace(/^v/, '');
   const url = `${registry}/bun/${plainVersion}`;
 
-  const curlCmd = OS_PLATFORM === 'win32' ? 'curl.exe' : 'curl';
-  
-  // Safety Wrapper: Don't let a sub-process hang the whole CLI
-  const runWithTimeout = async () => {
-      try {
-        await runCommand([curlCmd, '-I', '-f', '-m', '5', '-s', url], {
-            stdout: 'ignore',
-            stderr: 'ignore'
-        });
-        return true;
-      } catch (e) {
-        return false;
-      }
-  };
-
-  const timeout = new Promise<boolean>((resolve) => 
-      setTimeout(() => resolve(false), 10000) // 10s hard timeout
-  );
-
-  return Promise.race([runWithTimeout(), timeout]);
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: 'HEAD',
+      headers: { 'User-Agent': USER_AGENT },
+      timeout: 5000,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
