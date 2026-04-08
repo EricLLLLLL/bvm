@@ -72,30 +72,18 @@ export async function raceRequests(urls: string[], timeout = 2000): Promise<stri
   if (urls.length === 0) throw new Error('No URLs to race');
   if (urls.length === 1) return urls[0];
 
-  return new Promise((resolve, reject) => {
-    let failedCount = 0;
-    let resolved = false;
-
-    urls.forEach(url => {
-      fetchWithTimeout(url, { method: 'HEAD', timeout })
-        .then((res) => {
-            if (res.ok && !resolved) {
-                resolved = true;
-                resolve(url);
-            } else if (!resolved) {
-                // If response is 404/500, count as failed
-                failedCount++;
-                if (failedCount === urls.length) reject(new Error('All requests failed'));
-            }
+  try {
+    return await Promise.any(
+      urls.map(url =>
+        fetchWithTimeout(url, { method: 'HEAD', timeout }).then(res => {
+          if (!res.ok) throw new Error(`Status ${res.status}`);
+          return url;
         })
-        .catch(() => {
-            if (!resolved) {
-                failedCount++;
-                if (failedCount === urls.length) reject(new Error('All requests failed'));
-            }
-        });
-    });
-  });
+      )
+    );
+  } catch {
+    throw new Error('All requests failed');
+  }
 }
 
 /**
