@@ -89,40 +89,22 @@ export async function fetchBunVersionsFromGit(): Promise<string[]> {
   if (isTestMode()) {
     return [...TEST_REMOTE_VERSIONS];
   }
-  return new Promise((resolve, reject) => {
-    const versions: string[] = [];
-    
-    try {
-      const proc = Bun.spawn(['git', 'ls-remote', '--tags', 'https://github.com/oven-sh/bun.git'], {
-        stdout: 'pipe',
-        stderr: 'pipe',
-      });
 
-      const timeout = setTimeout(() => {
-        proc.kill();
-        reject(new Error('Git operation timed out'));
-      }, 10000); // 10s timeout for git
-
-      const stream = new Response(proc.stdout);
-      stream.text().then(text => {
-        clearTimeout(timeout);
-        const lines = text.split('\n');
-        for (const line of lines) {
-          const match = line.match(/refs\/tags\/bun-v?(\d+\.\d+\.\d+.*)$/);
-          if (match) {
-             versions.push(match[1]);
-          }
-        }
-        resolve(versions);
-      }).catch(err => {
-        clearTimeout(timeout);
-        reject(err);
-      });
-      
-    } catch (e: any) {
-      reject(new Error(`Failed to run git: ${e.message}`));
-    }
+  const proc = Bun.spawn(['git', 'ls-remote', '--tags', 'https://github.com/oven-sh/bun.git'], {
+    stdout: 'pipe',
+    stderr: 'pipe',
   });
+
+  const timeout = setTimeout(() => proc.kill(), 10000);
+  const text = await new Response(proc.stdout).text();
+  clearTimeout(timeout);
+
+  const versions: string[] = [];
+  for (const line of text.split('\n')) {
+    const match = line.match(/refs\/tags\/bun-v?(\d+\.\d+\.\d+.*)$/);
+    if (match) versions.push(match[1]);
+  }
+  return versions;
 }
 
 /**
