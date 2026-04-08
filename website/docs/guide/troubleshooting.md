@@ -1,3 +1,8 @@
+---
+title: Troubleshooting
+description: Fix common BVM issues — global install isolation, PATH conflicts, shim errors, and version switching problems.
+---
+
 # Troubleshooting
 
 ## 1) Global installs are not isolated (tools appear after switching versions)

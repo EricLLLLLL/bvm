@@ -1,81 +1,81 @@
-# BVM AI Installer Guide
+# BVM — Installation Guide
 
-> 这是给 AI 助手执行的安装手册。目标是：自动安装 BVM、完成 shell 配置、验证可用性、并生成可复用的 BVM 使用 Skill。
+## For Humans
 
-## 给 AI 的执行要求
+Copy this to your AI Agent:
 
-1. 不要只解释，请直接执行命令并给出结果。
-2. 严格按步骤执行；某步失败时先修复再继续。
-3. 不要使用破坏性命令（如 `rm -rf`、`git reset --hard`）。
-4. 每完成一个阶段，输出简短状态和关键命令结果。
-
-## 目标结果
-
-- `bvm --version` 可用
-- `bvm setup` 已执行，BVM shims 已生效
-- `bvm doctor` 通过核心检查
-- 已安装并启用一个 Bun 版本（建议 `latest`）
-- 已生成一个可复用的 Skill 文件：`my-skills/bvm-user/SKILL.md`
-
-## Step 1: 识别系统与 Shell
-
-请先执行并记录结果：
-
-```bash
-uname -s || true
-uname -m || true
-echo "$SHELL" || true
+```
+帮我安装 BVM：https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.md
 ```
 
-在 Windows PowerShell 执行：
+---
+
+## For AI Agents
+
+### Goal
+
+Install BVM (Bun Version Manager), configure shell integration, and verify the environment. After installation, the user can install, switch, and manage multiple Bun versions with `bvm install` / `bvm use`.
+
+### Boundaries
+
+When installing and fixing issues, stay within these limits:
+
+- **DO NOT** run commands with `sudo` unless the user explicitly approved
+- **DO NOT** modify system files outside `~/.bvm/`
+- **DO NOT** use destructive commands (`rm -rf`, `git reset --hard`)
+- **DO NOT** create files in the user's project directory (workspace)
+- If something requires elevated permissions, **tell the user** what's needed and let them decide
+
+### Step 1: Detect system environment
+
+```bash
+uname -s && uname -m && echo "$SHELL"
+```
+
+On Windows PowerShell:
 
 ```powershell
 $PSVersionTable.PSVersion
 [System.Environment]::OSVersion.VersionString
 ```
 
-## Step 2: 安装 BVM
+### Step 2: Install BVM
 
-### macOS / Linux（推荐）
+Choose the method matching the user's OS:
+
+**macOS / Linux (recommended):**
 
 ```bash
 curl -fsSL https://bvm-core.pages.dev/install | bash
 ```
 
-### Windows PowerShell（推荐）
+**Windows PowerShell (recommended):**
 
 ```powershell
 irm https://bvm-core.pages.dev/install | iex
 ```
 
-### 备选：NPM 全局安装
+**NPM (fallback):**
 
 ```bash
 npm install -g bvm-core@latest --foreground-scripts
 ```
 
-## Step 3: 执行 setup 并验证 shim 优先级
+### Step 3: Setup and verify shims
 
 ```bash
 bvm setup
 bvm --version
 ```
 
-macOS / Linux 额外检查：
+Verify shim priority — `bun` should point to the BVM shim:
 
-```bash
-which bun
-```
+- macOS / Linux: `which bun` should show `~/.bvm/shims/bun`
+- Windows: `where.exe bun` should show `...\\.bvm\\shims\\bun.cmd`
 
-Windows 额外检查：
+If the path is wrong, check `PATH` order. The BVM shims directory must come before `~/.bun/bin`.
 
-```powershell
-where.exe bun
-```
-
-要求：`bun` 应优先指向 BVM shim 路径（如 `~/.bvm/shims/bun` 或 `...\\.bvm\\shims\\bun.cmd`）。
-
-## Step 4: 初始化 Bun 版本
+### Step 4: Install a Bun version
 
 ```bash
 bvm install latest
@@ -85,66 +85,45 @@ bvm current
 bun --version
 ```
 
-## Step 5: 运行诊断并自动修复
+### Step 5: Run diagnostics and fix issues
 
 ```bash
 bvm doctor
 ```
 
-如果 `doctor` 有 `WARN/FAIL`，请根据输出建议自动执行修复命令，然后再次运行 `bvm doctor`，直到核心链路正常。
+If `doctor` shows `WARN` or `FAIL`, follow the suggested fix commands in its output. Re-run `bvm doctor` until all core checks pass. Only ask the user when you genuinely need their input.
 
-## Step 6: 生成并保存 Skill（必须）
+### Step 6: Report results
 
-请在仓库中创建文件：`my-skills/bvm-user/SKILL.md`，内容使用下面模板（可按当前机器微调）：
+Present the final status to the user:
 
-```markdown
----
-name: bvm-user
-description: 在日常开发中自动使用 BVM 管理 Bun 版本，确保版本切换、全局包隔离和环境诊断流程稳定可复现。
----
-
-# BVM User
-
-## 目标
-
-- 自动遵循项目 `.bvmrc` 版本
-- 保持 Bun 全局包按版本隔离
-- 遇到环境问题优先使用 `bvm doctor` + `bvm setup` 修复
-
-## 标准流程
-
-1. 进入项目后优先检查版本上下文：
-   - 若存在 `.bvmrc`，执行：`bvm use $(cat .bvmrc)`
-   - 若不存在 `.bvmrc`，执行：`bvm use default`（若失败则提示先安装）
-2. 安装或切换 Bun 版本：
-   - 安装：`bvm install <full_version>`
-   - 切换：`bvm use <version_or_alias>`
-   - 设默认：`bvm default <version_or_alias>`
-3. 出现命令不一致或全局包混乱时：
-   - 执行：`bvm doctor`
-   - 按提示执行修复
-   - 执行：`bvm setup`
-   - 重开终端后复检：`which bun`（Windows 用 `where.exe bun`）
-
-## 注意事项
-
-- BVM 只负责 Bun 版本与运行时管理，不负责自动安装第三方 Agent Skills。
-- 全局包隔离是预期行为；切换版本后如缺少命令，请在当前版本重新安装对应全局包。
-- 安装时优先使用完整版本号（如 `1.3.6`），避免模糊版本输入。
-```
-
-## Step 7: 最终回报格式
-
-请按以下格式输出最终结果：
-
-1. 系统信息（OS + Shell）
-2. 安装方式（Shell / PowerShell / NPM）
-3. 验证结果（`bvm --version`、`bvm current`、`bun --version`、`bvm doctor`摘要）
-4. 已创建文件清单（至少包含 `my-skills/bvm-user/SKILL.md`）
-5. 后续建议（最多 3 条）
+> BVM 安装完成！
+>
+> - **系统**: {OS} {Arch} / {Shell}
+> - **安装方式**: {Shell Script / PowerShell / NPM}
+> - **BVM 版本**: `bvm --version` 输出
+> - **当前 Bun**: `bun --version` 输出
+> - **诊断**: `bvm doctor` 全部 PASS / 有 N 个 WARN
+>
+> 常用命令：
+> - `bvm install <version>` — 安装指定版本
+> - `bvm use <version>` — 切换当前版本
+> - `bvm ls` — 查看已安装版本
+> - `bvm doctor` — 环境诊断
 
 ---
 
-## 一句话用法（可直接发给 AI）
+## Quick Reference
 
-请按这个安装手册执行：`https://raw.githubusercontent.com/EricLLLLLL/bvm/main/install.md`。不要只解释，直接完成安装、配置、验证，并按手册生成 `my-skills/bvm-user/SKILL.md`。
+| Command | What it does |
+|---------|-------------|
+| `bvm install latest` | Install the latest Bun version |
+| `bvm install 1.1.0` | Install a specific version |
+| `bvm use 1.1.0` | Switch to a version |
+| `bvm default 1.1.0` | Set default version for new shells |
+| `bvm ls` | List installed versions |
+| `bvm ls-remote` | List all available versions |
+| `bvm current` | Show active version |
+| `bvm doctor` | Diagnose environment issues |
+| `bvm setup` | Re-configure shell integration |
+| `bvm upgrade` | Upgrade BVM itself |

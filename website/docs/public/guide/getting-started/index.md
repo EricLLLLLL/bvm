@@ -45,7 +45,7 @@ Need to switch Bun versions across Windows, macOS, and Linux without PATH drift 
 
 BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
 
-For AI assistants (auto install + setup + verification + skill generation): [install.md](./install.md)
+For AI assistants (auto install + setup + verification): [install.md](./install.md)
 
 ### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash

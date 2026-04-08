@@ -1,4 +1,5 @@
 ---
+description: BVM 是 Bun 原生的零依赖版本管理器。一条命令安装、切换、管理多个 Bun 版本。
 layout: home
 
 hero:

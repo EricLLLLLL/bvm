@@ -1,3 +1,8 @@
+---
+title: 排障
+description: 解决 BVM 常见问题 — 全局包隔离、PATH 冲突、shim 错误和版本切换问题。
+---
+
 # 排障
 
 ## 1）全局包没有隔离（切换版本后还有 pm2/cowsay 等）

@@ -1,3 +1,8 @@
+---
+title: 快速开始
+description: 安装 BVM，在 macOS、Linux 和 Windows 上管理多个 Bun 版本。
+---
+
 # BVM — Bun 版本管理器
 
 ## 安装

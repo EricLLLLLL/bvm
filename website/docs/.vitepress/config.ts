@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitepress';
+import { defineConfig, type TransformPageContext } from 'vitepress';
 
 const SITE_URL = 'https://bvm-core.pages.dev';
 const UMAMI_SRC = process.env.BVM_UMAMI_SRC?.trim();
@@ -26,6 +26,42 @@ export default defineConfig({
   head,
   cleanUrls: true,
   lastUpdated: true,
+  sitemap: { hostname: SITE_URL },
+  srcExclude: ['public/**/*.md'],
+  ignoreDeadLinks: [/\.\/install/],
+
+  transformPageData(pageData) {
+    // Canonical URL — one authoritative URL per page
+    const canonicalUrl = `${SITE_URL}/${pageData.relativePath}`
+      .replace(/index\.md$/, '')
+      .replace(/\.md$/, '');
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push(['link', { rel: 'canonical', href: canonicalUrl }]);
+
+    // Per-page og:description from frontmatter description
+    const desc = pageData.frontmatter.description || pageData.description;
+    if (desc) {
+      pageData.frontmatter.head.push(
+        ['meta', { property: 'og:description', content: desc }],
+        ['meta', { name: 'twitter:description', content: desc }],
+      );
+    }
+
+    // Per-page og:title
+    const title = pageData.frontmatter.title || pageData.title;
+    if (title) {
+      pageData.frontmatter.head.push(
+        ['meta', { property: 'og:title', content: `${title} | BVM` }],
+        ['meta', { name: 'twitter:title', content: `${title} | BVM` }],
+      );
+    }
+
+    // Per-page og:url
+    pageData.frontmatter.head.push(
+      ['meta', { property: 'og:url', content: canonicalUrl }],
+    );
+  },
+
   locales: {
     root: {
       label: 'English',
