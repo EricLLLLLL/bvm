@@ -28,7 +28,3 @@ which bun
 
 - 快速开始：[Getting Started](/zh/guide/getting-started)
 - 出问题先看：[Troubleshooting](/zh/guide/troubleshooting)
-
-## 订阅更新（公众号）
-
-去公众号页扫码关注：[公众号](/zh/wechat)

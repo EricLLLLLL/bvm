@@ -33,8 +33,3 @@ which bun
 
 - Start here: [Getting Started](/guide/getting-started)
 - If something breaks: [Troubleshooting](/guide/troubleshooting)
-
-## Subscribe (WeChat)
-
-Scan the QR code on the WeChat page: [WeChat](/wechat)
-

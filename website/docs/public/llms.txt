@@ -10,7 +10,6 @@
 
 - [Home](https://bvm-core.pages.dev/): Mirror at [/index.md](https://bvm-core.pages.dev/index.md)
 - [From NPM](https://bvm-core.pages.dev/from/npm): Mirror at [/from/npm/index.md](https://bvm-core.pages.dev/from/npm/index.md)
-- [WeChat](https://bvm-core.pages.dev/wechat): Mirror at [/wechat/index.md](https://bvm-core.pages.dev/wechat/index.md)
 - [Getting Started](https://bvm-core.pages.dev/guide/getting-started): Mirror at [/guide/getting-started/index.md](https://bvm-core.pages.dev/guide/getting-started/index.md)
 - [Troubleshooting](https://bvm-core.pages.dev/guide/troubleshooting): Mirror at [/guide/troubleshooting/index.md](https://bvm-core.pages.dev/guide/troubleshooting/index.md)
 - [Architecture](https://bvm-core.pages.dev/guide/architecture): Mirror at [/guide/architecture/index.md](https://bvm-core.pages.dev/guide/architecture/index.md)
@@ -20,7 +19,6 @@
 
 - [首页](https://bvm-core.pages.dev/zh/): 镜像 [/zh/index.md](https://bvm-core.pages.dev/zh/index.md)
 - [来自 NPM](https://bvm-core.pages.dev/zh/from/npm): 镜像 [/zh/from/npm/index.md](https://bvm-core.pages.dev/zh/from/npm/index.md)
-- [公众号](https://bvm-core.pages.dev/zh/wechat): 镜像 [/zh/wechat/index.md](https://bvm-core.pages.dev/zh/wechat/index.md)
 - [快速开始](https://bvm-core.pages.dev/zh/guide/getting-started): 镜像 [/zh/guide/getting-started/index.md](https://bvm-core.pages.dev/zh/guide/getting-started/index.md)
 - [排障](https://bvm-core.pages.dev/zh/guide/troubleshooting): 镜像 [/zh/guide/troubleshooting/index.md](https://bvm-core.pages.dev/zh/guide/troubleshooting/index.md)
 - [架构](https://bvm-core.pages.dev/zh/guide/architecture): 镜像 [/zh/guide/architecture/index.md](https://bvm-core.pages.dev/zh/guide/architecture/index.md)

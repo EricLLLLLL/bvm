@@ -238,19 +238,28 @@ const copy = (text, type) => {
 }
 
 .compare-table {
-  width: auto;
-  border-collapse: collapse;
+  display: table !important;
+  width: auto !important;
+  border-collapse: separate;
+  border-spacing: 0;
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   overflow: hidden;
   background: var(--vp-c-bg-alt);
+  margin: 0 auto;
 }
 
 .compare-table th,
 .compare-table td {
-  padding: 0.75rem 0.9rem;
+  padding: 0.75rem 1.2rem;
   border-bottom: 1px solid var(--vp-c-divider);
   vertical-align: top;
+  white-space: nowrap;
+}
+
+.compare-table td:last-child,
+.compare-table th:last-child {
+  white-space: normal;
 }
 
 .compare-table th {
@@ -262,6 +271,10 @@ const copy = (text, type) => {
 .compare-table td {
   font-size: 0.95rem;
   color: var(--vp-c-text-1);
+}
+
+.compare-table tr:last-child td {
+  border-bottom: none;
 }
 
 .callout-section {

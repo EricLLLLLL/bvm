@@ -53,10 +53,6 @@ which bun
 - Start here: [Getting Started](/guide/getting-started)
 - If something breaks: [Troubleshooting](/guide/troubleshooting)
 
-## Subscribe (WeChat)
-
-Scan the QR code on the WeChat page: [WeChat](/wechat)
-
 ---
 
 ## Getting Started (EN)
@@ -79,8 +75,6 @@ Scan the QR code on the WeChat page: [WeChat](/wechat)
     <a href="https://bvm-core.pages.dev/zh/"><strong>中文网站 »</strong></a>
     <br />
     <a href="https://bvm-core.pages.dev/from/npm"><strong>From NPM (Start Here) »</strong></a>
-    <br />
-    <a href="https://bvm-core.pages.dev/wechat"><strong>WeChat Official Account »</strong></a>
     <br />
     <br />
     <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
@@ -665,10 +659,6 @@ which bun
 
 - 快速开始：[Getting Started](/zh/guide/getting-started)
 - 出问题先看：[Troubleshooting](/zh/guide/troubleshooting)
-
-## 订阅更新（公众号）
-
-去公众号页扫码关注：[公众号](/zh/wechat)
 
 ---
 
