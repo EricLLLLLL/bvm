@@ -14,8 +14,6 @@
     <br />
     <a href="https://bvm-core.pages.dev/zh/from/npm"><strong>从 NPM 来？从这里开始 »</strong></a>
     <br />
-    <a href="https://bvm-core.pages.dev/zh/wechat"><strong>关注公众号 »</strong></a>
-    <br />
     <br />
     <a href="./README.md">🇺🇸 English Docs</a>
     ·
