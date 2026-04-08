@@ -1,5 +1,5 @@
 import { BunfigManager } from '../utils/bunfig';
-import { RegistrySpeedTester, REGISTRIES } from '../utils/registry-check';
+import { getFastestRegistry } from '../utils/network-utils';
 import { colors } from '../utils/ui';
 import { withSpinner } from '../command-runner';
 
@@ -18,8 +18,7 @@ export async function handleConfigCommand(args: string[]) {
   if (subcommand === 'registry') {
     if (key === 'auto') {
       await withSpinner('Racing registries for optimal speed...', async (spinner) => {
-        const tester = new RegistrySpeedTester();
-        const fastest = await tester.getFastestRegistry();
+        const fastest = await getFastestRegistry();
         bunfig.setRegistry(fastest);
         spinner.succeed(colors.green(`✓ Set registry to ${fastest}`));
       });
