@@ -8,17 +8,7 @@ import { valid, satisfies, rcompare } from './utils/semver-lite';
 import { BVM_VERSIONS_DIR } from './constants';
 
 export async function ensureDir(dirPath: string): Promise<void> {
-  try {
-    await mkdir(dirPath, { recursive: true });
-  } catch (error: any) {
-    if (error.code === 'EEXIST') {
-      try {
-        const stats = await stat(dirPath);
-        if (stats.isDirectory()) return;
-      } catch {}
-    }
-    throw error;
-  }
+  await mkdir(dirPath, { recursive: true });
 }
 
 export async function pathExists(path: string): Promise<boolean> {
