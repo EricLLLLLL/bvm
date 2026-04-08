@@ -163,7 +163,7 @@ export async function downloadFileWithProgress(url: string, destPath: string, sp
             
             if (attempt < maxRetries) {
                 // Wait before retry
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                await Bun.sleep(1000 * attempt);
             }
         }
     }

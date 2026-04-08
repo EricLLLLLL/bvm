@@ -25,7 +25,7 @@ export async function upgradeBvm(): Promise<void> {
           // Default to npm if source is unknown but it's in node_modules
           const pkgManager = installSource === 'bun' ? 'bun' : 'npm';
           
-          spinner.text = `Upgrading BVM via ${pkgManager} using ${registry}...`;
+          spinner.update(`Upgrading BVM via ${pkgManager} using ${registry}...`);
           
           try {
               // Execute [pkgManager] install -g bvm-core --registry <fastest>

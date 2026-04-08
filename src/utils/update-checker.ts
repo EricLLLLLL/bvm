@@ -31,7 +31,7 @@ export async function triggerUpdateCheck(): Promise<void> {
     try {
         const latest = await fetchLatestBvmReleaseInfo();
         if (latest) {
-            const latestVersion = latest.tagName.startsWith('v') ? latest.tagName.slice(1) : latest.tagName;
+            const latestVersion = latest.version.startsWith('v') ? latest.version.slice(1) : latest.version;
             await ensureDir(BVM_CACHE_DIR);
             await writeTextFile(cachePath, JSON.stringify({
                 lastCheck: Date.now(),
