@@ -1,7 +1,8 @@
 import { $ } from 'bun';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { existsSync, readdirSync, rmSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, rmSync, mkdirSync, writeFileSync, symlinkSync, readFileSync, unlinkSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { randomBytes } from 'crypto';
 
 export class E2ESandbox {
@@ -34,6 +35,49 @@ export class E2ESandbox {
       PATH: path,
       NO_COLOR: '1',
       ...extra,
+    };
+  }
+
+  installLocal() {
+    const bvmBinDir = join(this.bvmDir, 'bin');
+    const nativeBvmBin = join(bvmBinDir, 'bvm');
+
+    // Conflict detection: native install (no npm marker) blocks npm install
+    if (existsSync(nativeBvmBin)) {
+      const content = readFileSync(nativeBvmBin, 'utf-8');
+      if (!content.includes('BVM_INSTALL_SOURCE=npm')) {
+        throw new Error('Conflict detected: Native installation of bvm found. Remove it first.');
+      }
+    }
+
+    // Copy src/index.ts as the "installed" bvm source
+    const bvmSrcDir = join(this.bvmDir, 'src');
+    mkdirSync(bvmSrcDir, { recursive: true });
+    const srcIndex = join(process.cwd(), 'src', 'index.ts');
+    writeFileSync(join(bvmSrcDir, 'index.js'), readFileSync(srcIndex, 'utf-8'));
+
+    // Create versions/current structure
+    const versionsDir = join(this.bvmDir, 'versions');
+    const fakeVersion = 'v0.0.0-test';
+    const versionDir = join(versionsDir, fakeVersion);
+    const currentLink = join(this.bvmDir, 'current');
+
+    mkdirSync(versionDir, { recursive: true });
+    if (existsSync(currentLink)) unlinkSync(currentLink);
+    symlinkSync(join('versions', fakeVersion), currentLink, 'dir');
+  }
+
+  runBvmCommand(args: string[]): { status: number; stdout: string; stderr: string } {
+    const bvmEntry = join(process.cwd(), 'src', 'index.ts');
+    const bun = process.execPath;
+    const result = spawnSync(bun, [bvmEntry, ...args], {
+      env: this.env(),
+      encoding: 'utf-8',
+    });
+    return {
+      status: result.status ?? 1,
+      stdout: result.stdout ?? '',
+      stderr: result.stderr ?? '',
     };
   }
 
