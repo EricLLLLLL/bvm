@@ -76,7 +76,6 @@ Go to the GitHub repository and open a Pull Request against the `main` branch.
 ## Project Architecture
 
 *   `src/index.ts`: Entry point.
-*   `src/cli-router.ts`: Lightweight CLI router (replaces `cac`).
 *   `src/utils/semver-lite.ts`: Minimal semver implementation (replaces `semver`).
 *   `install.sh` / `install.ps1`: Installation scripts.
 
