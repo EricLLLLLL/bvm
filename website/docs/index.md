@@ -238,11 +238,10 @@ const copy = (text, type) => {
 }
 
 .compare-table {
-  width: 100%;
-  max-width: 900px;
+  width: auto;
   border-collapse: collapse;
   border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--vp-c-bg-alt);
 }
