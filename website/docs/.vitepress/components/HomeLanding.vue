@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { SITE_LINKS } from '../site';
 
@@ -8,6 +8,7 @@ const props = defineProps<{
 }>();
 
 const copied = ref('');
+const hasMounted = ref(false);
 
 const content = computed(() => {
   if (props.locale === 'zh') {
@@ -92,11 +93,16 @@ const copyCommand = (text: string, type: string) => {
     copied.value = '';
   }, 2000);
 };
+
+onMounted(() => {
+  hasMounted.value = true;
+});
 </script>
 
 <template>
-  <div class="spotlight-section">
-    <div class="star-card">
+  <div class="home-landing" :class="{ 'is-mounted': hasMounted }">
+  <div class="spotlight-section reveal-block reveal-1">
+    <div class="star-card surface-card">
       <div class="star-eyebrow">{{ content.starEyebrow }}</div>
       <h2>{{ content.starTitle }}</h2>
       <p>{{ content.starBody }}</p>
@@ -106,7 +112,7 @@ const copyCommand = (text: string, type: string) => {
       </div>
     </div>
 
-    <div class="spotlight-card">
+    <div class="spotlight-card surface-card">
       <div class="spotlight-eyebrow">{{ content.promoEyebrow }}</div>
       <h2>{{ content.promoTitle }}</h2>
       <p>{{ content.promoBody }}</p>
@@ -117,10 +123,10 @@ const copyCommand = (text: string, type: string) => {
     </div>
   </div>
 
-  <div class="install-section">
+  <div class="install-section reveal-block reveal-2">
     <h2>{{ content.installTitle }}</h2>
 
-    <div class="command-box recommended">
+    <div class="command-box recommended surface-card">
       <div class="header">
         <span class="os">{{ content.unixOs }}</span>
         <span class="badge">{{ content.unixBadge }}</span>
@@ -133,7 +139,7 @@ const copyCommand = (text: string, type: string) => {
       </div>
     </div>
 
-    <div class="command-box recommended">
+    <div class="command-box recommended surface-card">
       <div class="header">
         <span class="os">{{ content.winOs }}</span>
         <span class="badge">{{ content.winBadge }}</span>
@@ -146,7 +152,7 @@ const copyCommand = (text: string, type: string) => {
       </div>
     </div>
 
-    <div class="command-box optional">
+    <div class="command-box optional surface-card">
       <div class="header">
         <span class="os">{{ content.npmOs }}</span>
       </div>
@@ -159,7 +165,7 @@ const copyCommand = (text: string, type: string) => {
     </div>
   </div>
 
-  <div class="compare-section">
+  <div class="compare-section reveal-block reveal-3">
     <h2>{{ content.compareTitle }}</h2>
     <table class="compare-table">
       <thead>
@@ -177,7 +183,7 @@ const copyCommand = (text: string, type: string) => {
     </table>
   </div>
 
-  <div class="callout-section">
+  <div class="callout-section reveal-block reveal-4">
     <div class="callout-card">
       <div class="callout-title">{{ content.calloutTitle }}</div>
       <div class="callout-body">{{ content.calloutBody }}</div>
@@ -185,13 +191,65 @@ const copyCommand = (text: string, type: string) => {
     </div>
   </div>
 
-  <div class="demo-section">
+  <div class="demo-section reveal-block reveal-5">
     <h2>{{ content.demoTitle }}</h2>
     <video class="demo-video" controls playsinline preload="metadata" src="/media/bvm-install-methods.mp4"></video>
+  </div>
   </div>
 </template>
 
 <style scoped>
+.home-landing {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.reveal-block {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  transition:
+    transform 520ms var(--ease-out-strong),
+    opacity 520ms var(--ease-out-strong),
+    filter 520ms var(--ease-out-strong);
+  filter: blur(10px);
+  will-change: transform, opacity, filter;
+}
+
+.home-landing.is-mounted .reveal-block {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.reveal-1 {
+  transition-delay: 0ms;
+}
+
+.reveal-2 {
+  transition-delay: 70ms;
+}
+
+.reveal-3 {
+  transition-delay: 120ms;
+}
+
+.reveal-4 {
+  transition-delay: 160ms;
+}
+
+.reveal-5 {
+  transition-delay: 210ms;
+}
+
+.surface-card {
+  transition:
+    transform 220ms var(--ease-out-strong),
+    box-shadow 220ms var(--ease-out-strong),
+    border-color 220ms ease,
+    background-position 320ms var(--ease-in-out-strong);
+  transform-origin: center top;
+}
+
 .spotlight-section {
   margin-top: 1.5rem;
 }
@@ -274,11 +332,26 @@ const copyCommand = (text: string, type: string) => {
 .star-primary,
 .star-secondary,
 .spotlight-primary,
-.spotlight-secondary {
+.spotlight-secondary,
+.code-block button,
+.callout-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
+  transition:
+    transform 140ms var(--ease-out-strong),
+    box-shadow 180ms var(--ease-out-strong),
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.star-primary,
+.star-secondary,
+.spotlight-primary,
+.spotlight-secondary {
   padding: 0.72rem 1rem;
   border-radius: 999px;
   font-weight: 700;
@@ -287,6 +360,7 @@ const copyCommand = (text: string, type: string) => {
 .star-primary {
   background: #0f172a;
   color: #f8fafc;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
 }
 
 .star-secondary {
@@ -306,6 +380,7 @@ const copyCommand = (text: string, type: string) => {
 .spotlight-primary {
   background: #f59e0b;
   color: #111827;
+  box-shadow: 0 12px 26px rgba(245, 158, 11, 0.22);
 }
 
 .spotlight-secondary {
@@ -328,12 +403,11 @@ const copyCommand = (text: string, type: string) => {
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   overflow: hidden;
-  transition: all 0.3s;
 }
 
 .command-box.recommended {
   border-color: var(--vp-c-brand-1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
 .command-box.optional {
@@ -383,7 +457,6 @@ const copyCommand = (text: string, type: string) => {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
-  transition: all 0.2s;
   flex-shrink: 0;
 }
 
@@ -480,6 +553,64 @@ const copyCommand = (text: string, type: string) => {
   border-radius: 12px;
   border: 1px solid var(--vp-c-divider);
   background: #000;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .surface-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .star-card:hover {
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+  }
+
+  .spotlight-card:hover {
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.24);
+  }
+
+  .command-box:hover {
+    border-color: color-mix(in srgb, var(--vp-c-brand-1) 32%, var(--vp-c-divider));
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.09);
+  }
+
+  .star-primary:hover,
+  .spotlight-primary:hover,
+  .star-secondary:hover,
+  .spotlight-secondary:hover,
+  .code-block button:hover,
+  .callout-link:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.star-primary:active,
+.star-secondary:active,
+.spotlight-primary:active,
+.spotlight-secondary:active,
+.code-block button:active,
+.callout-link:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-block,
+  .surface-card,
+  .star-primary,
+  .star-secondary,
+  .spotlight-primary,
+  .spotlight-secondary,
+  .code-block button,
+  .callout-link {
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .reveal-block,
+  .home-landing.is-mounted .reveal-block {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 640px) {
