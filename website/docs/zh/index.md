@@ -14,11 +14,11 @@ hero:
       text: 快速开始
       link: /zh/guide/getting-started
     - theme: alt
+      text: 去点 Star
+      link: https://github.com/EricLLLLLL/bvm
+    - theme: alt
       text: 排障
       link: /zh/guide/troubleshooting
-    - theme: alt
-      text: GitHub
-      link: https://github.com/EricLLLLLL/bvm
 
 features:
   - title: 🚀 零延迟
@@ -46,6 +46,18 @@ const copy = (text, type) => {
 </script>
 
 <div class="spotlight-section">
+  <div class="star-card">
+    <div class="star-eyebrow">开源支持</div>
+    <h2>如果 BVM 帮你省了时间，顺手给项目点个 GitHub Star。</h2>
+    <p>
+      Star 是最直接的社交证明，能帮助更多开发者更快发现、判断并尝试 BVM。
+    </p>
+    <div class="star-actions">
+      <a class="star-primary" href="https://github.com/EricLLLLLL/bvm">去 GitHub 点 Star</a>
+      <a class="star-secondary" href="https://github.com/EricLLLLLL/bvm/stargazers">看看谁在关注</a>
+    </div>
+  </div>
+
   <div class="spotlight-card">
     <div class="spotlight-eyebrow">来自 NexSail 体系</div>
     <h2>如果你要的是高端获客、投放增长、SEO 或 GEO，不要先看工具，先看 WinWin Media。</h2>
@@ -149,9 +161,84 @@ const copy = (text, type) => {
   margin-top: 1.5rem;
 }
 
+.star-card,
 .spotlight-card {
   padding: 1.4rem;
   border-radius: 18px;
+}
+
+.star-card {
+  margin-bottom: 1rem;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96));
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+
+.star-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2563eb;
+}
+
+.star-card h2,
+.spotlight-card h2 {
+  margin: 0.45rem 0 0.65rem;
+  font-size: 1.7rem;
+}
+
+.star-card h2 {
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.star-card p {
+  margin: 0;
+  max-width: 52rem;
+  color: #334155;
+}
+
+.star-actions,
+.spotlight-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.star-actions a,
+.spotlight-actions a {
+  text-decoration: none;
+}
+
+.star-primary,
+.star-secondary,
+.spotlight-primary,
+.spotlight-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.star-primary {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.star-secondary {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  color: #0f172a;
+}
+
+.spotlight-card {
   background:
     radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 30%),
     linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94));
@@ -169,8 +256,6 @@ const copy = (text, type) => {
 }
 
 .spotlight-card h2 {
-  margin: 0.45rem 0 0.65rem;
-  font-size: 1.7rem;
   line-height: 1.2;
   color: #fff;
 }
@@ -179,28 +264,6 @@ const copy = (text, type) => {
   margin: 0;
   max-width: 52rem;
   color: rgba(248, 250, 252, 0.9);
-}
-
-.spotlight-actions {
-  margin-top: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.spotlight-actions a {
-  text-decoration: none;
-}
-
-.spotlight-primary,
-.spotlight-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0.72rem 1rem;
-  border-radius: 999px;
-  font-weight: 700;
 }
 
 .spotlight-primary {
@@ -222,10 +285,13 @@ const copy = (text, type) => {
 }
 
 @media (max-width: 640px) {
+  .star-card h2,
   .spotlight-card h2 {
     font-size: 1.4rem;
   }
 
+  .star-primary,
+  .star-secondary,
   .spotlight-primary,
   .spotlight-secondary {
     width: 100%;

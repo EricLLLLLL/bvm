@@ -3,6 +3,8 @@ import { defineConfig, type TransformPageContext } from 'vitepress';
 const SITE_URL = 'https://bvm-core.nexsail.top';
 const UMAMI_SRC = process.env.BVM_UMAMI_SRC?.trim();
 const UMAMI_WEBSITE_ID = process.env.BVM_UMAMI_WEBSITE_ID?.trim();
+const GOOGLE_SITE_VERIFICATION = process.env.BVM_GOOGLE_SITE_VERIFICATION?.trim() || 'IMcyUrktAh6wU92AAoSovkOXVHMnnklzBuyjGGyFB6Q';
+const BING_SITE_VERIFICATION = process.env.BVM_BING_SITE_VERIFICATION?.trim();
 
 const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
   ['meta', { name: 'viewport', content: 'width=device-width,initial-scale=1' }],
@@ -17,6 +19,14 @@ const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
   ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
   ['meta', { name: 'twitter:image', content: `${SITE_URL}/og.png` }],
 ];
+
+if (GOOGLE_SITE_VERIFICATION) {
+  head.push(['meta', { name: 'google-site-verification', content: GOOGLE_SITE_VERIFICATION }]);
+}
+
+if (BING_SITE_VERIFICATION) {
+  head.push(['meta', { name: 'msvalidate.01', content: BING_SITE_VERIFICATION }]);
+}
 
 if (process.env.NODE_ENV === 'production' && UMAMI_SRC && UMAMI_WEBSITE_ID) {
   head.push(['script', { async: '', src: UMAMI_SRC, 'data-website-id': UMAMI_WEBSITE_ID }]);

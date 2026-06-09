@@ -14,6 +14,12 @@
   </p>
 
   <p align="center">
+    <strong>如果 BVM 对你有帮助，欢迎给项目点一个 GitHub Star。</strong>
+    <br />
+    <a href="https://github.com/EricLLLLLL/bvm"><strong>去 GitHub 点 Star »</strong></a>
+  </p>
+
+  <p align="center">
     <a href="https://bvm-core.nexsail.top"><strong>官方网站与文档 »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/"><strong>English Site »</strong></a>
@@ -31,6 +37,9 @@
   <p align="center">
     <a href="https://github.com/EricLLLLLL/bvm/releases">
       <img src="https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest" alt="Release" />
+    </a>
+    <a href="https://github.com/EricLLLLLL/bvm/stargazers">
+      <img src="https://img.shields.io/github/stars/EricLLLLLL/bvm?style=social" alt="GitHub stars" />
     </a>
     <a href="https://github.com/EricLLLLLL/bvm/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange" alt="License" />
