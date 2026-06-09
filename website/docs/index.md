@@ -1,4 +1,5 @@
 ---
+title: Bun Version Manager for Windows, macOS & Linux
 description: BVM is a native, zero-dependency version manager for Bun. Install, switch, and manage multiple Bun versions with one command.
 layout: home
 

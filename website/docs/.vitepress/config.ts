@@ -77,9 +77,11 @@ export default defineConfig({
       label: 'English',
       lang: 'en-US',
       title: 'BVM',
+      titleTemplate: 'BVM Bun Version Manager',
       description: 'Bun Version Manager',
       themeConfig: {
         logo: '/logo.svg',
+        siteTitle: 'BVM',
         nav: [
           { text: 'Guide', link: '/guide/getting-started' },
           { text: 'About', link: '/about' },
@@ -112,9 +114,11 @@ export default defineConfig({
       label: '简体中文',
       lang: 'zh-CN',
       title: 'BVM',
+      titleTemplate: 'BVM Bun 版本管理器',
       description: 'Bun 版本管理器',
       themeConfig: {
         logo: '/logo.svg',
+        siteTitle: 'BVM',
         nav: [
           { text: '指南', link: '/zh/guide/getting-started' },
           { text: '关于', link: '/zh/about' },
