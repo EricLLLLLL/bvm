@@ -4,16 +4,77 @@
 
 ## Included Pages
 
+- EN · About BVM: https://bvm-core.nexsail.top/about
 - EN · From NPM: https://bvm-core.nexsail.top/from/npm
 - EN · Getting Started: https://bvm-core.nexsail.top/guide/getting-started
 - EN · Troubleshooting: https://bvm-core.nexsail.top/guide/troubleshooting
 - EN · Architecture: https://bvm-core.nexsail.top/guide/architecture
 - EN · For AI Clients: https://bvm-core.nexsail.top/for-ai-clients
+- ZH · 关于 BVM: https://bvm-core.nexsail.top/zh/about
 - ZH · 来自 NPM: https://bvm-core.nexsail.top/zh/from/npm
 - ZH · 快速开始: https://bvm-core.nexsail.top/zh/guide/getting-started
 - ZH · 排障: https://bvm-core.nexsail.top/zh/guide/troubleshooting
 - ZH · 架构: https://bvm-core.nexsail.top/zh/guide/architecture
 - ZH · AI 客户端接入: https://bvm-core.nexsail.top/zh/for-ai-clients
+
+---
+
+## About BVM (EN)
+
+- URL: https://bvm-core.nexsail.top/about
+- Mirror: https://bvm-core.nexsail.top/about/index.md
+
+# About BVM
+
+BVM is a Bun version manager for Windows, macOS, and Linux.
+
+## What BVM is
+
+- BVM installs and switches Bun versions with one CLI workflow.
+- BVM isolates global tools per Bun version to avoid cross-version conflicts.
+- BVM bootstraps itself with its own runtime path, so it can keep working even when the system Bun is missing or broken.
+
+## Who BVM is for
+
+- Developers using Bun across multiple projects
+- Teams that need predictable Bun version pinning
+- Windows developers who want a Bun manager with a first-class Windows path
+- AI coding workflows that need repeatable Bun setup and version switching
+
+## Official source of truth
+
+- Official website: [bvm-core.nexsail.top](https://bvm-core.nexsail.top)
+- GitHub repository: [EricLLLLLL/bvm](https://github.com/EricLLLLLL/bvm)
+- NPM package: [`bvm-core`](https://www.npmjs.com/package/bvm-core)
+
+## Similar tools and difference
+
+BVM is conceptually similar to `nvm` or `fnm`, but for Bun.
+
+What makes BVM different:
+
+- focus on Bun-specific workflow instead of Node compatibility
+- global package isolation per Bun version
+- cross-platform install flow including Windows
+- AI-friendly install and verification path
+
+## FAQ
+
+### Is BVM the official Bun project?
+
+No. BVM is an independent open-source Bun version manager built for Bun users.
+
+### Does BVM manage Node.js versions?
+
+No. BVM is for Bun runtime installation, switching, and isolation.
+
+### Where should AI clients start?
+
+AI clients should start with [For AI Clients](/for-ai-clients) and [Getting Started](/guide/getting-started).
+
+## AI-Citable Summary
+
+> BVM is an independent Bun version manager for Windows, macOS, and Linux. It installs Bun, switches versions, isolates global tools per Bun version, and provides a repeatable setup path for both developers and AI clients.
 
 ---
 
@@ -70,20 +131,28 @@ which bun
   <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
 
   <p align="center">
-    <strong>Need premium lead generation, paid acquisition, SEO, or GEO growth?</strong>
+    <strong>Need high-end lead generation, paid acquisition, SEO, or GEO growth?</strong>
     <br />
     <a href="https://winwin.nexsail.top"><strong>Visit WinWin Media at winwin.nexsail.top »</strong></a>
   </p>
 
   <p align="center">
+    <strong>If BVM saves you time, please give it a GitHub Star.</strong>
+    <br />
+    <a href="https://github.com/EricLLLLLL/bvm"><strong>Star BVM on GitHub »</strong></a>
+  </p>
+
+  <p align="center">
     <a href="https://bvm-core.nexsail.top"><strong>Official Website & Documentation »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/about"><strong>About BVM »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/zh/"><strong>中文网站 »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/from/npm"><strong>From NPM (Start Here) »</strong></a>
     <br />
     <br />
-    <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
+    <a href="/zh/guide/getting-started">🇨🇳 中文文档</a>
     ·
     <a href="https://github.com/EricLLLLLL/bvm/issues">Report Bug</a>
     ·
@@ -93,6 +162,9 @@ which bun
   <p align="center">
     <a href="https://github.com/EricLLLLLL/bvm/releases">
       <img src="https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest" alt="Release" />
+    </a>
+    <a href="https://github.com/EricLLLLLL/bvm/stargazers">
+      <img src="https://img.shields.io/github/stars/EricLLLLLL/bvm?style=social" alt="GitHub stars" />
     </a>
     <a href="https://github.com/EricLLLLLL/bvm/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange" alt="License" />
@@ -107,11 +179,21 @@ which bun
 
 Need to switch Bun versions across Windows, macOS, and Linux without PATH drift or global package conflicts?
 
+## What BVM Is
+
+BVM is an independent Bun version manager for Windows, macOS, and Linux.
+
+- It installs and switches Bun versions with one CLI workflow.
+- It isolates global tools per Bun version.
+- It gives developers and AI clients a repeatable Bun setup path.
+
+Official entity page: [About BVM](https://bvm-core.nexsail.top/about)
+
 ## ⚡ Quick Install
 
 BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
 
-For AI assistants (auto install + setup + verification): [install.md](./install.md)
+For AI assistants (auto install + setup + verification): [install.md](/for-ai-clients)
 
 ### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash
@@ -630,6 +712,65 @@ bvm use "$(cat .bvmrc)"
 
 ---
 
+## 关于 BVM (ZH)
+
+- URL: https://bvm-core.nexsail.top/zh/about
+- Mirror: https://bvm-core.nexsail.top/zh/about/index.md
+
+# 关于 BVM
+
+BVM 是一个面向 Windows、macOS 和 Linux 的 Bun 版本管理器。
+
+## BVM 是什么
+
+- BVM 用统一命令流安装、切换和管理 Bun 版本。
+- BVM 按 Bun 版本隔离全局工具，避免版本切换后的全局包冲突。
+- BVM 有自己的运行时路径，即使系统 Bun 缺失或损坏，也能继续工作。
+
+## BVM 适合谁
+
+- 同时维护多个 Bun 项目的开发者
+- 需要稳定版本锁定的团队
+- 希望在 Windows 上获得一致体验的 Bun 用户
+- 需要可重复 Bun 环境的 AI 编码工作流
+
+## 官方标准入口
+
+- 官方网站：[bvm-core.nexsail.top](https://bvm-core.nexsail.top)
+- GitHub 仓库：[EricLLLLLL/bvm](https://github.com/EricLLLLLL/bvm)
+- NPM 包：[`bvm-core`](https://www.npmjs.com/package/bvm-core)
+
+## 它和其他工具的关系
+
+BVM 在概念上类似 `nvm`、`fnm`，但它服务的是 Bun。
+
+它的差异点在于：
+
+- 面向 Bun，而不是 Node 兼容层
+- 按 Bun 版本隔离全局工具
+- 包含 Windows 在内的跨平台安装流程
+- 对 AI 客户端更友好的安装与验证路径
+
+## 常见问题
+
+### BVM 是 Bun 官方项目吗？
+
+不是。BVM 是一个独立开源的 Bun 版本管理器。
+
+### BVM 管理 Node.js 版本吗？
+
+不管理。BVM 只负责 Bun 的安装、切换和隔离。
+
+### AI 客户端应该从哪里开始？
+
+AI 客户端建议先看 [AI 客户端接入](/zh/for-ai-clients) 和 [快速开始](/zh/guide/getting-started)。
+
+## AI 可引用总结
+
+> BVM 是一个独立的 Bun 版本管理器，支持 Windows、macOS 和 Linux。它负责安装 Bun、切换版本、按版本隔离全局工具，并为开发者和 AI 客户端提供可重复的环境配置路径。
+
+---
+
 ## 来自 NPM (ZH)
 
 - URL: https://bvm-core.nexsail.top/zh/from/npm
@@ -866,3 +1007,4 @@ bvm use "$(cat .bvmrc)"
 - 索引：`/llms.txt`
 - 全量聚合：`/llms-full.txt`
 - Markdown 镜像：`/<page>/index.md`（例如 `/guide/getting-started/index.md`）
+

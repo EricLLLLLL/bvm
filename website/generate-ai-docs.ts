@@ -14,12 +14,14 @@ const publicRoot = join(docsRoot, 'public');
 
 const docPages: DocPage[] = [
   { source: 'index.md', route: '/', title: 'Home', locale: 'en', includeInFull: false },
+  { source: 'about.md', route: '/about', title: 'About BVM', locale: 'en' },
   { source: 'from/npm.md', route: '/from/npm', title: 'From NPM', locale: 'en' },
 { source: 'guide/getting-started.md', route: '/guide/getting-started', title: 'Getting Started', locale: 'en' },
   { source: 'guide/troubleshooting.md', route: '/guide/troubleshooting', title: 'Troubleshooting', locale: 'en' },
   { source: 'guide/architecture.md', route: '/guide/architecture', title: 'Architecture', locale: 'en' },
   { source: 'for-ai-clients.md', route: '/for-ai-clients', title: 'For AI Clients', locale: 'en' },
   { source: 'zh/index.md', route: '/zh/', title: '首页', locale: 'zh', includeInFull: false },
+  { source: 'zh/about.md', route: '/zh/about', title: '关于 BVM', locale: 'zh' },
   { source: 'zh/from/npm.md', route: '/zh/from/npm', title: '来自 NPM', locale: 'zh' },
 { source: 'zh/guide/getting-started.md', route: '/zh/guide/getting-started', title: '快速开始', locale: 'zh' },
   { source: 'zh/guide/troubleshooting.md', route: '/zh/guide/troubleshooting', title: '排障', locale: 'zh' },

@@ -1,9 +1,9 @@
 import { defineConfig, type TransformPageContext } from 'vitepress';
+import { SEARCH_VERIFICATION, SITE_LINKS, SITE_URL } from './site';
 
-const SITE_URL = 'https://bvm-core.nexsail.top';
 const UMAMI_SRC = process.env.BVM_UMAMI_SRC?.trim();
 const UMAMI_WEBSITE_ID = process.env.BVM_UMAMI_WEBSITE_ID?.trim();
-const GOOGLE_SITE_VERIFICATION = process.env.BVM_GOOGLE_SITE_VERIFICATION?.trim() || 'IMcyUrktAh6wU92AAoSovkOXVHMnnklzBuyjGGyFB6Q';
+const GOOGLE_SITE_VERIFICATION = process.env.BVM_GOOGLE_SITE_VERIFICATION?.trim() || SEARCH_VERIFICATION.googleDefault;
 const BING_SITE_VERIFICATION = process.env.BVM_BING_SITE_VERIFICATION?.trim();
 
 const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
@@ -15,9 +15,9 @@ const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
   ['link', { rel: 'manifest', href: '/site.webmanifest' }],
   ['meta', { property: 'og:site_name', content: 'BVM' }],
   ['meta', { property: 'og:type', content: 'website' }],
-  ['meta', { property: 'og:image', content: `${SITE_URL}/og.png` }],
+  ['meta', { property: 'og:image', content: SITE_LINKS.ogImage }],
   ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-  ['meta', { name: 'twitter:image', content: `${SITE_URL}/og.png` }],
+  ['meta', { name: 'twitter:image', content: SITE_LINKS.ogImage }],
 ];
 
 if (GOOGLE_SITE_VERIFICATION) {
@@ -82,24 +82,26 @@ export default defineConfig({
         logo: '/logo.svg',
         nav: [
           { text: 'Guide', link: '/guide/getting-started' },
+          { text: 'About', link: '/about' },
           { text: 'For AI Clients', link: '/for-ai-clients' },
           { text: 'Troubleshooting', link: '/guide/troubleshooting' },
           { text: 'Architecture (CN)', link: '/guide/architecture' },
           { text: '中文', link: '/zh/' },
-          { text: 'GitHub', link: 'https://github.com/EricLLLLLL/bvm' },
+          { text: 'GitHub', link: SITE_LINKS.githubRepo },
         ],
         sidebar: [
           {
             text: 'Guide',
             items: [
               { text: 'Getting Started', link: '/guide/getting-started' },
+              { text: 'About', link: '/about' },
               { text: 'For AI Clients', link: '/for-ai-clients' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
               { text: 'Architecture (CN)', link: '/guide/architecture' },
             ],
           },
         ],
-        socialLinks: [{ icon: 'github', link: 'https://github.com/EricLLLLLL/bvm' }],
+        socialLinks: [{ icon: 'github', link: SITE_LINKS.githubRepo }],
         footer: {
           message: 'Released under the MIT License.',
           copyright: 'Copyright © 2024-present EricLLLLLL',
@@ -115,24 +117,26 @@ export default defineConfig({
         logo: '/logo.svg',
         nav: [
           { text: '指南', link: '/zh/guide/getting-started' },
+          { text: '关于', link: '/zh/about' },
           { text: 'AI 接入', link: '/zh/for-ai-clients' },
           { text: '排障', link: '/zh/guide/troubleshooting' },
           { text: '架构', link: '/zh/guide/architecture' },
           { text: 'English', link: '/' },
-          { text: 'GitHub', link: 'https://github.com/EricLLLLLL/bvm' },
+          { text: 'GitHub', link: SITE_LINKS.githubRepo },
         ],
         sidebar: [
           {
             text: '指南',
             items: [
               { text: '快速开始', link: '/zh/guide/getting-started' },
+              { text: '关于', link: '/zh/about' },
               { text: 'AI 客户端接入', link: '/zh/for-ai-clients' },
               { text: '排障', link: '/zh/guide/troubleshooting' },
               { text: '架构', link: '/zh/guide/architecture' },
             ],
           },
         ],
-        socialLinks: [{ icon: 'github', link: 'https://github.com/EricLLLLLL/bvm' }],
+        socialLinks: [{ icon: 'github', link: SITE_LINKS.githubRepo }],
         footer: {
           message: '基于 MIT License 发布。',
           copyright: 'Copyright © 2024-present EricLLLLLL',

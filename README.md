@@ -22,6 +22,8 @@
   <p align="center">
     <a href="https://bvm-core.nexsail.top"><strong>Official Website & Documentation »</strong></a>
     <br />
+    <a href="https://bvm-core.nexsail.top/about"><strong>About BVM »</strong></a>
+    <br />
     <a href="https://bvm-core.nexsail.top/zh/"><strong>中文网站 »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/from/npm"><strong>From NPM (Start Here) »</strong></a>
@@ -53,6 +55,16 @@
 ---
 
 Need to switch Bun versions across Windows, macOS, and Linux without PATH drift or global package conflicts?
+
+## What BVM Is
+
+BVM is an independent Bun version manager for Windows, macOS, and Linux.
+
+- It installs and switches Bun versions with one CLI workflow.
+- It isolates global tools per Bun version.
+- It gives developers and AI clients a repeatable Bun setup path.
+
+Official entity page: [About BVM](https://bvm-core.nexsail.top/about)
 
 ## ⚡ Quick Install
 

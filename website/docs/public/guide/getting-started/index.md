@@ -8,20 +8,28 @@
   <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
 
   <p align="center">
-    <strong>Need premium lead generation, paid acquisition, SEO, or GEO growth?</strong>
+    <strong>Need high-end lead generation, paid acquisition, SEO, or GEO growth?</strong>
     <br />
     <a href="https://winwin.nexsail.top"><strong>Visit WinWin Media at winwin.nexsail.top »</strong></a>
   </p>
 
   <p align="center">
+    <strong>If BVM saves you time, please give it a GitHub Star.</strong>
+    <br />
+    <a href="https://github.com/EricLLLLLL/bvm"><strong>Star BVM on GitHub »</strong></a>
+  </p>
+
+  <p align="center">
     <a href="https://bvm-core.nexsail.top"><strong>Official Website & Documentation »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/about"><strong>About BVM »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/zh/"><strong>中文网站 »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/from/npm"><strong>From NPM (Start Here) »</strong></a>
     <br />
     <br />
-    <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
+    <a href="/zh/guide/getting-started">🇨🇳 中文文档</a>
     ·
     <a href="https://github.com/EricLLLLLL/bvm/issues">Report Bug</a>
     ·
@@ -31,6 +39,9 @@
   <p align="center">
     <a href="https://github.com/EricLLLLLL/bvm/releases">
       <img src="https://img.shields.io/github/v/release/EricLLLLLL/bvm?color=f472b6&label=latest" alt="Release" />
+    </a>
+    <a href="https://github.com/EricLLLLLL/bvm/stargazers">
+      <img src="https://img.shields.io/github/stars/EricLLLLLL/bvm?style=social" alt="GitHub stars" />
     </a>
     <a href="https://github.com/EricLLLLLL/bvm/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/EricLLLLLL/bvm?color=orange" alt="License" />
@@ -45,11 +56,21 @@
 
 Need to switch Bun versions across Windows, macOS, and Linux without PATH drift or global package conflicts?
 
+## What BVM Is
+
+BVM is an independent Bun version manager for Windows, macOS, and Linux.
+
+- It installs and switches Bun versions with one CLI workflow.
+- It isolates global tools per Bun version.
+- It gives developers and AI clients a repeatable Bun setup path.
+
+Official entity page: [About BVM](https://bvm-core.nexsail.top/about)
+
 ## ⚡ Quick Install
 
 BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
 
-For AI assistants (auto install + setup + verification): [install.md](./install.md)
+For AI assistants (auto install + setup + verification): [install.md](/for-ai-clients)
 
 ### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash

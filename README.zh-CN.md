@@ -22,6 +22,8 @@
   <p align="center">
     <a href="https://bvm-core.nexsail.top"><strong>官方网站与文档 »</strong></a>
     <br />
+    <a href="https://bvm-core.nexsail.top/zh/about"><strong>关于 BVM »</strong></a>
+    <br />
     <a href="https://bvm-core.nexsail.top/"><strong>English Site »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/zh/from/npm"><strong>从 NPM 来？从这里开始 »</strong></a>
@@ -53,6 +55,16 @@
 ---
 
 想在 Windows、macOS、Linux 间稳定切换 Bun 版本，并避免 PATH 漂移和全局包冲突？
+
+## BVM 是什么
+
+BVM 是一个独立的 Bun 版本管理器，支持 Windows、macOS 和 Linux。
+
+- 它用统一命令流安装和切换 Bun 版本。
+- 它按 Bun 版本隔离全局工具。
+- 它为开发者和 AI 客户端提供可重复的 Bun 环境路径。
+
+官方实体页：[关于 BVM](https://bvm-core.nexsail.top/zh/about)
 
 ## ⚡ 一键极速安装
 

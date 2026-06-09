@@ -24,8 +24,24 @@ async function syncWithFrontmatter(src: string, destFile: string) {
   const fm = FRONTMATTER[destFile];
   if (fm) {
     const content = await readFile(join(docsDest, destFile), 'utf-8');
-    await writeFile(join(docsDest, destFile), fm + content);
+    await writeFile(join(docsDest, destFile), fm + rewriteForDocs(content, destFile));
   }
+}
+
+function rewriteForDocs(content: string, destFile: string): string {
+  if (destFile === 'getting-started.md') {
+    return content
+      .replaceAll('./README.zh-CN.md', '/zh/guide/getting-started')
+      .replaceAll('./install.md', '/for-ai-clients');
+  }
+
+  if (destFile === 'getting-started-zh.md') {
+    return content
+      .replaceAll('./README.md', '/guide/getting-started')
+      .replaceAll('./install.md', '/zh/for-ai-clients');
+  }
+
+  return content;
 }
 
 async function sync() {
