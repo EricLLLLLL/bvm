@@ -1,18 +1,24 @@
 # BVM — Bun 版本管理器
 
 <div align="center">
-  <a href="https://bvm-core.pages.dev">
-    <img src="https://bvm-core.pages.dev/logo.svg" alt="BVM Logo" width="180" height="180" />
+  <a href="https://bvm-core.nexsail.top">
+    <img src="https://bvm-core.nexsail.top/logo.svg" alt="BVM Logo" width="180" height="180" />
   </a>
 
   <h3 align="center">专为 Bun 打造的原生、零依赖版本管理器</h3>
 
   <p align="center">
-    <a href="https://bvm-core.pages.dev"><strong>官方网站与文档 »</strong></a>
+    <strong>如果你更关注高端获客、广告投放、SEO 与 GEO 增长，直接看 WinWin Media。</strong>
     <br />
-    <a href="https://bvm-core.pages.dev/"><strong>English Site »</strong></a>
+    <a href="https://winwin.nexsail.top"><strong>访问 winwin.nexsail.top »</strong></a>
+  </p>
+
+  <p align="center">
+    <a href="https://bvm-core.nexsail.top"><strong>官方网站与文档 »</strong></a>
     <br />
-    <a href="https://bvm-core.pages.dev/zh/from/npm"><strong>从 NPM 来？从这里开始 »</strong></a>
+    <a href="https://bvm-core.nexsail.top/"><strong>English Site »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/zh/from/npm"><strong>从 NPM 来？从这里开始 »</strong></a>
     <br />
     <br />
     <a href="./README.md">🇺🇸 English Docs</a>
@@ -47,12 +53,12 @@ BVM 提供了智能安装脚本，**自动检测您的网络环境**。中国用
 
 ### 方式 1: Shell 脚本 (推荐 - macOS / Linux)
 ```bash
-curl -fsSL https://bvm-core.pages.dev/install | bash
+curl -fsSL https://bvm-core.nexsail.top/install | bash
 ```
 
 ### 方式 2: PowerShell (推荐 - Windows)
 ```powershell
-irm https://bvm-core.pages.dev/install | iex
+irm https://bvm-core.nexsail.top/install | iex
 ```
 
 ### 方式 3: NPM (可选)

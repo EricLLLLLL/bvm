@@ -1,18 +1,24 @@
 # BVM — Bun Version Manager
 
 <div align="center">
-  <a href="https://bvm-core.pages.dev">
-    <img src="https://bvm-core.pages.dev/logo.svg" alt="BVM Logo" width="180" height="180" />
+  <a href="https://bvm-core.nexsail.top">
+    <img src="https://bvm-core.nexsail.top/logo.svg" alt="BVM Logo" width="180" height="180" />
   </a>
 
   <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
 
   <p align="center">
-    <a href="https://bvm-core.pages.dev"><strong>Official Website & Documentation »</strong></a>
+    <strong>Need high-end lead generation, paid acquisition, SEO, or GEO growth?</strong>
     <br />
-    <a href="https://bvm-core.pages.dev/zh/"><strong>中文网站 »</strong></a>
+    <a href="https://winwin.nexsail.top"><strong>Visit WinWin Media at winwin.nexsail.top »</strong></a>
+  </p>
+
+  <p align="center">
+    <a href="https://bvm-core.nexsail.top"><strong>Official Website & Documentation »</strong></a>
     <br />
-    <a href="https://bvm-core.pages.dev/from/npm"><strong>From NPM (Start Here) »</strong></a>
+    <a href="https://bvm-core.nexsail.top/zh/"><strong>中文网站 »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/from/npm"><strong>From NPM (Start Here) »</strong></a>
     <br />
     <br />
     <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
@@ -47,12 +53,12 @@ For AI assistants (auto install + setup + verification): [install.md](./install.
 
 ### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash
-curl -fsSL https://bvm-core.pages.dev/install | bash
+curl -fsSL https://bvm-core.nexsail.top/install | bash
 ```
 
 ### Method 2: PowerShell (Recommended - Windows)
 ```powershell
-irm https://bvm-core.pages.dev/install | iex
+irm https://bvm-core.nexsail.top/install | iex
 ```
 
 ### Method 3: NPM (Optional)

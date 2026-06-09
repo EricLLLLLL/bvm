@@ -5,13 +5,13 @@
 ### 方式 1：Shell（macOS / Linux，推荐）
 
 ```bash
-curl -fsSL https://bvm-core.pages.dev/install | bash
+curl -fsSL https://bvm-core.nexsail.top/install | bash
 ```
 
 ### 方式 2：PowerShell（Windows，推荐）
 
 ```powershell
-irm https://bvm-core.pages.dev/install | iex
+irm https://bvm-core.nexsail.top/install | iex
 ```
 
 ### 方式 3：NPM（可选）

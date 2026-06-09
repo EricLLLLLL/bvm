@@ -9,10 +9,10 @@
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://bvm-core.pages.dev/from/npm",
+  "homepage": "https://bvm-core.nexsail.top/from/npm",
   "funding": {
     "type": "url",
-    "url": "https://bvm-core.pages.dev/wechat"
+    "url": "https://bvm-core.nexsail.top/wechat"
   },
   "bugs": {
     "url": "https://github.com/EricLLLLLL/bvm/issues"

@@ -4,23 +4,23 @@
 
 ## Included Pages
 
-- EN · From NPM: https://bvm-core.pages.dev/from/npm
-- EN · Getting Started: https://bvm-core.pages.dev/guide/getting-started
-- EN · Troubleshooting: https://bvm-core.pages.dev/guide/troubleshooting
-- EN · Architecture: https://bvm-core.pages.dev/guide/architecture
-- EN · For AI Clients: https://bvm-core.pages.dev/for-ai-clients
-- ZH · 来自 NPM: https://bvm-core.pages.dev/zh/from/npm
-- ZH · 快速开始: https://bvm-core.pages.dev/zh/guide/getting-started
-- ZH · 排障: https://bvm-core.pages.dev/zh/guide/troubleshooting
-- ZH · 架构: https://bvm-core.pages.dev/zh/guide/architecture
-- ZH · AI 客户端接入: https://bvm-core.pages.dev/zh/for-ai-clients
+- EN · From NPM: https://bvm-core.nexsail.top/from/npm
+- EN · Getting Started: https://bvm-core.nexsail.top/guide/getting-started
+- EN · Troubleshooting: https://bvm-core.nexsail.top/guide/troubleshooting
+- EN · Architecture: https://bvm-core.nexsail.top/guide/architecture
+- EN · For AI Clients: https://bvm-core.nexsail.top/for-ai-clients
+- ZH · 来自 NPM: https://bvm-core.nexsail.top/zh/from/npm
+- ZH · 快速开始: https://bvm-core.nexsail.top/zh/guide/getting-started
+- ZH · 排障: https://bvm-core.nexsail.top/zh/guide/troubleshooting
+- ZH · 架构: https://bvm-core.nexsail.top/zh/guide/architecture
+- ZH · AI 客户端接入: https://bvm-core.nexsail.top/zh/for-ai-clients
 
 ---
 
 ## From NPM (EN)
 
-- URL: https://bvm-core.pages.dev/from/npm
-- Mirror: https://bvm-core.pages.dev/from/npm/index.md
+- URL: https://bvm-core.nexsail.top/from/npm
+- Mirror: https://bvm-core.nexsail.top/from/npm/index.md
 
 # Welcome from npm
 
@@ -57,24 +57,30 @@ which bun
 
 ## Getting Started (EN)
 
-- URL: https://bvm-core.pages.dev/guide/getting-started
-- Mirror: https://bvm-core.pages.dev/guide/getting-started/index.md
+- URL: https://bvm-core.nexsail.top/guide/getting-started
+- Mirror: https://bvm-core.nexsail.top/guide/getting-started/index.md
 
 # BVM — Bun Version Manager
 
 <div align="center">
-  <a href="https://bvm-core.pages.dev">
-    <img src="https://bvm-core.pages.dev/logo.svg" alt="BVM Logo" width="180" height="180" />
+  <a href="https://bvm-core.nexsail.top">
+    <img src="https://bvm-core.nexsail.top/logo.svg" alt="BVM Logo" width="180" height="180" />
   </a>
 
   <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
 
   <p align="center">
-    <a href="https://bvm-core.pages.dev"><strong>Official Website & Documentation »</strong></a>
+    <strong>Need premium lead generation, paid acquisition, SEO, or GEO growth?</strong>
     <br />
-    <a href="https://bvm-core.pages.dev/zh/"><strong>中文网站 »</strong></a>
+    <a href="https://winwin.nexsail.top"><strong>Visit WinWin Media at winwin.nexsail.top »</strong></a>
+  </p>
+
+  <p align="center">
+    <a href="https://bvm-core.nexsail.top"><strong>Official Website & Documentation »</strong></a>
     <br />
-    <a href="https://bvm-core.pages.dev/from/npm"><strong>From NPM (Start Here) »</strong></a>
+    <a href="https://bvm-core.nexsail.top/zh/"><strong>中文网站 »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/from/npm"><strong>From NPM (Start Here) »</strong></a>
     <br />
     <br />
     <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
@@ -109,12 +115,12 @@ For AI assistants (auto install + setup + verification): [install.md](./install.
 
 ### Method 1: Shell Script (Recommended - macOS / Linux)
 ```bash
-curl -fsSL https://bvm-core.pages.dev/install | bash
+curl -fsSL https://bvm-core.nexsail.top/install | bash
 ```
 
 ### Method 2: PowerShell (Recommended - Windows)
 ```powershell
-irm https://bvm-core.pages.dev/install | iex
+irm https://bvm-core.nexsail.top/install | iex
 ```
 
 ### Method 3: NPM (Optional)
@@ -244,8 +250,8 @@ MIT © [EricLLLLLL](https://github.com/EricLLLLLL)
 
 ## Troubleshooting (EN)
 
-- URL: https://bvm-core.pages.dev/guide/troubleshooting
-- Mirror: https://bvm-core.pages.dev/guide/troubleshooting/index.md
+- URL: https://bvm-core.nexsail.top/guide/troubleshooting
+- Mirror: https://bvm-core.nexsail.top/guide/troubleshooting/index.md
 
 # Troubleshooting
 
@@ -320,8 +326,8 @@ Then retry the installer.
 
 ## Architecture (EN)
 
-- URL: https://bvm-core.pages.dev/guide/architecture
-- Mirror: https://bvm-core.pages.dev/guide/architecture/index.md
+- URL: https://bvm-core.nexsail.top/guide/architecture
+- Mirror: https://bvm-core.nexsail.top/guide/architecture/index.md
 
 # BVM 架构与流程文档
 
@@ -564,8 +570,8 @@ graph TD
 
 ## For AI Clients (EN)
 
-- URL: https://bvm-core.pages.dev/for-ai-clients
-- Mirror: https://bvm-core.pages.dev/for-ai-clients/index.md
+- URL: https://bvm-core.nexsail.top/for-ai-clients
+- Mirror: https://bvm-core.nexsail.top/for-ai-clients/index.md
 
 # For AI Clients
 
@@ -626,8 +632,8 @@ bvm use "$(cat .bvmrc)"
 
 ## 来自 NPM (ZH)
 
-- URL: https://bvm-core.pages.dev/zh/from/npm
-- Mirror: https://bvm-core.pages.dev/zh/from/npm/index.md
+- URL: https://bvm-core.nexsail.top/zh/from/npm
+- Mirror: https://bvm-core.nexsail.top/zh/from/npm/index.md
 
 # 欢迎从 NPM 进入
 
@@ -664,8 +670,8 @@ which bun
 
 ## 快速开始 (ZH)
 
-- URL: https://bvm-core.pages.dev/zh/guide/getting-started
-- Mirror: https://bvm-core.pages.dev/zh/guide/getting-started/index.md
+- URL: https://bvm-core.nexsail.top/zh/guide/getting-started
+- Mirror: https://bvm-core.nexsail.top/zh/guide/getting-started/index.md
 
 # BVM — Bun 版本管理器
 
@@ -674,13 +680,13 @@ which bun
 ### 方式 1：Shell（macOS / Linux，推荐）
 
 ```bash
-curl -fsSL https://bvm-core.pages.dev/install | bash
+curl -fsSL https://bvm-core.nexsail.top/install | bash
 ```
 
 ### 方式 2：PowerShell（Windows，推荐）
 
 ```powershell
-irm https://bvm-core.pages.dev/install | iex
+irm https://bvm-core.nexsail.top/install | iex
 ```
 
 ### 方式 3：NPM（可选）
@@ -716,8 +722,8 @@ npm install -g bvm-core@latest --foreground-scripts
 
 ## 排障 (ZH)
 
-- URL: https://bvm-core.pages.dev/zh/guide/troubleshooting
-- Mirror: https://bvm-core.pages.dev/zh/guide/troubleshooting/index.md
+- URL: https://bvm-core.nexsail.top/zh/guide/troubleshooting
+- Mirror: https://bvm-core.nexsail.top/zh/guide/troubleshooting/index.md
 
 # 排障
 
@@ -788,8 +794,8 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 ## 架构 (ZH)
 
-- URL: https://bvm-core.pages.dev/zh/guide/architecture
-- Mirror: https://bvm-core.pages.dev/zh/guide/architecture/index.md
+- URL: https://bvm-core.nexsail.top/zh/guide/architecture
+- Mirror: https://bvm-core.nexsail.top/zh/guide/architecture/index.md
 
 # BVM 架构与流程文档
 
@@ -803,8 +809,8 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 ## AI 客户端接入 (ZH)
 
-- URL: https://bvm-core.pages.dev/zh/for-ai-clients
-- Mirror: https://bvm-core.pages.dev/zh/for-ai-clients/index.md
+- URL: https://bvm-core.nexsail.top/zh/for-ai-clients
+- Mirror: https://bvm-core.nexsail.top/zh/for-ai-clients/index.md
 
 # AI 客户端接入
 
@@ -860,4 +866,3 @@ bvm use "$(cat .bvmrc)"
 - 索引：`/llms.txt`
 - 全量聚合：`/llms-full.txt`
 - Markdown 镜像：`/<page>/index.md`（例如 `/guide/getting-started/index.md`）
-

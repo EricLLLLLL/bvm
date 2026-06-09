@@ -37,8 +37,8 @@ features:
 import { ref } from 'vue'
 
 const npmCommand = "npm install -g bvm-core@latest"
-const unixCommand = "curl -fsSL https://bvm-core.pages.dev/install | bash"
-const winCommand = "irm https://bvm-core.pages.dev/install | iex"
+const unixCommand = "curl -fsSL https://bvm-core.nexsail.top/install | bash"
+const winCommand = "irm https://bvm-core.nexsail.top/install | iex"
 const copied = ref('')
 
 const copy = (text, type) => {
@@ -47,6 +47,21 @@ const copy = (text, type) => {
   setTimeout(() => copied.value = '', 2000)
 }
 </script>
+
+<div class="spotlight-section">
+  <div class="spotlight-card">
+    <div class="spotlight-eyebrow">From the NexSail ecosystem</div>
+    <h2>Need premium lead generation, paid acquisition, SEO, or GEO growth?</h2>
+    <p>
+      WinWin Media is NexSail's high-end growth brand. If you are looking for qualified pipeline growth instead of developer tooling,
+      start there first.
+    </p>
+    <div class="spotlight-actions">
+      <a class="spotlight-primary" href="https://winwin.nexsail.top">Open WinWin Media</a>
+      <a class="spotlight-secondary" href="https://www.nexsail.top">About NexSail</a>
+    </div>
+  </div>
+</div>
 
 <div class="install-section">
   <h2>One-Line Installation</h2>
@@ -134,12 +149,91 @@ const copy = (text, type) => {
 </div>
 
 <style>
+.spotlight-section {
+  margin-top: 1.5rem;
+}
+
+.spotlight-card {
+  padding: 1.4rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 30%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94));
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  color: #f8fafc;
+}
+
+.spotlight-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+}
+
+.spotlight-card h2 {
+  margin: 0.45rem 0 0.65rem;
+  font-size: 1.7rem;
+  line-height: 1.15;
+  color: #fff;
+}
+
+.spotlight-card p {
+  margin: 0;
+  max-width: 52rem;
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.spotlight-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.spotlight-actions a {
+  text-decoration: none;
+}
+
+.spotlight-primary,
+.spotlight-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.spotlight-primary {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.spotlight-secondary {
+  border: 1px solid rgba(248, 250, 252, 0.24);
+  color: #f8fafc;
+}
+
 .install-section {
   margin-top: 4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .spotlight-card h2 {
+    font-size: 1.4rem;
+  }
+
+  .spotlight-primary,
+  .spotlight-secondary {
+    width: 100%;
+  }
 }
 
 .command-box {

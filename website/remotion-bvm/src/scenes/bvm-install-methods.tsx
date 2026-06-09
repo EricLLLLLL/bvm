@@ -161,7 +161,7 @@ export const BvmInstallMethods: React.FC = () => {
   const shSteps = React.useMemo(
     () =>
       buildSteps(18, [
-        { kind: 'cmd', cps: 26, text: 'curl -fsSL https://bvm-core.pages.dev/install | bash' },
+        { kind: 'cmd', cps: 26, text: 'curl -fsSL https://bvm-core.nexsail.top/install | bash' },
         {
           kind: 'out',
           cps: 80,
@@ -184,7 +184,7 @@ export const BvmInstallMethods: React.FC = () => {
   const psSteps = React.useMemo(
     () =>
       buildSteps(18, [
-        { kind: 'cmd', cps: 28, text: 'irm https://bvm-core.pages.dev/install | iex' },
+        { kind: 'cmd', cps: 28, text: 'irm https://bvm-core.nexsail.top/install | iex' },
         {
           kind: 'out',
           cps: 85,
@@ -245,4 +245,3 @@ export const BvmInstallMethods: React.FC = () => {
     </div>
   );
 };
-

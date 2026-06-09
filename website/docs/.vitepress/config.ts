@@ -1,6 +1,6 @@
 import { defineConfig, type TransformPageContext } from 'vitepress';
 
-const SITE_URL = 'https://bvm-core.pages.dev';
+const SITE_URL = 'https://bvm-core.nexsail.top';
 const UMAMI_SRC = process.env.BVM_UMAMI_SRC?.trim();
 const UMAMI_WEBSITE_ID = process.env.BVM_UMAMI_WEBSITE_ID?.trim();
 

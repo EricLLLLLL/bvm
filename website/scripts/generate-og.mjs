@@ -73,10 +73,10 @@ execFileSync(
     '24',
     '-annotate',
     '+420+380',
-    'curl -fsSL https://bvm-core.pages.dev/install | bash',
+    'curl -fsSL https://bvm-core.nexsail.top/install | bash',
     '-annotate',
     '+420+418',
-    'irm https://bvm-core.pages.dev/install | iex',
+    'irm https://bvm-core.nexsail.top/install | iex',
     '-annotate',
     '+420+456',
     'npm install -g bvm-core@latest --foreground-scripts',
@@ -86,4 +86,3 @@ execFileSync(
 );
 
 console.log(`✅ Wrote ${out}`);
-
