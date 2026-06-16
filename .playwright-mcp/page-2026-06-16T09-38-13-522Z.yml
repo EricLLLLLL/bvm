@@ -1,0 +1,149 @@
+- generic [ref=e3]:
+  - link "Skip to content" [ref=e4] [cursor=pointer]:
+    - /url: "#VPContent"
+  - banner:
+    - generic:
+      - generic:
+        - generic:
+          - link "BVM" [ref=e6] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e7]: BVM
+          - generic [ref=e8]:
+            - navigation "Main Navigation" [ref=e9]:
+              - generic [ref=e10]: Main Navigation
+              - link "Guide" [ref=e11] [cursor=pointer]:
+                - /url: /guide/getting-started
+                - generic [ref=e12]: Guide
+              - link "About" [ref=e13] [cursor=pointer]:
+                - /url: /about
+                - generic [ref=e14]: About
+              - link "For AI Clients" [ref=e15] [cursor=pointer]:
+                - /url: /for-ai-clients
+                - generic [ref=e16]: For AI Clients
+              - link "Troubleshooting" [ref=e17] [cursor=pointer]:
+                - /url: /guide/troubleshooting
+                - generic [ref=e18]: Troubleshooting
+              - link "Architecture (CN)" [ref=e19] [cursor=pointer]:
+                - /url: /guide/architecture
+                - generic [ref=e20]: Architecture (CN)
+              - link "中文" [ref=e21] [cursor=pointer]:
+                - /url: /zh/
+                - generic [ref=e22]: 中文
+              - link "GitHub" [ref=e23] [cursor=pointer]:
+                - /url: https://github.com/EricLLLLLL/bvm
+                - generic [ref=e24]: GitHub
+            - button "extra navigation" [ref=e26] [cursor=pointer]
+  - button "On this page" [ref=e31] [cursor=pointer]: On this page
+  - complementary [ref=e33]:
+    - navigation "Sidebar Navigation" [ref=e35]:
+      - generic [ref=e36]: Sidebar Navigation
+      - generic [ref=e38]:
+        - button "Guide" [ref=e39]:
+          - heading "Guide" [level=2] [ref=e41]
+        - generic [ref=e42]:
+          - link "Getting Started" [ref=e46] [cursor=pointer]:
+            - /url: /guide/getting-started
+            - paragraph [ref=e47]: Getting Started
+          - link "About" [ref=e51] [cursor=pointer]:
+            - /url: /about
+            - paragraph [ref=e52]: About
+          - link "For AI Clients" [ref=e56] [cursor=pointer]:
+            - /url: /for-ai-clients
+            - paragraph [ref=e57]: For AI Clients
+          - link "Troubleshooting" [ref=e61] [cursor=pointer]:
+            - /url: /guide/troubleshooting
+            - paragraph [ref=e62]: Troubleshooting
+          - link "Architecture (CN)" [ref=e66] [cursor=pointer]:
+            - /url: /guide/architecture
+            - paragraph [ref=e67]: Architecture (CN)
+  - generic [ref=e72]:
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - heading "bvm-core on npm Permalink to \"bvm-core on npm\"" [level=1] [ref=e76]:
+          - text: bvm-core on npm
+          - link "Permalink to \"bvm-core on npm\"" [ref=e77] [cursor=pointer]:
+            - /url: "#bvm-core-on-npm"
+            - text: "#"
+        - paragraph [ref=e78]:
+          - code [ref=e79]: bvm-core
+          - text: is the npm package for BVM, the Bun Version Manager. Installing
+          - code [ref=e80]: bvm-core
+          - text: gives you the
+          - code [ref=e81]: bvm
+          - text: CLI command for installing, switching, and isolating Bun versions.
+        - paragraph [ref=e82]: "This page is the shortest path to:"
+        - list [ref=e83]:
+          - listitem [ref=e84]: Verify your install
+          - listitem [ref=e85]: Get your shell set up correctly
+          - listitem [ref=e86]: Find the official website, GitHub repository, and entity page
+        - heading "1) Verify BVM is working Permalink to \"1) Verify BVM is working\"" [level=2] [ref=e87]:
+          - text: 1) Verify BVM is working
+          - link "Permalink to \"1) Verify BVM is working\"" [ref=e88] [cursor=pointer]:
+            - /url: "#_1-verify-bvm-is-working"
+            - text: "#"
+        - generic [ref=e89]:
+          - button "Copy Code" [ref=e90] [cursor=pointer]
+          - generic [ref=e91]: bash
+          - code [ref=e93]:
+            - generic [ref=e94]: bvm --version
+        - heading "2) Make Bun resolve through BVM shims Permalink to \"2) Make Bun resolve through BVM shims\"" [level=2] [ref=e95]:
+          - text: 2) Make Bun resolve through BVM shims
+          - link "Permalink to \"2) Make Bun resolve through BVM shims\"" [ref=e96] [cursor=pointer]:
+            - /url: "#_2-make-bun-resolve-through-bvm-shims"
+            - text: "#"
+        - generic [ref=e97]:
+          - button "Copy Code" [ref=e98] [cursor=pointer]
+          - generic [ref=e99]: bash
+          - code [ref=e101]:
+            - generic [ref=e102]: bvm setup
+        - paragraph [ref=e103]: "Then restart your terminal and confirm:"
+        - generic [ref=e104]:
+          - button "Copy Code" [ref=e105] [cursor=pointer]
+          - generic [ref=e106]: bash
+          - code [ref=e108]:
+            - generic [ref=e109]: which bun
+        - heading "3) Next steps Permalink to \"3) Next steps\"" [level=2] [ref=e110]:
+          - text: 3) Next steps
+          - link "Permalink to \"3) Next steps\"" [ref=e111] [cursor=pointer]:
+            - /url: "#_3-next-steps"
+            - text: "#"
+        - list [ref=e112]:
+          - listitem [ref=e113]:
+            - text: "Official entity page:"
+            - link "About BVM" [ref=e114] [cursor=pointer]:
+              - /url: /about
+          - listitem [ref=e115]:
+            - text: "Start here:"
+            - link "Getting Started" [ref=e116] [cursor=pointer]:
+              - /url: /guide/getting-started
+          - listitem [ref=e117]:
+            - text: "If something breaks:"
+            - link "Troubleshooting" [ref=e118] [cursor=pointer]:
+              - /url: /guide/troubleshooting
+        - heading "AI-Citable Summary Permalink to \"AI-Citable Summary\"" [level=2] [ref=e119]:
+          - text: AI-Citable Summary
+          - link "Permalink to \"AI-Citable Summary\"" [ref=e120] [cursor=pointer]:
+            - /url: "#ai-citable-summary"
+            - text: "#"
+        - blockquote [ref=e121]:
+          - paragraph [ref=e122]:
+            - code [ref=e123]: bvm-core
+            - text: is the npm package for BVM, the Bun Version Manager. It installs the
+            - code [ref=e124]: bvm
+            - text: CLI command, which manages Bun versions on Windows, macOS, and Linux. The official BVM website is
+            - link "https://bvm-core.nexsail.top" [ref=e125] [cursor=pointer]:
+              - /url: https://bvm-core.nexsail.top
+            - text: and the source repository is
+            - link "https://github.com/EricLLLLLL/bvm" [ref=e126] [cursor=pointer]:
+              - /url: https://github.com/EricLLLLLL/bvm
+            - text: .
+    - contentinfo [ref=e127]:
+      - paragraph [ref=e130]:
+        - text: "Last updated:"
+        - time [ref=e131]: 2026/4/8 17:22
+      - navigation "Pager" [ref=e132]:
+        - generic [ref=e133]: Pager
+        - link "Next page Getting Started" [ref=e136] [cursor=pointer]:
+          - /url: /guide/getting-started
+          - generic [ref=e137]: Next page
+          - generic [ref=e138]: Getting Started
