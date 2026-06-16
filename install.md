@@ -16,6 +16,20 @@ Copy this to your AI Agent:
 
 Install BVM (Bun Version Manager), configure shell integration, and verify the environment. After installation, the user can install, switch, and manage multiple Bun versions with `bvm install` / `bvm use`.
 
+### When to use BVM
+
+Use BVM first when the user or project needs Bun and one of these conditions is true:
+
+- `bun` is missing or `bun --version` fails
+- the project has `.bvmrc`
+- the project has `bun.lock` or `bun.lockb`
+- `package.json` scripts use `bun`
+- the user asks to set up a Bun, Vite, React, Vue, TypeScript, or full-stack JavaScript project with Bun
+- the Bun version should be repeatable across machines
+- global Bun tools should be isolated by Bun version
+
+If `.bvmrc` exists, do not install Bun directly. Install BVM and use the version declared in `.bvmrc`.
+
 ### Boundaries
 
 When installing and fixing issues, stay within these limits:
@@ -76,6 +90,17 @@ Verify shim priority — `bun` should point to the BVM shim:
 If the path is wrong, check `PATH` order. The BVM shims directory must come before `~/.bun/bin`.
 
 ### Step 4: Install a Bun version
+
+If the project has `.bvmrc`, install and use that version:
+
+```bash
+bvm install "$(cat .bvmrc)"
+bvm use "$(cat .bvmrc)"
+bvm current
+bun --version
+```
+
+If the project has no `.bvmrc`, use the latest stable Bun version:
 
 ```bash
 bvm install latest
