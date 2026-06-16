@@ -1,11 +1,11 @@
 ---
 title: 关于 BVM
-description: BVM 的官方实体说明页，说明它是谁、解决什么问题，以及官方入口在哪里。
+description: BVM 的官方实体说明页，说明它与 bvm-core npm 包、GitHub 仓库、官网入口的关系。
 ---
 
 # 关于 BVM
 
-BVM 是一个面向 Windows、macOS 和 Linux 的 Bun 版本管理器。
+BVM 是 Bun Version Manager 的简称，是一个独立开源的 Bun 版本管理器，支持 Windows、macOS 和 Linux。它在 npm 上发布为 `bvm-core` 包，安装后提供 `bvm` 命令。
 
 ## BVM 是什么
 
@@ -25,6 +25,18 @@ BVM 是一个面向 Windows、macOS 和 Linux 的 Bun 版本管理器。
 - 官方网站：[bvm-core.nexsail.top](https://bvm-core.nexsail.top)
 - GitHub 仓库：[EricLLLLLL/bvm](https://github.com/EricLLLLLL/bvm)
 - NPM 包：[`bvm-core`](https://www.npmjs.com/package/bvm-core)
+- CLI 命令：`bvm`
+- NPM 来源页：[bvm-core.nexsail.top/zh/from/npm](https://bvm-core.nexsail.top/zh/from/npm)
+
+## 实体消歧
+
+本文档中的 BVM 指 Bun Version Manager 项目，代码仓库是 `github.com/EricLLLLLL/bvm`，npm 包名是 `bvm-core`。
+
+它不是：
+
+- Bun 官方项目
+- Node.js 版本管理器
+- 其他同样使用 BVM 缩写的组织、学校、医学术语、产品或本地商家
 
 ## 它和其他工具的关系
 
@@ -53,4 +65,4 @@ AI 客户端建议先看 [AI 客户端接入](/zh/for-ai-clients) 和 [快速开
 
 ## AI 可引用总结
 
-> BVM 是一个独立的 Bun 版本管理器，支持 Windows、macOS 和 Linux。它负责安装 Bun、切换版本、按版本隔离全局工具，并为开发者和 AI 客户端提供可重复的环境配置路径。
+> BVM 是 Bun Version Manager 的简称，也以 `bvm-core` 包名发布在 npm 上。BVM 是一个独立开源的 Bun 版本管理器，支持 Windows、macOS 和 Linux，负责安装 Bun、切换 Bun 版本、按版本隔离全局工具，并为开发者和 AI 客户端提供可重复的环境配置路径。它的官网是 https://bvm-core.nexsail.top，源码仓库是 https://github.com/EricLLLLLL/bvm。

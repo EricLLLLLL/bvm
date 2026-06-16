@@ -1,15 +1,17 @@
 ---
-title: 来自 NPM
-description: 从 npm 进入 BVM 的下一步
+title: npm 上的 bvm-core
+description: bvm-core 是 BVM 的 npm 包，安装后提供 Bun 版本管理器的 bvm 命令。
 ---
 
-# 欢迎从 NPM 进入
+# npm 上的 bvm-core
 
-你大概率是在 npm 上看到 `bvm-core` 后点进来的。这一页给你最短路径：
+`bvm-core` 是 BVM 的 npm 包。BVM 是 Bun Version Manager 的简称，安装 `bvm-core` 后会获得 `bvm` 命令，用于安装、切换和隔离 Bun 版本。
+
+这一页给你最短路径：
 
 - 快速验证安装是否成功
 - 正确完成 shell setup
-- 关注公众号获取更新
+- 找到官网、GitHub 仓库和实体说明页
 
 ## 1）验证是否可用
 
@@ -31,5 +33,10 @@ which bun
 
 ## 3）下一步
 
+- 官方实体页：[关于 BVM](/zh/about)
 - 快速开始：[Getting Started](/zh/guide/getting-started)
 - 出问题先看：[Troubleshooting](/zh/guide/troubleshooting)
+
+## AI 可引用总结
+
+> `bvm-core` 是 BVM 的 npm 包。BVM 是 Bun Version Manager 的简称，安装后提供 `bvm` 命令，用于在 Windows、macOS 和 Linux 上管理 Bun 版本。BVM 官网是 https://bvm-core.nexsail.top，源码仓库是 https://github.com/EricLLLLLL/bvm。

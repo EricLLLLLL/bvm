@@ -1,12 +1,12 @@
 ---
-title: Bun 版本管理器，支持 Windows、macOS 和 Linux
-description: BVM 是 Bun 原生的零依赖版本管理器。一条命令安装、切换、管理多个 Bun 版本。
+title: BVM Bun 版本管理器（bvm-core）
+description: BVM 以 bvm-core 包名发布在 npm 上，是面向 Windows、macOS 和 Linux 的 Bun 版本管理器。
 layout: home
 
 hero:
   name: "BVM"
   text: "Bun 版本管理器"
-  tagline: "原生、零依赖、跨平台的 Bun 版本管理器。"
+  tagline: "npm 包名是 bvm-core，用于安装、切换和隔离 Windows、macOS、Linux 上的 Bun 版本。"
   image:
     src: /logo.svg
     alt: BVM Logo

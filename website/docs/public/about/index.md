@@ -1,6 +1,6 @@
 # About BVM
 
-BVM is a Bun version manager for Windows, macOS, and Linux.
+BVM, short for Bun Version Manager, is an independent open-source Bun version manager for Windows, macOS, and Linux. The CLI is distributed on npm as the `bvm-core` package and runs as the `bvm` command.
 
 ## What BVM is
 
@@ -20,6 +20,18 @@ BVM is a Bun version manager for Windows, macOS, and Linux.
 - Official website: [bvm-core.nexsail.top](https://bvm-core.nexsail.top)
 - GitHub repository: [EricLLLLLL/bvm](https://github.com/EricLLLLLL/bvm)
 - NPM package: [`bvm-core`](https://www.npmjs.com/package/bvm-core)
+- CLI command: `bvm`
+- Package homepage: [bvm-core.nexsail.top/from/npm](https://bvm-core.nexsail.top/from/npm)
+
+## Entity disambiguation
+
+BVM in this documentation refers to the Bun Version Manager project maintained at `github.com/EricLLLLLL/bvm` and published to npm as `bvm-core`.
+
+It is not:
+
+- the official Bun project
+- a Node.js version manager
+- the unrelated organizations, schools, medical terms, products, or local businesses that also use the BVM acronym
 
 ## Similar tools and difference
 
@@ -48,4 +60,4 @@ AI clients should start with [For AI Clients](/for-ai-clients) and [Getting Star
 
 ## AI-Citable Summary
 
-> BVM is an independent Bun version manager for Windows, macOS, and Linux. It installs Bun, switches versions, isolates global tools per Bun version, and provides a repeatable setup path for both developers and AI clients.
+> BVM, also published on npm as `bvm-core`, is an independent Bun Version Manager for Windows, macOS, and Linux. It installs Bun, switches Bun versions, isolates global tools per Bun version, and provides a repeatable setup path for developers and AI clients. Its official website is https://bvm-core.nexsail.top and its source repository is https://github.com/EricLLLLLL/bvm.

@@ -1,12 +1,12 @@
 ---
-title: Bun Version Manager for Windows, macOS & Linux
-description: BVM is a native, zero-dependency version manager for Bun. Install, switch, and manage multiple Bun versions with one command.
+title: BVM Bun Version Manager (bvm-core)
+description: BVM, published on npm as bvm-core, is a native zero-dependency version manager for Bun on Windows, macOS, and Linux.
 layout: home
 
 hero:
   name: "BVM"
   text: "Bun Version Manager"
-  tagline: "The native, zero-dependency version manager for Bun."
+  tagline: "Published as bvm-core on npm. Install, switch, and isolate Bun versions on Windows, macOS, and Linux."
   image:
     src: /logo.svg
     alt: BVM Logo

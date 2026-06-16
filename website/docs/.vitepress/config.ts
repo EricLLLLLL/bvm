@@ -18,6 +18,65 @@ const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
   ['meta', { property: 'og:image', content: SITE_LINKS.ogImage }],
   ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
   ['meta', { name: 'twitter:image', content: SITE_LINKS.ogImage }],
+  [
+    'script',
+    { type: 'application/ld+json' },
+    JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          '@id': `${SITE_URL}/#website`,
+          name: 'BVM Bun Version Manager',
+          alternateName: ['BVM', 'bvm-core'],
+          url: SITE_URL,
+          inLanguage: ['en-US', 'zh-CN'],
+          description: 'Official website for BVM, the independent Bun Version Manager published on npm as bvm-core.',
+          sameAs: [
+            SITE_LINKS.githubRepo,
+            'https://www.npmjs.com/package/bvm-core',
+            'https://libraries.io/npm/bvm-core',
+          ],
+        },
+        {
+          '@type': 'SoftwareApplication',
+          '@id': `${SITE_URL}/#software`,
+          name: 'BVM',
+          alternateName: ['Bun Version Manager', 'bvm-core'],
+          applicationCategory: 'DeveloperApplication',
+          operatingSystem: ['Windows', 'macOS', 'Linux'],
+          url: SITE_URL,
+          installUrl: SITE_LINKS.fromNpm,
+          downloadUrl: 'https://www.npmjs.com/package/bvm-core',
+          codeRepository: SITE_LINKS.githubRepo,
+          softwareHelp: `${SITE_URL}/guide/troubleshooting`,
+          description: 'BVM installs, switches, and isolates Bun versions across Windows, macOS, and Linux.',
+          author: {
+            '@type': 'Person',
+            name: 'EricLLLLLL',
+            url: 'https://github.com/EricLLLLLL',
+          },
+          sameAs: [
+            SITE_LINKS.githubRepo,
+            'https://www.npmjs.com/package/bvm-core',
+            'https://libraries.io/npm/bvm-core',
+          ],
+        },
+        {
+          '@type': 'SoftwareSourceCode',
+          '@id': `${SITE_URL}/#source`,
+          name: 'EricLLLLLL/bvm',
+          codeRepository: SITE_LINKS.githubRepo,
+          programmingLanguage: 'TypeScript',
+          runtimePlatform: ['Bun', 'Node.js'],
+          license: 'https://github.com/EricLLLLLL/bvm/blob/main/LICENSE',
+          targetProduct: {
+            '@id': `${SITE_URL}/#software`,
+          },
+        },
+      ],
+    }),
+  ],
 ];
 
 if (GOOGLE_SITE_VERIFICATION) {
