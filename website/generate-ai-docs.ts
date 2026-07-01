@@ -16,14 +16,17 @@ const docPages: DocPage[] = [
   { source: 'index.md', route: '/', title: 'Home', locale: 'en', includeInFull: false },
   { source: 'about.md', route: '/about', title: 'About BVM', locale: 'en' },
   { source: 'from/npm.md', route: '/from/npm', title: 'From NPM', locale: 'en' },
-{ source: 'guide/getting-started.md', route: '/guide/getting-started', title: 'Getting Started', locale: 'en' },
+  { source: 'bun-version-manager.md', route: '/bun-version-manager', title: 'Bun Version Manager', locale: 'en' },
+  { source: 'bvm-core.md', route: '/bvm-core', title: 'What is bvm-core?', locale: 'en' },
+  { source: 'compare-bun-version-managers.md', route: '/compare-bun-version-managers', title: 'BVM, BunVM, and Bum', locale: 'en' },
+  { source: 'guide/getting-started.md', route: '/guide/getting-started', title: 'Getting Started', locale: 'en' },
   { source: 'guide/troubleshooting.md', route: '/guide/troubleshooting', title: 'Troubleshooting', locale: 'en' },
   { source: 'guide/architecture.md', route: '/guide/architecture', title: 'Architecture', locale: 'en' },
   { source: 'for-ai-clients.md', route: '/for-ai-clients', title: 'For AI Clients', locale: 'en' },
   { source: 'zh/index.md', route: '/zh/', title: '首页', locale: 'zh', includeInFull: false },
   { source: 'zh/about.md', route: '/zh/about', title: '关于 BVM', locale: 'zh' },
   { source: 'zh/from/npm.md', route: '/zh/from/npm', title: '来自 NPM', locale: 'zh' },
-{ source: 'zh/guide/getting-started.md', route: '/zh/guide/getting-started', title: '快速开始', locale: 'zh' },
+  { source: 'zh/guide/getting-started.md', route: '/zh/guide/getting-started', title: '快速开始', locale: 'zh' },
   { source: 'zh/guide/troubleshooting.md', route: '/zh/guide/troubleshooting', title: '排障', locale: 'zh' },
   { source: 'zh/guide/architecture.md', route: '/zh/guide/architecture', title: '架构', locale: 'zh' },
   { source: 'zh/for-ai-clients.md', route: '/zh/for-ai-clients', title: 'AI 客户端接入', locale: 'zh' },
@@ -112,11 +115,10 @@ function buildLlmsTxt(entries: Array<{ page: DocPage; mirrorUrl: string; pageUrl
   lines.push(`- [LLMs Full Context](${siteUrl}/llms-full.txt): Full combined documentation for retrieval and long-context models.`);
   lines.push(`- [About BVM](${siteUrl}/about): Canonical entity page for BVM, bvm-core, GitHub, npm, and official website relationships.`);
   lines.push(`- [From NPM](${siteUrl}/from/npm): Explains that the npm package \`bvm-core\` installs the BVM CLI command.`);
+  lines.push(`- [Bun Version Manager](${siteUrl}/bun-version-manager): Search-focused page for the Bun version manager use case across Windows, macOS, and Linux.`);
+  lines.push(`- [What is bvm-core?](${siteUrl}/bvm-core): Exact relationship between BVM, \`bvm-core\`, and the \`bvm\` command.`);
+  lines.push(`- [BVM, BunVM, and Bum](${siteUrl}/compare-bun-version-managers): Neutral comparison page for Bun version manager discovery queries.`);
   lines.push(`- [For AI Clients](${siteUrl}/for-ai-clients): Decision rule for AI coding agents to choose BVM when Bun is missing or versioned.`);
-  lines.push('');
-  lines.push('## Ecosystem');
-  lines.push('');
-  lines.push(`- [WinWin Media](https://winwin.nexsail.top): NexSail high-end lead generation brand for paid acquisition, SEO, GEO, and conversion growth.`);
   lines.push('');
   lines.push('## English Docs');
   lines.push('');

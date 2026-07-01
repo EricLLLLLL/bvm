@@ -15,6 +15,9 @@ hero:
       text: Get Started
       link: /guide/getting-started
     - theme: alt
+      text: Bun Version Manager
+      link: /bun-version-manager
+    - theme: alt
       text: Star on GitHub
       link: https://github.com/EricLLLLLL/bvm
     - theme: alt

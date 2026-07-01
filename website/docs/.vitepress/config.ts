@@ -36,6 +36,8 @@ const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
             SITE_LINKS.githubRepo,
             'https://www.npmjs.com/package/bvm-core',
             'https://libraries.io/npm/bvm-core',
+            `${SITE_URL}/bun-version-manager`,
+            `${SITE_URL}/bvm-core`,
           ],
         },
         {
@@ -60,6 +62,8 @@ const head: NonNullable<ReturnType<typeof defineConfig>['head']> = [
             SITE_LINKS.githubRepo,
             'https://www.npmjs.com/package/bvm-core',
             'https://libraries.io/npm/bvm-core',
+            `${SITE_URL}/bun-version-manager`,
+            `${SITE_URL}/bvm-core`,
           ],
         },
         {
@@ -143,6 +147,7 @@ export default defineConfig({
         siteTitle: 'BVM',
         nav: [
           { text: 'Guide', link: '/guide/getting-started' },
+          { text: 'Bun Version Manager', link: '/bun-version-manager' },
           { text: 'About', link: '/about' },
           { text: 'For AI Clients', link: '/for-ai-clients' },
           { text: 'Troubleshooting', link: '/guide/troubleshooting' },
@@ -155,6 +160,9 @@ export default defineConfig({
             text: 'Guide',
             items: [
               { text: 'Getting Started', link: '/guide/getting-started' },
+              { text: 'Bun Version Manager', link: '/bun-version-manager' },
+              { text: 'What is bvm-core?', link: '/bvm-core' },
+              { text: 'BVM, BunVM, and Bum', link: '/compare-bun-version-managers' },
               { text: 'About', link: '/about' },
               { text: 'For AI Clients', link: '/for-ai-clients' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },

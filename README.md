@@ -8,12 +8,6 @@
   <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
 
   <p align="center">
-    <strong>Need high-end lead generation, paid acquisition, SEO, or GEO growth?</strong>
-    <br />
-    <a href="https://winwin.nexsail.top"><strong>Visit WinWin Media at winwin.nexsail.top »</strong></a>
-  </p>
-
-  <p align="center">
     <strong>If BVM saves you time, please give it a GitHub Star.</strong>
     <br />
     <a href="https://github.com/EricLLLLLL/bvm"><strong>Star BVM on GitHub »</strong></a>
@@ -27,6 +21,12 @@
     <a href="https://bvm-core.nexsail.top/zh/"><strong>中文网站 »</strong></a>
     <br />
     <a href="https://bvm-core.nexsail.top/from/npm"><strong>From NPM (Start Here) »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/bun-version-manager"><strong>Bun Version Manager »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/bvm-core"><strong>What is bvm-core? »</strong></a>
+    <br />
+    <a href="https://bvm-core.nexsail.top/compare-bun-version-managers"><strong>Compare Bun Version Managers »</strong></a>
     <br />
     <br />
     <a href="./README.zh-CN.md">🇨🇳 中文文档</a>
