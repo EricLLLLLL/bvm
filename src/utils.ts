@@ -1,4 +1,4 @@
-import { readdir, mkdir, stat as statImpl, symlink, unlink, rm, readlink, realpath, lstat as lstatImpl } from 'fs/promises';
+import { readdir, mkdir, stat as statImpl, symlink, unlink, rm, readlink, lstat as lstatImpl } from 'fs/promises';
 
 // Re-export stat functions for compatibility
 export const stat = statImpl;

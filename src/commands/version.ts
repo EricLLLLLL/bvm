@@ -1,4 +1,4 @@
-import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
+import { BVM_ALIAS_DIR } from '../constants';
 import { getInstalledVersions, normalizeVersion, pathExists, readTextFile, getActiveVersion, resolveVersion } from '../utils';
 import { resolveAliasPath } from '../utils/alias-name';
 import { withSpinner } from '../command-runner';

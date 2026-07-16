@@ -3,8 +3,8 @@ import { delimiter } from 'path';
 import { homedir } from 'os';
 import { access } from 'fs/promises';
 import fs from 'fs';
-import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_CURRENT_DIR, BVM_SHIMS_DIR, BVM_RUNTIME_DIR, OS_PLATFORM } from '../constants';
-import { ensureDir, pathExists, normalizeVersion, resolveVersion, getInstalledVersions, createSymlink } from '../utils';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_CURRENT_DIR, BVM_SHIMS_DIR } from '../constants';
+import { pathExists, normalizeVersion, resolveVersion, getInstalledVersions, createSymlink } from '../utils';
 import { colors, confirm } from '../utils/ui';
 import { getRcVersion } from '../rc';
 import { resolveLocalVersion } from './version';
@@ -64,14 +64,6 @@ export async function useBunVersion(
 
     // Update the 'current' directory symlink for immediate global effect
     await createSymlink(installPath, BVM_CURRENT_DIR);
-
-    // Windows: keep runtime/current in sync (bvm.cmd / bun.cmd fastpath depend on it)
-    if (OS_PLATFORM === 'win32') {
-      const runtimeCurrent = join(BVM_RUNTIME_DIR, 'current');
-      const runtimeVersionDir = join(BVM_RUNTIME_DIR, normalizedFinalResolvedVersion);
-      const runtimeTarget = (await pathExists(runtimeVersionDir)) ? runtimeVersionDir : installPath;
-      await createSymlink(runtimeTarget, runtimeCurrent);
-    }
 
     const needsPathFix = await warnIfShimsNotActive({ silent: options.silent, spinner });
     if (needsPathFix && !options.silent) {

@@ -1,6 +1,5 @@
 import { runCommand } from '../helpers/process';
 import { OS_PLATFORM } from '../constants';
-import { join } from 'path';
 import { spawn } from 'node:child_process';
 
 /**

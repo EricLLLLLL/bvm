@@ -6,7 +6,7 @@ import { fetchWithTimeout, getFastestRegistry } from '../utils/network-utils';
 import packageJson from '../../package.json';
 import { withSpinner } from '../command-runner';
 import { join } from 'path';
-import { writeTextFile, ensureDir, pathExists, safeSwap, readTextFile } from '../utils';
+import { writeTextFile, pathExists, safeSwap, readTextFile } from '../utils';
 import { configureShell } from './setup';
 import { tmpdir } from 'os';
 import { rm, mkdir } from 'fs/promises';

@@ -1,91 +1,61 @@
 ---
 name: bvm-architect
-description: Expert architectural advisor for BVM (Bun Version Manager). Use this skill when the user wants to understand BVM's internal workings, modify installation logic, add new commands, or discuss implementation details. It enforces architectural integrity, standardized interfaces, and cross-platform reliability.
+description: Review, explain, and safely evolve the BVM Bun version manager architecture. Use for BVM architecture audits, installation or upgrade changes, command design, shim/runtime isolation, cross-platform behavior, release design, project-structure reviews, and code-redundancy analysis in the BVM repository.
 ---
 
 # BVM Architect
 
-You are the Lead Architect for BVM. Your goal is to guide the development process through standardized patterns and robust system integration.
+Treat the checked-out repository as the source of truth. The bundled references are orientation material, not authority for mutable facts such as commands, versions, workflows, release channels, or file locations.
 
-## 1. Core Capabilities (What BVM Does)
+## Start every task
 
-*   **Bunker Architecture**: Maintains an isolated Bun runtime for BVM's own operations, ensuring stability even if system tools are broken.
-*   **Zero-Latency Shimming**: Cross-platform shims (Bash/CMD/JS) that intercept commands with ~0ms overhead.
-*   **Intelligent Registry Selection**: Uses a "Race Strategy" and Cloudflare-based Geo-IP detection to automatically select the fastest registry (npmjs vs npmmirror).
-*   **Unified Installation Protocol**: Synchronized logic across `install.sh`, `install.ps1`, and `postinstall.js`.
-*   **Self-Healing Environment**: The `setup` command automatically repairs PATH, shims, and symlinks.
+1. Read the repository `AGENTS.md` and follow its safety and Git rules.
+2. Inspect the current files related to the request before making claims.
+3. Verify mutable facts in `package.json`, `.github/workflows/`, `src/`, `scripts/`, and the installer scripts.
+4. Distinguish observed facts from recommendations and inferences.
+5. For read-only reviews, do not modify files. For implementation requests, test the smallest safe change and do not commit or push unless the user explicitly asks.
 
-## 2. Standardized Interfaces (How we build)
+Use `rg` and import/call-site inspection for impact analysis. Do not depend on GitNexus or any generated index.
 
-### 2.1 Command Contract
-Every CLI command MUST reside in `src/commands/` and follow this structure:
-```typescript
-type ActionHandler = (args: string[], flags: Record<string, any>) => Promise<void> | void;
-```
-*   **Logic Isolation**: Command logic should be decoupled from the CLI Router.
-*   **Result reporting**: Use `reported` flag on errors to prevent duplicate error printing.
+## Stable architecture invariants
 
-### 2.2 Shell Integration Contract
-Configuration blocks in Shell profiles MUST use standardized markers:
-*   **Start**: `# >>> bvm initialize >>>`
-*   **End**: `# <<< bvm initialize <<<`
-*   **Rule**: The `setup` logic MUST always append or move this block to the **absolute end** of the file to ensure PATH precedence.
+Preserve these unless the user explicitly requests an architectural change:
 
-## 3. Reusable Modules
+- BVM's private host runtime is separate from the user's active Bun version.
+- `runtime/current` identifies the runtime used to execute BVM itself.
+- `current` identifies the user's active Bun version.
+- Installation and upgrade artifacts are resolved from npm-compatible registry metadata and verified before extraction.
+- Installation surfaces must preserve equivalent safety behavior across `install.sh`, `install.ps1`, and `scripts/postinstall.js`; their implementations do not need to be textually identical.
+- Never bootstrap from a path inside BVM's own shims or bin directories.
+- Shell initialization blocks use `# >>> bvm initialize >>>` and `# <<< bvm initialize <<<`, and PATH precedence must remain deterministic.
+- Windows PATH persistence uses the user environment/Registry path; PowerShell profile integration is secondary and non-fatal.
+- A CLI command handler receives positional arguments and typed flags, while command implementation stays outside the router when practical.
+- Errors already printed by a lower layer use the `reported` convention to avoid duplicate output.
 
-*   **NetworkUtils**: Standard logic for `fetchWithTimeout` and `raceRequests`.
-*   **FileUtils**: `safeSwap` (atomic file replacement) and `mkdir` (cross-platform recursive directory creation).
-*   **ShellUtils**: `configureShell` with fallback detection (never trust `process.env.SHELL`).
+## Review method
 
-## 4. Architectural Guardrails (Pitfall Prevention)
+For architecture, redundancy, or structure reviews:
 
-### 4.1 Windows & OneDrive
-*   **The OneDrive Trap**: `fs.mkdir` can throw `EEXIST` on OneDrive-managed folders.
-*   **Standard**: Use Registry (`[Environment]::SetEnvironmentVariable`) for PATH on Windows. Treat PowerShell `$PROFILE` as a secondary convenience, wrapped in non-fatal `try-catch`.
+1. Map entry points, runtime state, filesystem state, network boundaries, and release artifacts.
+2. Identify large mixed-responsibility modules, repeated cross-platform policy, dead exports, and documentation drift.
+3. Validate suspected duplication by comparing behavior and callers, not only similar text.
+4. Rank findings by correctness risk, release risk, maintainability, and implementation cost.
+5. Prefer KISS and YAGNI. Recommend extraction only when it creates a clear ownership boundary or removes repeated policy.
+6. Cite concrete files and line numbers. Avoid presenting aspirational architecture as implemented behavior.
 
-### 4.2 NPM Post-install Environment
-*   **The Vacuum**: NPM child processes lack standard env vars (like `SHELL`).
-*   **Standard**: Always implement **Fallback Detection** based on physical file existence (`.zshrc`, `.bashrc`) if env vars are missing.
-*   **The Silence**: NPM silences `postinstall` errors.
-*   **Standard**: Always check exit codes in `postinstall.js` and re-throw with visible logs.
+## Change method
 
-### Infinite Loop Protection
-*   **The Mirror Bug**: Installation scripts can mistake BVM Shims for a system runtime.
-*   **Standard**: Always implement a **Shim Guard** that checks if a binary path contains `.bvm/shims` or `.bvm/bin` before using it for bootstrapping.
+For code changes:
 
-### Architecture Detection (macOS Rosetta 2)
-*   **The Emulation Trap**: `uname -m` or `process.arch` can return `x64` on Apple Silicon if running under Rosetta 2.
-*   **Standard**: Always use `sysctl -in hw.optional.arm64` on Darwin to detect the TRUE hardware capability, and prioritize `arm64` if supported.
+1. Define the behavior contract and affected platforms.
+2. Add or update a failing regression test when behavior changes.
+3. Implement the minimum coherent change.
+4. Run focused tests, then the repository verification command appropriate to the risk.
+5. For installers, shims, release logic, or filesystem state, include cross-platform and clean-checkout verification.
+6. Report remaining uncertainty explicitly.
 
-## 5. BVM Release Lifecycle Protocol
+## Reference routing
 
-The project follows a strict **"Merge-to-Release"** automated pipeline. The `main` branch is protected and serves as the source of truth for production.
-
-*   **P1: Protected Main**: NEVER push directly to `main`. No exceptions.
-*   **P2: Feature Isolation**: All work starts on a `feat/` or `fix/` branch.
-*   **P3: Pre-flight Checks**: Before opening a PR, the developer MUST run `npx bun run release`. This local gate performs:
-    *   Integrity checks (via `check-integrity.ts`).
-    *   Version bumping & installation script syncing.
-    *   Documentation & Website synchronization.
-*   **P4: Automated PR Gate**: Every PR triggers the `PR Quality Gate` CI. Merging is blocked until:
-    *   Unit tests pass.
-    *   Full E2E NPM simulation (`test:e2e:npm`) passes.
-*   **P5: Atomic Release**: Merging a version-bumping PR into `main` AUTOMATICALLY triggers:
-    *   Git Tagging (`v*`).
-    *   NPM Publication.
-    *   GitHub Release creation with assets.
-    *   CDN cache purging.
-
-## 6. Standard Developer Workflow
-
-1.  **Branch**: `git checkout -b feat/your-feature`
-2.  **Develop**: Implement changes and local tests.
-3.  **Local Release Prep**: `npx bun run release`. Select version type (patch/minor/major).
-4.  **Submit**: `git push origin feat/your-feature` and open GitHub PR.
-5.  **Audit**: Ensure CI passes on PR.
-6.  **Deploy**: Click **Merge** on GitHub. The CD pipeline handles the production rollout.
-
-## Reference Navigation
-
-*   **Architecture Internals**: [references/architecture.md](references/architecture.md)
-*   **Development Workflow**: [references/workflow.md](references/workflow.md)
+- Read [references/architecture.md](references/architecture.md) for the current architectural map and known boundaries.
+- Read [references/workflow.md](references/workflow.md) for review, implementation, verification, and release procedures.
+- Re-verify any reference statement against the repository before relying on it for a code change.

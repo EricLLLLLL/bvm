@@ -29,7 +29,9 @@ if [ -z "$VERSION" ]; then
             VERSION="v${raw_ver//[v[:space:]]/}"
             break
         fi
-        CUR_DIR=$(dirname "$CUR_DIR")
+        PARENT_DIR="${CUR_DIR%/*}"
+        [ -z "$PARENT_DIR" ] && PARENT_DIR="/"
+        CUR_DIR="$PARENT_DIR"
     done
 
     # Fallback to current symlink (most common production case)
@@ -72,7 +74,21 @@ if [ -x "$REAL_EXECUTABLE" ]; then
     if [ "$CMD_NAME" = "bun" ] && [ $EXIT_CODE -eq 0 ]; then
         case "$1" in
             install|i|add|a|remove|rm|upgrade|link|unlink)
-                (export BVM_DIR="$BVM_DIR"; "$BVM_DIR/bin/bvm" rehash --silent >/dev/null 2>&1 & disown)
+                NEED_REHASH=false
+                case "$1" in
+                    link|unlink) NEED_REHASH=true ;;
+                    *)
+                        for arg in "$@"; do
+                            if [ "$arg" = "-g" ] || [ "$arg" = "--global" ]; then
+                                NEED_REHASH=true
+                                break
+                            fi
+                        done
+                        ;;
+                esac
+                if [ "$NEED_REHASH" = true ]; then
+                    (export BVM_DIR="$BVM_DIR"; "$BVM_DIR/bin/bvm" rehash --silent >/dev/null 2>&1 & disown)
+                fi
                 ;;
         esac
     fi

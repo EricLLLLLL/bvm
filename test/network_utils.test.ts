@@ -1,5 +1,14 @@
-import { describe, it, expect, mock } from 'bun:test';
+import { afterEach, describe, it, expect, mock } from 'bun:test';
+import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { fetchWithTimeout, raceRequests, getGeoLocation, getFastestRegistry } from '../src/utils/network-utils';
+
+const testDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(testDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
 
 describe('NetworkUtils', () => {
   describe('fetchWithTimeout', () => {
@@ -44,6 +53,24 @@ describe('NetworkUtils', () => {
   });
 
   describe('getFastestRegistry', () => {
+      it('uses a valid disk cache without performing network probes', async () => {
+          const root = await mkdtemp(join(tmpdir(), 'bvm-registry-cache-'));
+          testDirs.push(root);
+          const cacheFile = join(root, 'registry-cache.json');
+          await writeFile(cacheFile, JSON.stringify({
+              registry: 'https://cached.example',
+              timestamp: Date.now(),
+          }));
+
+          const registry = await getFastestRegistry({
+              cacheFile,
+              getLocation: async () => { throw new Error('network should not run'); },
+              race: async () => { throw new Error('network should not run'); },
+          });
+
+          expect(registry).toBe('https://cached.example');
+      });
+
       it('should return a valid registry URL', async () => {
           const registry = await getFastestRegistry();
           expect(registry).toMatch(/^https:\/\//);

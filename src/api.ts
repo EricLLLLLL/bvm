@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { USER_AGENT, getBunAssetName, REPO_FOR_BVM_CLI, ASSET_NAME_FOR_BVM, OS_PLATFORM, CPU_ARCH, isTestMode, TEST_REMOTE_VERSIONS, BVM_CACHE_DIR } from './constants';
+import { USER_AGENT, getBunAssetName, OS_PLATFORM, getCpuArch, hasAvx2Support, isTestMode, TEST_REMOTE_VERSIONS, BVM_CACHE_DIR } from './constants';
 import { normalizeVersion } from './utils';
 import { valid, rcompare, parse, compareParsed } from './utils/semver-lite';
 import { colors } from './utils/ui';
@@ -201,7 +201,10 @@ export interface BunDownloadInfo {
   integrity: string;
 }
 
-export async function findBunDownloadUrl(targetVersion: string): Promise<BunDownloadInfo | null> {
+export async function findBunDownloadUrl(
+    targetVersion: string,
+    options: { platform?: string; arch?: string; hasAvx2?: boolean } = {},
+): Promise<BunDownloadInfo | null> {
     const fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
 
     if (!valid(fullVersion)) {
@@ -217,12 +220,15 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<BunDown
     }
 
     // Determine platform/arch for NPM package lookup
-    const os_platform = OS_PLATFORM === 'win32' ? 'win32' : OS_PLATFORM; // nodejs platform style
-    const cpu_arch = CPU_ARCH === 'arm64' ? 'arm64' : 'x64';
+    const detectedPlatform = options.platform || OS_PLATFORM;
+    const detectedArch = options.arch || getCpuArch();
+    const os_platform = detectedPlatform === 'win32' ? 'win32' : detectedPlatform;
+    const cpu_arch = detectedArch === 'arm64' ? 'arm64' : 'x64';
+    const hasAvx2 = options.hasAvx2 ?? hasAvx2Support();
 
-    const npmPackage = getBunNpmPackage(os_platform, cpu_arch);
+    const npmPackage = getBunNpmPackage(os_platform, cpu_arch, hasAvx2);
     if (!npmPackage) {
-        throw new Error(`Unsupported platform/arch for NPM download: ${OS_PLATFORM}-${CPU_ARCH}`);
+        throw new Error(`Unsupported platform/arch for NPM download: ${OS_PLATFORM}-${detectedArch}`);
     }
 
     // Determine Registry

@@ -5,6 +5,13 @@ import {
 } from '../src/templates/init-scripts';
 import { chmodSync, existsSync, mkdirSync } from 'fs';
 
+function replaceRequired(content: string, pattern: RegExp, replacement: string, label: string): string {
+    if (!pattern.test(content)) {
+        throw new Error(`Unable to synchronize Bun fallback version in ${label}`);
+    }
+    return content.replace(pattern, replacement);
+}
+
 async function syncRuntime() {
   const cwd = process.cwd();
   console.log('📦 Reading local package.json for Bun version...');
@@ -24,16 +31,15 @@ async function syncRuntime() {
 
     const installShPath = join(cwd, 'install.sh');
     const installPs1Path = join(cwd, 'install.ps1');
+    const postinstallPath = join(cwd, 'scripts', 'postinstall.js');
 
     // 1. Update install.sh
     let shContent = await Bun.file(installShPath).text();
     
     // Sync Bun version
-    const shRegex = /(FALLBACK_BUN_VERSION|REQUIRED_BUN_VERSION)="[0-9]+\.[0-9]+\.[0-9]+"/;
+    const shRegex = /FALLBACK_BUN_VERSION="[0-9]+\.[0-9]+\.[0-9]+"/;
     const newShLine = `FALLBACK_BUN_VERSION="${localVersion}"`;
-    if (shContent.match(shRegex)) {
-        shContent = shContent.replace(shRegex, newShLine);
-    }
+    shContent = replaceRequired(shContent, shRegex, newShLine, 'install.sh');
 
     // Sync BVM version
     const bvmShRegex = /DEFAULT_BVM_VERSION="v[0-9]+\.[0-9]+\.[0-9]+"/;
@@ -49,11 +55,9 @@ async function syncRuntime() {
     let ps1Content = await Bun.file(installPs1Path).text();
     
     // Sync Bun version
-    const ps1Regex = /\$REQUIRED_BUN_VERSION = "[0-9]+\.[0-9]+\.[0-9]+"/;
-    const newPs1Line = `$REQUIRED_BUN_VERSION = "${localVersion}"`;
-    if (ps1Content.match(ps1Regex)) {
-        ps1Content = ps1Content.replace(ps1Regex, newPs1Line);
-    }
+    const ps1Regex = /\$FALLBACK_BUN_VERSION = "[0-9]+\.[0-9]+\.[0-9]+"/;
+    const newPs1Line = `$FALLBACK_BUN_VERSION = "${localVersion}"`;
+    ps1Content = replaceRequired(ps1Content, ps1Regex, newPs1Line, 'install.ps1');
 
     // Sync BVM version
     const bvmPs1Regex = /\$DEFAULT_BVM_VER = "v[0-9]+\.[0-9]+\.[0-9]+"/;
@@ -65,7 +69,15 @@ async function syncRuntime() {
     await Bun.write(installPs1Path, ps1Content);
     console.log(`✅ Updated install.ps1 (Bun: v${localVersion}, BVM: v${pkg.version})`);
 
-    // 3. Export Shims to dist/
+    // 3. Update postinstall.js
+    let postinstallContent = await Bun.file(postinstallPath).text();
+    const postinstallRegex = /const FALLBACK_BUN_VERSION = '[0-9]+\.[0-9]+\.[0-9]+';/;
+    const newPostinstallLine = `const FALLBACK_BUN_VERSION = '${localVersion}';`;
+    postinstallContent = replaceRequired(postinstallContent, postinstallRegex, newPostinstallLine, 'scripts/postinstall.js');
+    await Bun.write(postinstallPath, postinstallContent);
+    console.log(`✅ Updated postinstall.js (Bun: v${localVersion})`);
+
+    // 4. Export Shims to dist/
     console.log('🚀 Exporting shims to dist/ directory...');
     const distDir = join(cwd, 'dist');
     if (!existsSync(distDir)) {

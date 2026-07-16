@@ -4,7 +4,6 @@ import { BVM_ALIAS_DIR } from '../constants';
 import { pathExists, readTextFile, normalizeVersion, getInstalledVersions, resolveVersion } from '../utils';
 import { withSpinner } from '../command-runner';
 import { createAlias } from './alias';
-import { rehash } from './rehash'; // Rehash after setting default
 
 /**
  * Manages the global default Bun version.

@@ -1,9 +1,9 @@
-import { join, dirname, basename } from 'path';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
-import { pathExists, removeDir, getInstalledVersions, normalizeVersion, resolveVersion, createSymlink, readDir, stat, readTextFile } from '../utils';
-import { mkdir, rm } from 'fs/promises';
-import { BVM_BIN_DIR, BVM_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_SRC_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_DIR, BVM_RUNTIME_DIR, OS_PLATFORM, BVM_ALIAS_DIR } from '../constants';
-import { colors, confirm } from '../utils/ui';
+import { pathExists, normalizeVersion, createSymlink, readDir, readTextFile } from '../utils';
+import { lstat, mkdir, rename, rm } from 'fs/promises';
+import { BVM_BIN_DIR, BVM_DIR, BVM_SHIMS_DIR, BVM_SRC_DIR, BVM_VERSIONS_DIR, BVM_CURRENT_DIR, BVM_RUNTIME_DIR, OS_PLATFORM, BVM_ALIAS_DIR } from '../constants';
+import { colors } from '../utils/ui';
 import { chmod } from 'fs/promises';
 import {
     BVM_INIT_SH_TEMPLATE,
@@ -20,6 +20,29 @@ import {
  * Ensures versions/vX.X.X is a junction to runtime/vX.X.X on Windows.
  * This fixes issues where install.sh created Unix symlinks instead of Windows junctions.
  */
+export async function migrateVersionDirectory(
+    versionsPath: string,
+    runtimePath: string,
+    createJunction: (target: string, path: string) => Promise<void> = createSymlink,
+): Promise<void> {
+    if (await pathExists(runtimePath)) {
+        const runtimeContent = await readDir(runtimePath);
+        if (runtimeContent.length > 0) {
+            throw new Error(`Cannot migrate ${versionsPath}: destination is not empty (${runtimePath}).`);
+        }
+        await rm(runtimePath, { recursive: true, force: true });
+    }
+
+    await mkdir(dirname(runtimePath), { recursive: true });
+    await rename(versionsPath, runtimePath);
+    try {
+        await createJunction(runtimePath, versionsPath);
+    } catch (error) {
+        await rename(runtimePath, versionsPath);
+        throw error;
+    }
+}
+
 async function ensureVersionJunctions(): Promise<void> {
     if (OS_PLATFORM !== 'win32') return;
 
@@ -33,82 +56,28 @@ async function ensureVersionJunctions(): Promise<void> {
             const versionsPath = join(BVM_VERSIONS_DIR, version);
             const runtimePath = join(BVM_RUNTIME_DIR, version);
 
-            // Check if versionsPath is a real directory (not a junction)
+            // Check if versionsPath is a real directory rather than a junction.
             try {
-                const stats = await stat(versionsPath);
-                if (!stats.isDirectory()) continue;
-
-                // Check if it's a junction/symlink
-                const isJunction = stats.mode !== undefined; // This is a rough check
+                const lstats = await lstat(versionsPath);
+                if (lstats.isSymbolicLink() || !lstats.isDirectory()) continue;
             } catch {
                 continue;
-            }
-
-            // Check if it's actually a junction by trying to read it as symlink
-            try {
-                const { readlink, lstat } = await import('fs/promises');
-                const lstats = await lstat(versionsPath);
-                if (lstats.isSymbolicLink()) continue; // Already a symlink/junction
-            } catch {
-                // Not a symlink, continue to fix
             }
 
             // versionsPath is a real directory, need to convert to junction
             console.log(colors.yellow(`[bvm] Fixing: versions/${version} -> runtime/${version}`));
 
-            // Check content
-            let versionsContent: string[] = [];
-            let runtimeContent: string[] = [];
             try {
-                versionsContent = await readDir(versionsPath);
-            } catch {}
-            try {
-                runtimeContent = await readDir(runtimePath);
-            } catch {}
-
-            // Move content if runtime is empty
-            if (runtimeContent.length === 0 && versionsContent.length > 0) {
-                console.log(colors.gray(`  Moving content from versions to runtime...`));
-                // Move files and directories
-                for (const item of versionsContent) {
-                    const src = join(versionsPath, item);
-                    const dest = join(runtimePath, item);
-                    try {
-                        await rename(src, dest);
-                    } catch (e) {
-                        // If rename fails, try copy then delete
-                        try {
-                            await Bun.write(Bun.file(dest), Bun.file(src));
-                            await rm(src);
-                        } catch {}
-                    }
-                }
-            }
-
-            // Remove the real directory
-            try {
-                await rm(versionsPath, { recursive: true, force: true });
+                console.log(colors.gray('  Moving the complete version directory to runtime...'));
+                await migrateVersionDirectory(versionsPath, runtimePath);
+                console.log(colors.green('  [OK] Junction created'));
             } catch (e) {
-                console.log(colors.gray(`  Could not remove versions dir: ${e}`));
-                continue;
-            }
-
-            // Create junction using createSymlink (which uses junction type on Windows)
-            try {
-                await createSymlink(runtimePath, versionsPath);
-                console.log(colors.green(`  [OK] Junction created`));
-            } catch (e) {
-                console.log(colors.red(`  [FAIL] Could not create junction: ${e}`));
+                console.log(colors.red(`  [SKIP] Migration was not safe: ${e}`));
             }
         }
     } catch (e) {
         // Ignore errors
     }
-}
-
-async function rename(src: string, dest: string) {
-    const { rename } = await import('fs/promises');
-    await rename(src, dest);
 }
 
 /**
@@ -287,15 +256,6 @@ async function ensureCurrentSymlinkFromDefaultAlias(): Promise<void> {
             await createSymlink(target, BVM_CURRENT_DIR);
         }
 
-        // Windows: keep runtime/current in sync with the active runtime.
-        if (OS_PLATFORM === 'win32') {
-            const runtimeTarget = join(BVM_RUNTIME_DIR, resolvedVersion);
-            const runtimeCurrent = join(BVM_RUNTIME_DIR, 'current');
-            const runtimePath = (await pathExists(runtimeTarget)) ? runtimeTarget : target;
-            if (!(await pathExists(runtimeCurrent))) {
-                await createSymlink(runtimePath, runtimeCurrent);
-            }
-        }
     } catch {
         // best-effort
     }

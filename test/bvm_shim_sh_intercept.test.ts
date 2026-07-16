@@ -9,6 +9,12 @@ describe("bvm-shim.sh Interceptor", () => {
     it("should intercept installation commands", () => {
         expect(content).toContain('if [ "$CMD_NAME" = "bun" ] && [ $EXIT_CODE -eq 0 ]; then');
         expect(content).toContain('install|i|add|a|remove|rm|upgrade|link|unlink)');
+        expect(content).toContain('[ "$arg" = "-g" ] || [ "$arg" = "--global" ]');
+    });
+
+    it("should traverse parent directories without spawning dirname", () => {
+        expect(content).not.toContain('$(dirname "$CUR_DIR")');
+        expect(content).toContain('PARENT_DIR="${CUR_DIR%/*}"');
     });
 
     it("should trigger background rehash", () => {

@@ -1,10 +1,7 @@
 import { join } from 'path';
-import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_SHIMS_DIR, BVM_ALIAS_DIR } from '../constants';
-import { pathExists, normalizeVersion, getActiveVersion, readTextFile } from '../utils';
-import { getRcVersion } from '../rc';
-import { realpath } from 'fs/promises';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME } from '../constants';
+import { pathExists, getActiveVersion } from '../utils';
 import { withSpinner } from '../command-runner';
-import { resolveLocalVersion } from './version';
 
 /**
  * Displays the path to the real binary for a specific command or version.

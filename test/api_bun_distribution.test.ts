@@ -40,4 +40,25 @@ describe('Bun distribution metadata', () => {
 
     await expect(findBunDownloadUrl('1.3.11')).rejects.toThrow('integrity');
   });
+
+  test('requests the baseline npm package when AVX2 is unavailable', async () => {
+    vi.spyOn(networkUtils, 'getFastestRegistry').mockResolvedValue('https://registry.npmjs.org');
+    let requestedUrl = '';
+    global.fetch = vi.fn((url: string | URL | Request) => {
+      requestedUrl = String(url);
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          dist: {
+            tarball: 'https://registry.npmjs.org/bun-baseline.tgz',
+            integrity: validIntegrity,
+          },
+        }),
+      } as Response);
+    }) as typeof fetch;
+
+    await findBunDownloadUrl('1.3.11', { platform: 'linux', arch: 'x64', hasAvx2: false });
+
+    expect(requestedUrl).toContain('@oven/bun-linux-x64-baseline/1.3.11');
+  });
 });

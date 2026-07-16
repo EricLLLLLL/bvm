@@ -1,9 +1,8 @@
-import { join, dirname, resolve } from 'path';
-import { chmod, unlink, symlink, lstat, readlink, rm } from 'fs/promises';
-import { BVM_SHIMS_DIR, BVM_VERSIONS_DIR, BVM_DIR, BVM_BIN_DIR, OS_PLATFORM, EXECUTABLE_NAME } from '../constants';
-import { ensureDir, pathExists, readDir, getActiveVersion } from '../utils';
+import { join, dirname } from 'path';
+import { chmod, unlink, lstat, rm } from 'fs/promises';
+import { BVM_SHIMS_DIR, BVM_VERSIONS_DIR, BVM_DIR, BVM_BIN_DIR, OS_PLATFORM } from '../constants';
+import { ensureDir, pathExists, readDir, readTextFile, getActiveVersion } from '../utils';
 import { colors } from '../utils/ui';
-import fs from 'fs';
 
 import {
     BVM_BUN_CMD_TEMPLATE,
@@ -15,24 +14,11 @@ import { fixWindowsShims } from '../utils/windows-shim-fixer';
  * Rehash command: Standardizes the proxy layer.
  */
 
-// Map to store package bin entry paths: cmdName -> { pkgDir, binPath }
-const packageBinMap = new Map<string, { pkgDir: string; binPath: string }>();
-
-/**
- * Scan install/cache directory to find packages and their bin entries
- * For BUN 1.3.8+ with new cache format, we use bun x which handles this automatically
- * This function is kept for potential future use with extracted packages
- */
-async function scanPackageBins(_versionsDir: string): Promise<Map<string, { pkgDir: string; binPath: string }>> {
-    // Return empty map since we use bun x for all packages (works with new cache format)
-    return new Map();
-}
-
 /**
  * Generate Windows shim that delegates to bvm-shim.js for proper version resolution
  * This ensures correct environment setup including BUN_CONFIG_FILE
  */
-function generateWindowsShim(cmdName: string, bvmDirWin: string, _binInfo?: { pkgDir: string; binPath: string }): string {
+function generateWindowsShim(cmdName: string, bvmDirWin: string): string {
     // Delegate to bvm-shim.js for proper version resolution and environment setup
     return `@echo off
 :: BVM Shim for ${cmdName} - delegates to bvm-shim.js
@@ -40,6 +26,12 @@ set "BVM_DIR=${bvmDirWin}"
 if defined BVM_DIR_OVERRIDE set "BVM_DIR=%BVM_DIR_OVERRIDE%"
 
 "%BVM_DIR%\\runtime\\current\\bin\\bun.exe" "%BVM_DIR%\\bin\\bvm-shim.js" "${cmdName}" %*`;
+}
+
+export async function writeTextIfChanged(path: string, content: string): Promise<boolean> {
+  if (await pathExists(path) && await readTextFile(path) === content) return false;
+  await Bun.write(path, content);
+  return true;
 }
 
 export async function rehash(options: { silent?: boolean } = {}) {
@@ -53,31 +45,19 @@ export async function rehash(options: { silent?: boolean } = {}) {
       const templateDir = join(dirname(dirname(__dirname)), 'src', 'templates');
       if (isWindows) {
           const jsLogic = await Bun.file(join(templateDir, 'win', 'bvm-shim.js')).text();
-          await Bun.write(join(BVM_BIN_DIR, 'bvm-shim.js'), jsLogic);
+          await writeTextIfChanged(join(BVM_BIN_DIR, 'bvm-shim.js'), jsLogic);
       } else {
           const shLogic = await Bun.file(join(templateDir, 'unix', 'bvm-shim.sh')).text();
           const shimShPath = join(BVM_BIN_DIR, 'bvm-shim.sh');
-          await Bun.write(shimShPath, shLogic);
-          await chmod(shimShPath, 0o755);
+          if (await writeTextIfChanged(shimShPath, shLogic)) await chmod(shimShPath, 0o755);
       }
   } catch (e: any) {}
 
   const executables = new Set<string>(['bun', 'bunx']);
 
-  // 2. Scan ONLY current version to expose global commands (version isolation)
-  // First, scan package bins from install/cache/
-  let packageBinMap = new Map<string, { pkgDir: string; binPath: string }>();
-
-  // Get current version for version isolation
+  // 2. Scan only the current version to expose global commands.
   const activeResult = await getActiveVersion();
   const currentVersion = activeResult?.version;
-
-  if (currentVersion && await pathExists(BVM_VERSIONS_DIR)) {
-    const currentVersionDir = join(BVM_VERSIONS_DIR, currentVersion);
-    if (await pathExists(currentVersionDir)) {
-      packageBinMap = await scanPackageBins(currentVersionDir);
-    }
-  }
 
   if (await pathExists(BVM_VERSIONS_DIR)) {
     // Only scan current version's bin dir for version isolation
@@ -106,13 +86,11 @@ export async function rehash(options: { silent?: boolean } = {}) {
     if (isWindows) {
       const target = join(BVM_SHIMS_DIR, `${bin}.cmd`);
       if (bin === 'bun') {
-          await Bun.write(target, BVM_BUN_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+          await writeTextIfChanged(target, BVM_BUN_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
       } else if (bin === 'bunx') {
-          await Bun.write(target, BVM_BUNX_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
+          await writeTextIfChanged(target, BVM_BUNX_CMD_TEMPLATE.split('__BVM_DIR__').join(bvmDirWin));
       } else {
-          // Use package bin info if available, otherwise fallback to bunx-based shim
-          const binInfo = packageBinMap.get(bin);
-          await Bun.write(target, generateWindowsShim(bin, bvmDirWin, binInfo));
+          await writeTextIfChanged(target, generateWindowsShim(bin, bvmDirWin));
       }
 
       // Cleanup conflicting shims
@@ -128,8 +106,7 @@ export async function rehash(options: { silent?: boolean } = {}) {
 export BVM_DIR="${BVM_DIR}"
 exec "$BVM_DIR/bin/bvm-shim.sh" "${bin}" "$@"
 `;
-      await Bun.write(shimPath, wrapperSh);
-      await chmod(shimPath, 0o755);
+      if (await writeTextIfChanged(shimPath, wrapperSh)) await chmod(shimPath, 0o755);
     }
   }
 

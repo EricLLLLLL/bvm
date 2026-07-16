@@ -4,7 +4,7 @@ import { colors } from '../utils/ui';
 import { withSpinner } from '../command-runner';
 
 export async function handleConfigCommand(args: string[]) {
-  const [subcommand, key, value] = args;
+  const [subcommand, key] = args;
   const bunfig = new BunfigManager();
 
   if (subcommand === 'ls' || !subcommand) {

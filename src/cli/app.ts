@@ -70,12 +70,6 @@ export class App {
   }
 
   async run(argv: string[]): Promise<number> {
-    try {
-      triggerUpdateCheck().catch(() => {});
-    } catch {
-      // Update checks are best-effort and must never block CLI commands.
-    }
-
     const { values, positionals } = parseArgs({
       args: argv,
       strict: false,
@@ -120,11 +114,16 @@ export class App {
       return 1;
     }
 
+    const updateAwareCommands = new Set(['ls', 'current', 'doctor', 'default']);
+    if (updateAwareCommands.has(commandName)) {
+      triggerUpdateCheck().catch(() => {});
+    }
+
     try {
       await command.action(positionals.slice(1), flags);
       const isSilent = Boolean(flags.silent);
       const isVersionOrHelp = Boolean(flags.version || flags.help);
-      if (!isVersionOrHelp && !isSilent && ['ls', 'current', 'doctor', 'default'].includes(commandName)) {
+      if (!isVersionOrHelp && !isSilent && updateAwareCommands.has(commandName)) {
         const notice = await getUpdateNotification();
         if (notice) console.log(notice);
       }

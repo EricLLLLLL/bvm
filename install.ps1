@@ -68,10 +68,20 @@ function Assert-Sha512Integrity {
         throw "SHA-512 integrity verification failed for $Path."
     }
 }
+
+function Test-Avx2Support {
+    try {
+        $Probe = Add-Type -MemberDefinition '[DllImport("kernel32.dll")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru
+        return $Probe::IsProcessorFeaturePresent(40)
+    } catch {
+        return $false
+    }
+}
 $BVM_REGION = Detect-NetworkZone
 $REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
 
 $DEFAULT_BVM_VER = "v1.1.41"
+$FALLBACK_BUN_VERSION = "1.3.11"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
     try {
@@ -169,7 +179,7 @@ if ($USE_SYSTEM_AS_RUNTIME) {
     try {
         $BunLatest = (Invoke-RestMethod -Uri "https://$REGISTRY/-/package/bun/dist-tags" -TimeoutSec 5).latest
         $BUN_VER = "v$BunLatest"
-    } catch { $BUN_VER = "v1.3.5" }
+    } catch { $BUN_VER = "v$FALLBACK_BUN_VERSION" }
     $TARGET_PHYSICAL_DIR = Join-Path $BVM_RUNTIME_DIR $BUN_VER
     
     if (-not (Test-Path (Join-Path $TARGET_PHYSICAL_DIR "bin\bun.exe"))) {
@@ -180,7 +190,9 @@ if ($USE_SYSTEM_AS_RUNTIME) {
             $TMP = $env:BVM_LOCAL_RUNTIME_PATH
         } else {
             Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
-            $BunMetadata = Invoke-RestMethod -Uri "https://$REGISTRY/@oven/bun-windows-x64/$($BUN_VER.TrimStart('v'))" -TimeoutSec 10
+            $BUN_PACKAGE_SUFFIX = if (Test-Avx2Support) { "" } else { "-baseline" }
+            $BUN_PACKAGE = "@oven/bun-windows-x64$BUN_PACKAGE_SUFFIX"
+            $BunMetadata = Invoke-RestMethod -Uri "https://$REGISTRY/$BUN_PACKAGE/$($BUN_VER.TrimStart('v'))" -TimeoutSec 10
             $URL = $BunMetadata.dist.tarball
             $BUN_INTEGRITY = $BunMetadata.dist.integrity
             if (-not $URL -or -not $BUN_INTEGRITY) { throw "Bun runtime package metadata is incomplete." }

@@ -1,8 +1,8 @@
 import { colors } from '../utils/ui';
 import { join, basename } from 'path';
-import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_ALIAS_DIR, BVM_SHIMS_DIR, BVM_CURRENT_DIR } from '../constants';
+import { BVM_VERSIONS_DIR, EXECUTABLE_NAME, BVM_ALIAS_DIR, BVM_CURRENT_DIR } from '../constants';
 import { pathExists, removeDir, normalizeVersion, readTextFile, getSymlinkTarget } from '../utils';
-import { realpath, unlink } from 'fs/promises';
+import { unlink } from 'fs/promises';
 import { withSpinner } from '../command-runner';
 import { rehash } from './rehash';
 

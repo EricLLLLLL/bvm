@@ -1,14 +1,15 @@
-export function getBunNpmPackage(platform: string, arch: string): string | null {
+export function getBunNpmPackage(platform: string, arch: string, hasAvx2 = true): string | null {
+  const baseline = arch === "x64" && !hasAvx2 ? "-baseline" : "";
   if (platform === "darwin") {
     if (arch === "arm64") return "@oven/bun-darwin-aarch64";
-    if (arch === "x64") return "@oven/bun-darwin-x64";
+    if (arch === "x64") return `@oven/bun-darwin-x64${baseline}`;
   }
   if (platform === "linux") {
     if (arch === "arm64") return "@oven/bun-linux-aarch64";
-    if (arch === "x64") return "@oven/bun-linux-x64";
+    if (arch === "x64") return `@oven/bun-linux-x64${baseline}`;
   }
   if (platform === "win32") {
-    if (arch === "x64") return "@oven/bun-windows-x64";
+    if (arch === "x64") return `@oven/bun-windows-x64${baseline}`;
   }
   return null;
 }

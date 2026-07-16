@@ -22,6 +22,12 @@ describe("getBunNpmPackage", () => {
     expect(getBunNpmPackage("win32", "x64")).toBe("@oven/bun-windows-x64");
   });
 
+  it("should select baseline packages for x64 CPUs without AVX2", () => {
+    expect(getBunNpmPackage("darwin", "x64", false)).toBe("@oven/bun-darwin-x64-baseline");
+    expect(getBunNpmPackage("linux", "x64", false)).toBe("@oven/bun-linux-x64-baseline");
+    expect(getBunNpmPackage("win32", "x64", false)).toBe("@oven/bun-windows-x64-baseline");
+  });
+
   it("should return null for unknown", () => {
     expect(getBunNpmPackage("unknown", "x64")).toBeNull();
   });

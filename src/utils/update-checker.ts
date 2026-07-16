@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { BVM_CACHE_DIR, isTestMode } from '../constants';
 import { pathExists, readTextFile, writeTextFile, ensureDir } from '../utils';
 import { fetchLatestBvmReleaseInfo } from '../api';
@@ -13,28 +13,39 @@ const CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
  * Checks for updates in the background. 
  * This is non-blocking and writes the result to a local cache.
  */
-export async function triggerUpdateCheck(): Promise<void> {
-    if (process.env.CI || isTestMode()) return;
+interface UpdateCheckOptions {
+    cacheFile?: string;
+    fetchLatest?: typeof fetchLatestBvmReleaseInfo;
+    force?: boolean;
+    now?: () => number;
+}
 
-    const cachePath = join(BVM_CACHE_DIR, UPDATE_CACHE_FILE);
+export async function triggerUpdateCheck(options: UpdateCheckOptions = {}): Promise<void> {
+    if (!options.force && (process.env.CI || isTestMode())) return;
+
+    const cachePath = options.cacheFile || join(BVM_CACHE_DIR, UPDATE_CACHE_FILE);
+    const now = options.now || Date.now;
     
     try {
         if (await pathExists(cachePath)) {
             const content = await readTextFile(cachePath);
             const cache = JSON.parse(content);
             // Don't check more than once a day
-            if (Date.now() - cache.lastCheck < CHECK_INTERVAL) return;
+            const lastAttempt = cache.lastAttempt ?? cache.lastCheck;
+            if (typeof lastAttempt === 'number' && now() - lastAttempt < CHECK_INTERVAL) return;
         }
     } catch (e) {}
 
+    await ensureDir(dirname(cachePath));
+    await writeTextFile(cachePath, JSON.stringify({ lastAttempt: now() }));
+
     // Perform check
     try {
-        const latest = await fetchLatestBvmReleaseInfo();
+        const latest = await (options.fetchLatest || fetchLatestBvmReleaseInfo)();
         if (latest) {
             const latestVersion = latest.version.startsWith('v') ? latest.version.slice(1) : latest.version;
-            await ensureDir(BVM_CACHE_DIR);
             await writeTextFile(cachePath, JSON.stringify({
-                lastCheck: Date.now(),
+                lastAttempt: now(),
                 latestVersion
             }));
         }

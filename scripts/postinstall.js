@@ -18,6 +18,7 @@ const BVM_SRC_DIR = path.join(BVM_DIR, 'src');
 const BVM_BIN_DIR = path.join(BVM_DIR, 'bin');
 const PKG_ROOT = path.resolve(__dirname, '..');
 const DIST_DIR = path.join(PKG_ROOT, 'dist');
+const FALLBACK_BUN_VERSION = '1.3.11';
 
 function log(msg) { console.log(`[bvm] ${msg}`); }
 function error(msg) { console.error(`\x1b[31m[bvm] ERROR: ${msg}\x1b[0m`); }
@@ -35,6 +36,25 @@ function run(cmd, args, opts = {}) {
     }
     // Unix: avoid shell: true for raw commands to prevent DEP0190
     return spawnSync(cmd, args, options);
+}
+
+function requireSuccessfulCommand(result, label) {
+    if (result && result.status === 0) return;
+    const details = result && result.stderr ? String(result.stderr).trim() : '';
+    throw new Error(`${label} failed${details ? `: ${details}` : '.'}`);
+}
+
+function replaceDirectoryLink(target, link, linkType = IS_WINDOWS ? 'junction' : 'dir') {
+    fs.rmSync(link, { recursive: true, force: true });
+    fs.symlinkSync(target, link, linkType);
+}
+
+function isUsablePrivateRuntime(bvmDir, version) {
+    const bunPath = path.join(bvmDir, 'runtime', version, 'bin', IS_WINDOWS ? 'bun.exe' : 'bun');
+    if (!fs.existsSync(bunPath) || !fs.statSync(bunPath).isFile()) return false;
+    const result = run(bunPath, ['--version']);
+    const versionOutput = result && result.stdout ? String(result.stdout).trim().replace(/^v/, '') : '';
+    return result.status === 0 && /^\d+\.\d+\.\d+/.test(versionOutput);
 }
 
 function verifyIntegrity(filePath, integrity) {
@@ -81,22 +101,14 @@ function setupBunker(verDir, ver) {
     if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
     const versionLink = path.join(versionsDir, ver);
 
-    const linkType = IS_WINDOWS ? 'junction' : 'dir';
-
     // 1. Link versions/vX.Y.Z -> runtime/vX.Y.Z (Crucial for bvm ls/use)
-    try { if (fs.existsSync(versionLink)) fs.unlinkSync(versionLink); } catch(e) {
-        if (IS_WINDOWS) run('cmd', ['/c', 'rmdir', versionLink]);
-    }
-    try { fs.symlinkSync(bunkerDir, versionLink, linkType); } catch(e) {}
+    replaceDirectoryLink(bunkerDir, versionLink);
 
     // 2. Link current -> versions/vX.Y.Z
     [currentLink, userCurrentLink].forEach(link => {
-        try { if (fs.existsSync(link)) fs.unlinkSync(link); } catch(e) {
-            if (IS_WINDOWS) run('cmd', ['/c', 'rmdir', link]);
-        }
         // Current always points to the registry entry
         const target = link === currentLink ? bunkerDir : versionLink;
-        try { fs.symlinkSync(target, link, linkType); } catch(e) {}
+        replaceDirectoryLink(target, link);
     });
     
     const aliasDir = path.join(BVM_DIR, 'aliases');
@@ -124,13 +136,31 @@ function getNativeArch() {
     return arch;
 }
 
-function hasAvx2() {
-    if (process.platform === 'win32') return true;
+function detectAvx2Support(platform, arch, runner = run) {
+    if (arch !== 'x64') return true;
     try {
-        if (process.platform === 'darwin') return spawnSync('sysctl', ['-a'], { encoding: 'utf-8' }).stdout.includes('AVX2');
-        else if (process.platform === 'linux') return fs.readFileSync('/proc/cpuinfo', 'utf-8').includes('avx2');
+        if (platform === 'win32') {
+            const result = runner('powershell', [
+                '-NoProfile',
+                '-Command',
+                `(Add-Type -MemberDefinition '[DllImport("kernel32.dll")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40);`,
+            ]);
+            return result.status === 0 && String(result.stdout || '').trim() === 'True';
+        }
+        if (platform === 'darwin') {
+            const result = runner('sysctl', ['-n', 'machdep.cpu']);
+            return result.status === 0 && String(result.stdout || '').includes('AVX2');
+        }
+        if (platform === 'linux') {
+            const result = runner('cat', ['/proc/cpuinfo']);
+            return result.status === 0 && String(result.stdout || '').includes('avx2');
+        }
     } catch (e) {}
-    return true;
+    return false;
+}
+
+function hasAvx2() {
+    return detectAvx2Support(process.platform, getNativeArch());
 }
 
 function getFastestRegistry() {
@@ -155,7 +185,7 @@ function downloadAndInstall() {
     const pkgName = `@oven/bun-${platform}-${arch}${ (arch === 'x64' && !hasAvx2()) ? '-baseline' : ''}`;
     
     const sortedRegs = getFastestRegistry();
-    const versionsToTry = ['latest', '1.3.6'];
+    const versionsToTry = ['latest', FALLBACK_BUN_VERSION];
     const tempTgz = path.join(os.tmpdir(), `bvm-bun-${Date.now()}.tgz`);
 
     for (const verReq of versionsToTry) {
@@ -196,9 +226,11 @@ function downloadAndInstall() {
                             if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
                             fs.copyFileSync(foundBin, path.join(binDir, IS_WINDOWS ? 'bun.exe' : 'bun'));
                             setupBunker(bunkerDir, verName);
-                            log(`🎉 Successfully installed Bun ${verName} via ${reg.name}.`);
-                            try { fs.unlinkSync(tempTgz); } catch(e) {}
-                            return true;
+                            if (isUsablePrivateRuntime(BVM_DIR, verName)) {
+                                log(`🎉 Successfully installed Bun ${verName} via ${reg.name}.`);
+                                try { fs.unlinkSync(tempTgz); } catch(e) {}
+                                return true;
+                            }
                         }
                     }
                 } else {
@@ -291,18 +323,21 @@ function main() {
                 const test = run(binPath, [path.join(BVM_SRC_DIR, 'index.js'), '--version'], { env: { BVM_DIR } });
                 if (test.status === 0) {
                     setupBunker(bunkerDir, ver);
-                    hasValidBun = true;
+                    hasValidBun = isUsablePrivateRuntime(BVM_DIR, ver);
                 }
             }
         }
     }
     if (!hasValidBun) hasValidBun = downloadAndInstall();
+    if (!hasValidBun) throw new Error('Unable to establish a usable BVM private runtime.');
     createWrappers();
     const bvmEntry = path.join(BVM_BIN_DIR, IS_WINDOWS ? 'bvm.cmd' : 'bvm');
     const baseEnv = Object.assign({}, process.env, { BVM_DIR, BVM_INSTALL_RUNNING: '1' });
-    run(bvmEntry, ['setup', '--silent'], { env: baseEnv });
+    const setupResult = run(bvmEntry, ['setup', '--silent'], { env: baseEnv });
+    requireSuccessfulCommand(setupResult, 'bvm setup');
     // Ensure user shims are updated to the latest template logic (critical for Windows isolation).
-    run(bvmEntry, ['rehash', '--silent'], { env: baseEnv });
+    const rehashResult = run(bvmEntry, ['rehash', '--silent'], { env: baseEnv });
+    requireSuccessfulCommand(rehashResult, 'bvm rehash');
     log('🎉 BVM initialized successfully.');
     
     // Final Windows instructions
@@ -317,4 +352,13 @@ function main() {
     }
 }
 
-try { main(); } catch (e) { error(e.message); process.exit(1); }
+module.exports = {
+    detectAvx2Support,
+    isUsablePrivateRuntime,
+    requireSuccessfulCommand,
+    replaceDirectoryLink,
+};
+
+if (require.main === module) {
+    try { main(); } catch (e) { error(e.message); process.exit(1); }
+}

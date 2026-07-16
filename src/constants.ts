@@ -5,7 +5,6 @@ import { spawnSync } from 'child_process';
 
 // Platform detection
 export const OS_PLATFORM = process.platform;
-export const IS_TEST_MODE = process.env.BVM_TEST_MODE === 'true';
 export const TEST_REMOTE_VERSIONS = ['v1.3.4', 'v1.2.23', 'v1.1.21', 'v1.1.20', 'v1.1.0', 'v1.0.0', 'bun-v1.4.0-canary'];
 
 export function isTestMode(): boolean {
@@ -26,22 +25,53 @@ function getNativeArch() {
     return arch;
 }
 
-function checkAvx2Support() {
-    if (OS_PLATFORM === 'win32') return true; // Windows mostly supports AVX2 on modern x64
+type CommandProbe = (command: string, args: string[]) => {
+    status: number | null;
+    stdout: string;
+};
+
+export function detectAvx2Support(
+    platform: string,
+    arch: string,
+    run: CommandProbe = (command, args) => {
+        const result = spawnSync(command, args, { encoding: 'utf-8' });
+        return { status: result.status, stdout: result.stdout || '' };
+    },
+): boolean {
+    if (arch !== 'x64') return true;
     try {
-        if (OS_PLATFORM === 'darwin') {
-            const res = spawnSync('sysctl', ['-a'], { encoding: 'utf-8' });
-            return res.stdout.includes('AVX2');
-        } else if (OS_PLATFORM === 'linux') {
-            const res = spawnSync('cat', ['/proc/cpuinfo'], { encoding: 'utf-8' });
-            return res.stdout.includes('avx2');
+        if (platform === 'win32') {
+            const result = run('powershell', [
+                '-NoProfile',
+                '-Command',
+                `(Add-Type -MemberDefinition '[DllImport("kernel32.dll")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru)::IsProcessorFeaturePresent(40);`,
+            ]);
+            return result.status === 0 && result.stdout.trim() === 'True';
+        }
+        if (platform === 'darwin') {
+            const result = run('sysctl', ['-n', 'machdep.cpu']);
+            return result.status === 0 && result.stdout.includes('AVX2');
+        }
+        if (platform === 'linux') {
+            const result = run('cat', ['/proc/cpuinfo']);
+            return result.status === 0 && result.stdout.includes('avx2');
         }
     } catch (e) {}
-    return true; // Default to true to avoid unnecessary baseline fallback
+    return false;
 }
 
-export const CPU_ARCH = getNativeArch();
-export const HAS_AVX2 = checkAvx2Support();
+let cachedCpuArch: string | undefined;
+let cachedAvx2Support: boolean | undefined;
+
+export function getCpuArch(): string {
+    cachedCpuArch ??= getNativeArch();
+    return cachedCpuArch;
+}
+
+export function hasAvx2Support(): boolean {
+    cachedAvx2Support ??= detectAvx2Support(OS_PLATFORM, getCpuArch());
+    return cachedAvx2Support;
+}
 
 // Helper to get BVM_DIR dynamically
 export function getBvmDir() {
@@ -62,29 +92,13 @@ export const BVM_CACHE_DIR = join(BVM_DIR, 'cache');
 export const BVM_FINGERPRINTS_FILE = join(BVM_DIR, 'fingerprints.json');
 
 export const EXECUTABLE_NAME = OS_PLATFORM === 'win32' ? 'bun.exe' : 'bun';
-export const BUN_GITHUB_RELEASES_API = 'https://api.github.com/repos/oven-sh/bun/releases';
 export const REPO_FOR_BVM_CLI = 'EricLLLLLL/bvm';
 export const ASSET_NAME_FOR_BVM = OS_PLATFORM === 'win32' ? 'bvm.exe' : 'bvm';
 export const USER_AGENT = 'bvm (Bun Version Manager)';
 
-export const BVM_CDN_ROOT = process.env.BVM_CDN_URL || 'https://cdn.jsdelivr.net/gh/EricLLLLLL/bvm';
-
-export interface BvmComponent {
-    name: string;
-    remotePath: string; // Relative to CDN root (dist/)
-    localPath: string;  // Relative to BVM_DIR
-    platform?: 'win32' | 'posix';
-}
-
-export const BVM_COMPONENTS: BvmComponent[] = [
-    { name: 'CLI Core', remotePath: 'index.js', localPath: 'src/index.js' },
-    { name: 'Windows Shim', remotePath: 'bvm-shim.js', localPath: 'bin/bvm-shim.js', platform: 'win32' },
-    { name: 'Unix Shim', remotePath: 'bvm-shim.sh', localPath: 'bin/bvm-shim.sh', platform: 'posix' },
-];
-
-export function getBunAssetName(version: string): string {
+export function getBunAssetName(_version: string): string {
   let platform = OS_PLATFORM === 'win32' ? 'windows' : OS_PLATFORM;
-  let arch = CPU_ARCH === 'arm64' ? 'aarch64' : 'x64';
-  let baseline = (!HAS_AVX2 && arch === 'x64') ? '-baseline' : '';
+  let arch = getCpuArch() === 'arm64' ? 'aarch64' : 'x64';
+  let baseline = (!hasAvx2Support() && arch === 'x64') ? '-baseline' : '';
   return `bun-${platform}-${arch}${baseline}.zip`;
 }

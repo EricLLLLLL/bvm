@@ -1,5 +1,4 @@
-import { colors } from './ui';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { homedir } from 'os';
 import { pathExists, ensureDir } from '../utils';
 
@@ -10,10 +9,12 @@ const REGISTRY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 /**
  * Load cached registry from disk
  */
-async function loadCachedRegistry(): Promise<{ registry: string; timestamp: number } | null> {
+export async function loadCachedRegistry(
+  cacheFile = REGISTRY_CACHE_FILE,
+): Promise<{ registry: string; timestamp: number } | null> {
   try {
-    if (!await pathExists(REGISTRY_CACHE_FILE)) return null;
-    const content = await Bun.file(REGISTRY_CACHE_FILE).text();
+    if (!await pathExists(cacheFile)) return null;
+    const content = await Bun.file(cacheFile).text();
     const data = JSON.parse(content);
     // Check if cache is still valid
     if (Date.now() - data.timestamp < REGISTRY_CACHE_TTL) {
@@ -28,10 +29,10 @@ async function loadCachedRegistry(): Promise<{ registry: string; timestamp: numb
 /**
  * Save cached registry to disk
  */
-async function saveCachedRegistry(registry: string): Promise<void> {
+async function saveCachedRegistry(registry: string, cacheFile = REGISTRY_CACHE_FILE): Promise<void> {
   try {
-    await ensureDir(join(BVM_DIR, 'cache'));
-    await Bun.write(REGISTRY_CACHE_FILE, JSON.stringify({
+    await ensureDir(dirname(cacheFile));
+    await Bun.write(cacheFile, JSON.stringify({
       registry,
       timestamp: Date.now()
     }));
@@ -110,13 +111,26 @@ export const REGISTRIES = {
     TENCENT: 'https://mirrors.cloud.tencent.com/npm/',
 };
 
+interface RegistrySelectionOptions {
+    cacheFile?: string;
+    getLocation?: () => Promise<string | null>;
+    race?: (urls: string[], timeout?: number) => Promise<string>;
+}
+
 /**
  * Determines the fastest registry based on location and race strategy.
  */
-export async function getFastestRegistry(): Promise<string> {
-    if (cachedRegistry) return cachedRegistry;
+export async function getFastestRegistry(options: RegistrySelectionOptions = {}): Promise<string> {
+    if (!options.cacheFile && cachedRegistry) return cachedRegistry;
 
-    const loc = await getGeoLocation();
+    const cacheFile = options.cacheFile || REGISTRY_CACHE_FILE;
+    const diskCache = await loadCachedRegistry(cacheFile);
+    if (diskCache) {
+        if (!options.cacheFile) cachedRegistry = diskCache.registry;
+        return diskCache.registry;
+    }
+
+    const loc = await (options.getLocation || getGeoLocation)();
     let candidates: string[] = [];
 
     if (loc === 'CN') {
@@ -131,8 +145,9 @@ export async function getFastestRegistry(): Promise<string> {
         // Race them!
         // We use a short timeout for the race to ensure we don't block startup too long.
         // But since we want to pick the fastest, we should wait for the first success.
-        const winner = await raceRequests(candidates, 2000);
-        cachedRegistry = winner;
+        const winner = await (options.race || raceRequests)(candidates, 2000);
+        if (!options.cacheFile) cachedRegistry = winner;
+        await saveCachedRegistry(winner, cacheFile);
         return winner;
     } catch (e) {
         // Fallback if race fails entirely (e.g. offline)

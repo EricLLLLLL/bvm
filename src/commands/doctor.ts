@@ -9,8 +9,8 @@ import {
   BVM_ALIAS_DIR,
   BVM_SHIMS_DIR,
   OS_PLATFORM,
-  CPU_ARCH,
-  HAS_AVX2
+  getCpuArch,
+  hasAvx2Support
 } from '../constants';
 import {
   getInstalledVersions,
@@ -253,8 +253,10 @@ function formatStatus(status: CheckStatus): string {
 function printReport(report: DoctorReport): void {
   console.log(colors.bold('\nSystem'));
   console.log(`  OS: ${colors.cyan(OS_PLATFORM)}`);
-  console.log(`  Arch: ${colors.cyan(CPU_ARCH)} ${process.arch !== CPU_ARCH ? colors.yellow(`(Process: ${process.arch})`) : ''}`);
-  console.log(`  AVX2: ${HAS_AVX2 ? colors.green('Supported') : colors.yellow('Not Supported (Baseline fallback enabled)')}`);
+  const cpuArch = getCpuArch();
+  const hasAvx2 = hasAvx2Support();
+  console.log(`  Arch: ${colors.cyan(cpuArch)} ${process.arch !== cpuArch ? colors.yellow(`(Process: ${process.arch})`) : ''}`);
+  console.log(`  AVX2: ${hasAvx2 ? colors.green('Supported') : colors.yellow('Not Supported (Baseline fallback enabled)')}`);
 
   console.log(colors.bold('\nDoctor Checks'));
   report.checks.forEach((check) => {

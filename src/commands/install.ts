@@ -1,19 +1,16 @@
-import path, { join, basename, dirname } from 'path';
-import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, isTestMode, OS_PLATFORM, BVM_ALIAS_DIR, BVM_DIR, BVM_CURRENT_DIR, BVM_RUNTIME_DIR } from '../constants';
-import { ensureDir, pathExists, removeDir, resolveVersion, normalizeVersion, readDir, getActiveVersion, createSymlink, linkToRegistry } from '../utils';
-import { findBunDownloadUrl, fetchBunVersions, checkBunVersionExists, fetchBunDistTags } from '../api';
+import { join, basename } from 'path';
+import { BVM_VERSIONS_DIR, BVM_CACHE_DIR, EXECUTABLE_NAME, isTestMode, OS_PLATFORM, BVM_ALIAS_DIR, BVM_RUNTIME_DIR } from '../constants';
+import { ensureDir, pathExists, normalizeVersion, createSymlink } from '../utils';
+import { findBunDownloadUrl, checkBunVersionExists, fetchBunDistTags } from '../api';
 import { colors, ProgressBar } from '../utils/ui';
 import { extractArchive } from '../utils/archive';
-import { chmod, rename, rm, symlink, unlink } from 'fs/promises';
+import { chmod, rename, rm, symlink } from 'fs/promises';
 import { configureShell } from './setup';
 import { getRcVersion } from '../rc';
-import { getInstalledVersions } from '../utils';
 import { createAlias } from './alias';
 import { withSpinner } from '../command-runner';
 import { runCommand } from '../helpers/process';
 import { useBunVersion } from './use';
-import { rehash } from './rehash';
-import { BunfigManager } from '../utils/bunfig';
 import { fixWindowsShims } from '../utils/windows-shim-fixer';
 import { getFastestRegistry } from '../utils/network-utils';
 import { verifyFileIntegrity } from '../utils/integrity';
@@ -80,6 +77,21 @@ async function safeRename(src: string, dest: string) {
     await Bun.write(Bun.file(dest), Bun.file(src));
     await rm(src, { force: true });
   }
+}
+
+async function replaceRuntimeDirectory(stagingRuntimeDir: string, runtimeDir: string): Promise<void> {
+  const backupRuntimeDir = `${runtimeDir}.backup-${process.pid}-${Date.now()}`;
+  const hadExistingRuntime = await pathExists(runtimeDir);
+  if (hadExistingRuntime) await rename(runtimeDir, backupRuntimeDir);
+
+  try {
+    await rename(stagingRuntimeDir, runtimeDir);
+  } catch (error) {
+    if (hadExistingRuntime) await rename(backupRuntimeDir, runtimeDir);
+    throw error;
+  }
+
+  if (hadExistingRuntime) await rm(backupRuntimeDir, { recursive: true, force: true });
 }
 
 export async function downloadFileWithProgress(
@@ -180,7 +192,7 @@ export async function downloadFileWithProgress(
     throw lastError || new Error("Download failed after multiple attempts");
 }
 
-export async function installBunVersion(targetVersion?: string, options: { global?: boolean } = {}): Promise<void> {
+export async function installBunVersion(targetVersion?: string, _options: { global?: boolean } = {}): Promise<void> {
   let versionToInstall = targetVersion || await getRcVersion() || undefined;
   if (!versionToInstall) {
     console.error(colors.red('No version specified.'));
@@ -225,10 +237,12 @@ export async function installBunVersion(targetVersion?: string, options: { globa
         const bunExecutablePath = join(runtimeBinDir, EXECUTABLE_NAME);
 
 	        if (!(await pathExists(bunExecutablePath))) {
-	            await ensureDir(runtimeBinDir);
+	            let preparedInStaging = false;
 	            if (normalizeVersion(Bun.version) === foundVersion && !isTestMode()) {
+	                await ensureDir(runtimeBinDir);
 	                await Bun.write(Bun.file(bunExecutablePath), Bun.file(process.execPath));
 	            } else if (isTestMode()) {
+	                await ensureDir(runtimeBinDir);
 	                await writeTestBunBinary(bunExecutablePath, foundVersion);
 	            } else {
                 await ensureDir(BVM_CACHE_DIR);
@@ -250,23 +264,37 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                         else throw e;
                     }
                 }
+                await verifyFileIntegrity(cachedArchivePath, integrity);
                 spinner.update(`Extracting...`);
-                await extractArchive(cachedArchivePath, runtimeDir);
-                const possible = [join(runtimeDir, EXECUTABLE_NAME), join(runtimeDir, 'bin', EXECUTABLE_NAME), join(runtimeDir, 'package', 'bin', EXECUTABLE_NAME)];
-                let found = '';
-                for (const p of possible) { if (await pathExists(p)) { found = p; break; } }
-                if (found && found !== bunExecutablePath) await safeRename(found, bunExecutablePath);
+                const stagingRuntimeDir = `${runtimeDir}.installing-${process.pid}-${Date.now()}`;
+                await rm(stagingRuntimeDir, { recursive: true, force: true });
+                try {
+                    await extractArchive(cachedArchivePath, stagingRuntimeDir);
+                    const stagingBinDir = join(stagingRuntimeDir, 'bin');
+                    const stagingBunPath = join(stagingBinDir, EXECUTABLE_NAME);
+                    const possible = [join(stagingRuntimeDir, EXECUTABLE_NAME), stagingBunPath, join(stagingRuntimeDir, 'package', 'bin', EXECUTABLE_NAME)];
+                    let found = '';
+                    for (const p of possible) { if (await pathExists(p)) { found = p; break; } }
+                    if (!found) throw new Error(`Downloaded archive does not contain ${EXECUTABLE_NAME}.`);
+                    await ensureDir(stagingBinDir);
+                    if (found !== stagingBunPath) await safeRename(found, stagingBunPath);
+                    await chmod(stagingBunPath, 0o755);
+                    await ensureDir(join(stagingRuntimeDir, 'install', 'cache'));
+                    await generateBunfig(stagingRuntimeDir);
+                    await ensureBunx(stagingBinDir, stagingBunPath);
+                    await fixWindowsShims(stagingBinDir);
+                    await runCommand([stagingBunPath, '--version'], { stdout: 'ignore', stderr: 'pipe' });
+                    await replaceRuntimeDirectory(stagingRuntimeDir, runtimeDir);
+                    preparedInStaging = true;
+                } finally { await rm(stagingRuntimeDir, { recursive: true, force: true }); }
             }
-            await chmod(bunExecutablePath, 0o755);
-
-            // Create cache directory for version isolation (Bun 1.3.8+)
-            const cacheDir = join(runtimeDir, 'install', 'cache');
-            await ensureDir(cacheDir);
-
-            // Generate bunfig in runtime directory
-            await generateBunfig(runtimeDir);
-            await ensureBunx(runtimeBinDir, bunExecutablePath);
-            await fixWindowsShims(runtimeBinDir);
+            if (!preparedInStaging) {
+                await chmod(bunExecutablePath, 0o755);
+                await ensureDir(join(runtimeDir, 'install', 'cache'));
+                await generateBunfig(runtimeDir);
+                await ensureBunx(runtimeBinDir, bunExecutablePath);
+                await fixWindowsShims(runtimeBinDir);
+            }
 
 	        }
 
