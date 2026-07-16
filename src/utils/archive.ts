@@ -1,12 +1,15 @@
 import { runCommand } from '../helpers/process';
 import { OS_PLATFORM } from '../constants';
 import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
 
 /**
  * Extracts an archive (zip or tar.gz) using system tools.
  * Avoids heavy dependencies like extract-zip or unzipper.
  */
 export async function extractArchive(sourcePath: string, destDir: string): Promise<void> {
+  await mkdir(destDir, { recursive: true });
+
   if (sourcePath.endsWith('.zip')) {
     if (OS_PLATFORM === 'win32') {
       // Use PowerShell on Windows
