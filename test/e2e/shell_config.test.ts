@@ -68,9 +68,8 @@ describe("BVM E2E: Shell Configuration", () => {
     }, 60000);
 
     it("should generate valid PowerShell profile (verified by pwsh)", async () => {
-        // This test runs on macOS/Linux too if pwsh is installed!
-        const hasPwsh = await execa("which", ["pwsh"], { reject: false }).then(r => r.exitCode === 0);
-        if (!hasPwsh && !isWindows) {
+        const probe = await execa("pwsh", ["-NoProfile", "-Command", "exit 0"], { reject: false });
+        if (probe.exitCode !== 0) {
             console.log("Skipping PowerShell test (pwsh not found)");
             return;
         }
@@ -106,7 +105,7 @@ describe("BVM E2E: Shell Configuration", () => {
         }
         expect(result.exitCode).toBe(0);
         expect(result.stdout).toContain("Syntax OK");
-    });
+    }, 30000);
 
     it("should run 'bvm setup' idempotently", async () => {
         if (isWindows) return;

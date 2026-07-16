@@ -37,11 +37,9 @@ describeOnWindows('BVM E2E: install.ps1 (via pwsh)', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('BVM installed successfully');
     
-    // 1. Verify bun.cmd (The Shim)
+    // 1. Verify bun.cmd always delegates through the isolation shim.
     const bunCmdContent = await Bun.file(join(sandboxBvmDir, 'shims', 'bun.cmd')).text();
-    // Must have Fast-Path
-    expect(bunCmdContent).toContain('if not exist ".bvmrc"');
-    // Must call the JS Shim for the slow path
+    expect(bunCmdContent).toContain('runtime\\current\\bin\\bun.exe');
     expect(bunCmdContent).toContain('bvm-shim.js');
     
     // 2. Verify bvm.cmd (The CLI Wrapper)
