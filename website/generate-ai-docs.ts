@@ -21,7 +21,6 @@ const docPages: DocPage[] = [
   { source: 'compare-bun-version-managers.md', route: '/compare-bun-version-managers', title: 'BVM, BunVM, and Bum', locale: 'en' },
   { source: 'guide/getting-started.md', route: '/guide/getting-started', title: 'Getting Started', locale: 'en' },
   { source: 'guide/troubleshooting.md', route: '/guide/troubleshooting', title: 'Troubleshooting', locale: 'en' },
-  { source: 'guide/architecture.md', route: '/guide/architecture', title: 'Architecture', locale: 'en' },
   { source: 'for-ai-clients.md', route: '/for-ai-clients', title: 'For AI Clients', locale: 'en' },
   { source: 'zh/index.md', route: '/zh/', title: '首页', locale: 'zh', includeInFull: false },
   { source: 'zh/about.md', route: '/zh/about', title: '关于 BVM', locale: 'zh' },

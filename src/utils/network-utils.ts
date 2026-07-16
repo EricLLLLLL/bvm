@@ -43,7 +43,7 @@ async function saveCachedRegistry(registry: string): Promise<void> {
 /**
  * Enhanced fetch with timeout support.
  */
-export async function fetchWithTimeout(url: string, options: FetchRequestInit & { timeout?: number } = {}): Promise<Response> {
+export async function fetchWithTimeout(url: string, options: RequestInit & { timeout?: number } = {}): Promise<Response> {
   const { timeout = 5000, ...fetchOptions } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);

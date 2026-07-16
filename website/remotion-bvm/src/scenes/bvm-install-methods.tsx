@@ -1,6 +1,7 @@
 import React from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
-import { Terminal, TerminalTheme } from '../ui/terminal';
+import { Terminal } from '../ui/terminal';
+import type { TerminalTheme } from '../ui/terminal';
 import { isDone, revealText } from '../utils/typewriter';
 
 type Line = { kind: 'cmd' | 'out' | 'err'; text: string };

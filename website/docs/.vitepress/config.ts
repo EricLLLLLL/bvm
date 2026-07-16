@@ -1,5 +1,11 @@
-import { defineConfig, type TransformPageContext } from 'vitepress';
-import { SEARCH_VERIFICATION, SITE_LINKS, SITE_URL } from './site';
+import { defineConfig } from 'vitepress';
+import {
+  buildPageStructuredData,
+  SEARCH_VERIFICATION,
+  SITE_LINKS,
+  SITE_URL,
+  type PageFaq,
+} from './site';
 
 const UMAMI_SRC = process.env.BVM_UMAMI_SRC?.trim();
 const UMAMI_WEBSITE_ID = process.env.BVM_UMAMI_WEBSITE_ID?.trim();
@@ -133,6 +139,21 @@ export default defineConfig({
     pageData.frontmatter.head.push(
       ['meta', { property: 'og:url', content: canonicalUrl }],
     );
+
+    const faqs = pageData.frontmatter.faqs as PageFaq[] | undefined;
+    const structuredData = buildPageStructuredData({
+      canonicalUrl,
+      relativePath: pageData.relativePath,
+      title: title || 'BVM',
+      description: desc || 'Official BVM documentation.',
+      lastUpdated: pageData.lastUpdated,
+      faqs,
+    });
+    pageData.frontmatter.head.push([
+      'script',
+      { type: 'application/ld+json' },
+      JSON.stringify(structuredData),
+    ]);
   },
 
   locales: {
@@ -151,7 +172,7 @@ export default defineConfig({
           { text: 'About', link: '/about' },
           { text: 'For AI Clients', link: '/for-ai-clients' },
           { text: 'Troubleshooting', link: '/guide/troubleshooting' },
-          { text: 'Architecture (CN)', link: '/guide/architecture' },
+          { text: 'Architecture (中文)', link: '/zh/guide/architecture' },
           { text: '中文', link: '/zh/' },
           { text: 'GitHub', link: SITE_LINKS.githubRepo },
         ],
@@ -166,7 +187,7 @@ export default defineConfig({
               { text: 'About', link: '/about' },
               { text: 'For AI Clients', link: '/for-ai-clients' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
-              { text: 'Architecture (CN)', link: '/guide/architecture' },
+              { text: 'Architecture (中文)', link: '/zh/guide/architecture' },
             ],
           },
         ],

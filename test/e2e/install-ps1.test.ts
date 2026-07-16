@@ -4,7 +4,9 @@ import { tmpdir } from 'os';
 import { mkdir, rm, writeFile } from 'fs/promises';
 import { spawn } from 'bun';
 
-describe('BVM E2E: install.ps1 (via pwsh)', () => {
+const describeOnWindows = process.platform === 'win32' ? describe : describe.skip;
+
+describeOnWindows('BVM E2E: install.ps1 (via pwsh)', () => {
   const testDir = join(tmpdir(), `bvm-install-ps1-e2e-${Date.now()}`);
   const sandboxBvmDir = join(testDir, '.bvm');
 

@@ -2,9 +2,11 @@ import { describe, it, expect, mock, beforeAll, afterAll } from "bun:test";
 import { downloadFileWithProgress } from "../src/commands/install";
 import { rm, exists } from "fs/promises";
 import { join } from "path";
+import { createHash } from "crypto";
 
 describe("Download Robustness", () => {
     const testDest = join(process.cwd(), "test-download.tmp");
+    const helloIntegrity = `sha512-${createHash('sha512').update('hello').digest('base64')}`;
 
     afterAll(async () => {
         try { await rm(testDest, { force: true }); } catch(e) {}
@@ -34,7 +36,7 @@ describe("Download Robustness", () => {
         }) as any;
 
         try {
-            await downloadFileWithProgress("http://example.com", testDest, null, "v1.0.0");
+            await downloadFileWithProgress("http://example.com", testDest, null, "v1.0.0", helloIntegrity);
             expect(callCount).toBe(2);
             expect(await exists(testDest)).toBe(true);
         } finally {
@@ -58,9 +60,37 @@ describe("Download Robustness", () => {
         }) as any;
 
         try {
-            await expect(downloadFileWithProgress("http://example.com", testDest, null, "v1.0.0"))
+            await expect(downloadFileWithProgress("http://example.com", testDest, null, "v1.0.0", helloIntegrity))
                 .rejects.toThrow("Stream error");
             
+            expect(await exists(testDest)).toBe(false);
+        } finally {
+            global.fetch = originalFetch;
+        }
+    });
+
+    it("should reject and cleanup a download with mismatched integrity", async () => {
+        const originalFetch = global.fetch;
+        global.fetch = mock(async () => ({
+            ok: true,
+            headers: new Map([["Content-Length", "8"]]),
+            body: {
+                getReader: () => ({
+                    read: mock()
+                        .mockResolvedValueOnce({ done: false, value: Buffer.from("tampered") })
+                        .mockResolvedValueOnce({ done: true })
+                })
+            }
+        })) as any;
+
+        try {
+            await expect(downloadFileWithProgress(
+                "http://example.com",
+                testDest,
+                null,
+                "v1.0.0",
+                helloIntegrity,
+            )).rejects.toThrow("Integrity check failed");
             expect(await exists(testDest)).toBe(false);
         } finally {
             global.fetch = originalFetch;

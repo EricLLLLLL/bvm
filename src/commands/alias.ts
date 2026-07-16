@@ -1,7 +1,8 @@
 import { colors } from '../utils/ui';
 import { join } from 'path';
 import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
-import { ensureDir, pathExists, normalizeVersion, writeTextFile, readTextFile, resolveVersion } from '../utils';
+import { ensureDir, pathExists, writeTextFile } from '../utils';
+import { resolveAliasPath } from '../utils/alias-name';
 import { resolveLocalVersion } from './version';
 import { withSpinner } from '../command-runner';
 
@@ -12,6 +13,7 @@ import { withSpinner } from '../command-runner';
  * @param options Configuration options
  */
 export async function createAlias(aliasName: string, targetVersion: string, options: { silent?: boolean } = {}): Promise<void> {
+  const aliasFilePath = resolveAliasPath(BVM_ALIAS_DIR, aliasName);
   const runLogic = async (spinner?: any) => {
       // Resolve the target version to a concrete installed version
       const resolvedVersion = await resolveLocalVersion(targetVersion);
@@ -33,8 +35,6 @@ export async function createAlias(aliasName: string, targetVersion: string, opti
       await ensureDir(BVM_ALIAS_DIR);
 
     // Alias specific logic
-    const aliasFilePath = join(BVM_ALIAS_DIR, aliasName);
-    
     // Rule: 'default' can always be overwritten. Other aliases cannot be created if they exist.
     if (aliasName !== 'default' && (await pathExists(aliasFilePath))) {
         throw new Error(`Alias '${aliasName}' already exists. Use 'bvm alias ${aliasName} <new-version>' to update or 'bvm unalias ${aliasName}' to remove.`);

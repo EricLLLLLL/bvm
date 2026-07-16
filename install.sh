@@ -4,7 +4,7 @@ set -e
 
 # --- Configuration ---
 DEFAULT_BVM_VERSION="v1.1.39" # Fallback
-FALLBACK_BUN_VERSION="1.3.6"
+FALLBACK_BUN_VERSION="1.3.11"
 BVM_SRC_VERSION="${BVM_INSTALL_VERSION}" # If empty, will resolve dynamically
 
 # --- Colors ---
@@ -49,6 +49,28 @@ download_file() {
     printf "\033[?25h"
     wait "$pid"
     [ $? -eq 0 ] && echo -e "${GREEN}Done${RESET}" || (echo -e "${RED}Failed${RESET}"; return 1)
+}
+
+json_string_field() {
+    local field="$1"
+    grep -oE "\"${field}\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" | head -n 1 | cut -d'"' -f4
+}
+
+# Verify npm metadata field: dist.integrity (SHA-512 SRI) before extraction.
+verify_sha512() {
+    local file="$1" integrity="$2"
+    command -v openssl >/dev/null 2>&1 || error "openssl is required to verify downloaded artifacts."
+    case "$integrity" in
+      sha512-*) ;;
+      *) error "Registry metadata is missing a valid SHA-512 integrity value." ;;
+    esac
+    local expected="${integrity#sha512-}"
+    local actual
+    actual=$(openssl dgst -sha512 -binary "$file" | openssl base64 -A)
+    if [ "$actual" != "$expected" ]; then
+        rm -f "$file"
+        error "SHA-512 integrity verification failed for $file."
+    fi
 }
 
 detect_network_zone() {
@@ -130,14 +152,14 @@ else
     fi
     echo -e "${GREEN}${BVM_SRC_VERSION}${RESET}"
 
-    if [ "$BVM_REGION" == "cn" ]; then
-        TARBALL_URL="https://registry.npmmirror.com/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
-    else
-        TARBALL_URL="https://registry.npmjs.org/bvm-core/-/bvm-core-${BVM_SRC_VERSION#v}.tgz"
-    fi
+    BVM_METADATA=$(curl -fsSL "https://${REGISTRY}/bvm-core/${BVM_SRC_VERSION#v}")
+    TARBALL_URL=$(printf '%s' "$BVM_METADATA" | json_string_field tarball)
+    BVM_INTEGRITY=$(printf '%s' "$BVM_METADATA" | json_string_field integrity)
+    [ -n "$TARBALL_URL" ] || error "Registry metadata is missing the BVM tarball URL."
 
     TEMP_TGZ=$(mktemp)
     download_file "$TARBALL_URL" "$TEMP_TGZ" "Downloading BVM Source (${BVM_SRC_VERSION})..."
+    verify_sha512 "$TEMP_TGZ" "$BVM_INTEGRITY"
     tar -xzf "$TEMP_TGZ" -C "$BVM_SRC_DIR" --strip-components=2 "package/dist/index.js"
     tar -xzf "$TEMP_TGZ" -C "$BVM_BIN_DIR" --strip-components=2 "package/dist/bvm-shim.sh"
     rm -f "$TEMP_TGZ"
@@ -256,11 +278,14 @@ else
 
 
 
-            PKG="@oven/bun-$P-$A"
-
-            URL="https://${REGISTRY}/${PKG}/-/${PKG##*/}${SUFFIX}-${BUN_VER#v}.tgz"
+            PKG="@oven/bun-$P-$A${SUFFIX}"
+            BUN_METADATA=$(curl -fsSL "https://${REGISTRY}/${PKG}/${BUN_VER#v}")
+            URL=$(printf '%s' "$BUN_METADATA" | json_string_field tarball)
+            BUN_INTEGRITY=$(printf '%s' "$BUN_METADATA" | json_string_field integrity)
+            [ -n "$URL" ] || error "Registry metadata is missing the Bun runtime tarball URL."
 
             download_file "$URL" "$TEMP_TGZ_BUN" "Downloading Compatible Runtime (bun@${BUN_VER#v})..."
+            verify_sha512 "$TEMP_TGZ_BUN" "$BUN_INTEGRITY"
 
         fi
 

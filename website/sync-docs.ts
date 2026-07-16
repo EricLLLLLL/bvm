@@ -1,68 +1,80 @@
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 const root = join(import.meta.dir, '..');
-const docsDest = join(import.meta.dir, 'docs', 'guide');
+const docsRoot = join(import.meta.dir, 'docs');
 
-const FRONTMATTER: Record<string, string> = {
-  'getting-started.md': `---
-title: Getting Started
-description: Install BVM and manage multiple Bun versions on macOS, Linux, and Windows.
----\n\n`,
-  'getting-started-zh.md': `---
-title: 快速开始
-description: 安装 BVM，在 macOS、Linux 和 Windows 上管理多个 Bun 版本。
----\n\n`,
-  'architecture.md': `---
-title: Architecture
-description: BVM internal architecture, install flow, and release mechanism reference for contributors and AI agents.
----\n\n`,
+type DocSyncTarget = {
+  source: string;
+  destination: string;
+  title: string;
+  description: string;
 };
 
-async function syncWithFrontmatter(src: string, destFile: string) {
-  await copyFile(src, join(docsDest, destFile));
-  const fm = FRONTMATTER[destFile];
-  if (fm) {
-    const content = await readFile(join(docsDest, destFile), 'utf-8');
-    await writeFile(join(docsDest, destFile), fm + rewriteForDocs(content, destFile));
-  }
-}
+export const DOC_SYNC_TARGETS: readonly DocSyncTarget[] = [
+  {
+    source: 'README.md',
+    destination: 'guide/getting-started.md',
+    title: 'Getting Started',
+    description: 'Install BVM and manage multiple Bun versions on macOS, Linux, and Windows.',
+  },
+  {
+    source: 'README.zh-CN.md',
+    destination: 'zh/guide/getting-started.md',
+    title: '快速开始',
+    description: '安装 BVM，在 macOS、Linux 和 Windows 上管理多个 Bun 版本。',
+  },
+  {
+    source: 'my-skills/bvm-architect/references/architecture.md',
+    destination: 'zh/guide/architecture.md',
+    title: '架构',
+    description: 'BVM 内部架构、安装流程和发布机制的参考文档，供贡献者和 AI 代理使用。',
+  },
+] as const;
 
-function rewriteForDocs(content: string, destFile: string): string {
-  if (destFile === 'getting-started.md') {
-    return content
+export function rewriteForDocs(content: string, destination: string): string {
+  let rewritten = content;
+
+  if (destination === 'guide/getting-started.md') {
+    rewritten = rewritten
       .replaceAll('./README.zh-CN.md', '/zh/guide/getting-started')
       .replaceAll('./install.md', '/for-ai-clients');
   }
 
-  if (destFile === 'getting-started-zh.md') {
-    return content
+  if (destination === 'zh/guide/getting-started.md') {
+    rewritten = rewritten
       .replaceAll('./README.md', '/guide/getting-started')
       .replaceAll('./install.md', '/zh/for-ai-clients');
   }
 
-  return content;
+  return rewritten.replace(/[ \t]+$/gm, '');
 }
 
-async function sync() {
+function frontmatter(target: DocSyncTarget): string {
+  return `---\ntitle: ${target.title}\ndescription: ${target.description}\n---\n\n`;
+}
+
+async function syncWithFrontmatter(target: DocSyncTarget): Promise<void> {
+  const sourcePath = join(root, target.source);
+  const destinationPath = join(docsRoot, target.destination);
+  const content = await readFile(sourcePath, 'utf-8');
+
+  await mkdir(dirname(destinationPath), { recursive: true });
+  await writeFile(destinationPath, frontmatter(target) + rewriteForDocs(content, target.destination));
+  console.log(`✅ Synced ${target.source} to website/docs/${target.destination}`);
+}
+
+export async function syncDocs(): Promise<void> {
   try {
-    await mkdir(docsDest, { recursive: true });
-
-    await syncWithFrontmatter(join(root, 'README.md'), 'getting-started.md');
-    console.log('✅ Synced README.md to website/docs/guide/getting-started.md');
-
-    await syncWithFrontmatter(join(root, 'README.zh-CN.md'), 'getting-started-zh.md');
-    console.log('✅ Synced README.zh-CN.md to website/docs/guide/getting-started-zh.md');
-
-    await syncWithFrontmatter(
-      join(root, 'my-skills', 'bvm-architect', 'references', 'architecture.md'),
-      'architecture.md',
-    );
-    console.log('✅ Synced architecture.md to website/docs/guide/architecture.md');
+    for (const target of DOC_SYNC_TARGETS) {
+      await syncWithFrontmatter(target);
+    }
   } catch (err: any) {
     console.error('❌ Sync failed:', err.message);
     process.exit(1);
   }
 }
 
-sync();
+if (import.meta.main) {
+  await syncDocs();
+}

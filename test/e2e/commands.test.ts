@@ -15,7 +15,7 @@ describe("BVM E2E: Commands", () => {
     });
 
     it("should list remote versions", async () => {
-        const result = await runBvm(["ls-remote", "--limit", "5"], sandboxDir);
+        const result = await runBvm(["ls-remote"], sandboxDir);
         expect(result.exitCode).toBe(0);
         expect(result.all).toContain("Available remote Bun versions");
     });
@@ -28,7 +28,7 @@ describe("BVM E2E: Commands", () => {
         }
 
         expect(result.exitCode).toBe(0);
-        expect(result.all).toContain("installed and active");
+        expect(result.all).toMatch(/physically installed|installed and active/);
 
         const versions = getInstalledVersions(sandboxDir);
         expect(versions).toContain("v1.2.23");

@@ -1,8 +1,6 @@
-import { join } from 'path';
 import { BVM_ALIAS_DIR, BVM_VERSIONS_DIR } from '../constants';
 import { getInstalledVersions, normalizeVersion, pathExists, readTextFile, getActiveVersion, resolveVersion } from '../utils';
-import { readlink } from 'fs/promises';
-import { maxSatisfying } from '../utils/semver-lite';
+import { resolveAliasPath } from '../utils/alias-name';
 import { withSpinner } from '../command-runner';
 
 /**
@@ -30,8 +28,13 @@ export async function resolveLocalVersion(spec: string): Promise<string | null> 
       return null;
   }
 
-  const aliasPath = join(BVM_ALIAS_DIR, spec);
-  if (await pathExists(aliasPath)) {
+  let aliasPath: string | null = null;
+  try {
+    aliasPath = resolveAliasPath(BVM_ALIAS_DIR, spec);
+  } catch {
+    aliasPath = null;
+  }
+  if (aliasPath && await pathExists(aliasPath)) {
     try {
       const aliasTarget = (await readTextFile(aliasPath)).trim();
       return normalizeVersion(aliasTarget);
@@ -40,7 +43,6 @@ export async function resolveLocalVersion(spec: string): Promise<string | null> 
 
 
   // 3. Handle Semver / Exact
-  const normalizedSpec = normalizeVersion(spec);
   const installed = await getInstalledVersions(); // Returns normalized vX.Y.Z
 
   // Use the shared resolveVersion utility for consistent behavior

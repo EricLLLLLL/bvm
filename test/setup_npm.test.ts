@@ -20,7 +20,7 @@ describe('Setup Logic - NPM Installation Preservation (Integration)', () => {
 
     it('should preserve npm wrapper during setup', async () => {
         // Run bvm setup via CLI using BVM_INSTALL_SOURCE env
-        const result = spawnSync('bun', ['run', 'src/index.ts', 'setup', '--silent'], {
+        const result = spawnSync(process.execPath, ['run', 'src/index.ts', 'setup', '--silent'], {
             env: {
                 ...process.env,
                 HOME: tmpHome,

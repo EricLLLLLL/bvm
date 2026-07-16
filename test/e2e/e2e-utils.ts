@@ -57,7 +57,7 @@ export async function runBvm(args: string[], sandboxDir: string, env: Record<str
     };
 
     try {
-        const result = await execa("bun", ["run", bvmBin, ...args], {
+        const result = await execa(process.execPath, ["run", bvmBin, ...args], {
             env: sandboxEnv,
             reject: false,
             all: true,

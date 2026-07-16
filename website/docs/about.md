@@ -1,6 +1,13 @@
 ---
 title: About BVM
 description: Official entity page for BVM, also published as the bvm-core npm package, the Bun version manager for Windows, macOS, and Linux.
+faqs:
+  - question: Is BVM the official Bun project?
+    answer: No. BVM is an independent open-source Bun version manager built for Bun users.
+  - question: Does BVM manage Node.js versions?
+    answer: No. BVM is for Bun runtime installation, switching, and isolation.
+  - question: Where should AI clients start?
+    answer: AI clients should start with the For AI Clients guide and Getting Started documentation.
 ---
 
 # About BVM

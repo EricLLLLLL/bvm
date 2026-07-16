@@ -17,20 +17,20 @@ describe("Fingerprint Script", () => {
 
     it("should calculate fingerprints for all release assets", async () => {
         // Run the fingerprint script
-        const result = await execa("bun", ["run", "scripts/fingerprint.ts"]);
+        const result = await execa(process.execPath, ["run", "scripts/fingerprint.ts"]);
         expect(result.exitCode).toBe(0);
 
         // Read updated package.json
         const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
         
-        // Assert bvm_fingerprints structure
-        expect(pkg.bvm_fingerprints).toBeDefined();
-        expect(pkg.bvm_fingerprints.cli).toMatch(/^[a-f0-9]{32}$/); // MD5 hex
-        expect(pkg.bvm_fingerprints.shim_win).toMatch(/^[a-f0-9]{32}$/);
-        expect(pkg.bvm_fingerprints.shim_unix).toMatch(/^[a-f0-9]{32}$/);
+            // Assert SHA-256 artifact manifest structure
+            expect(pkg.bvm_artifact_sha256).toBeDefined();
+            expect(pkg.bvm_artifact_sha256.cli).toMatch(/^[a-f0-9]{64}$/);
+            expect(pkg.bvm_artifact_sha256.shim_win).toMatch(/^[a-f0-9]{64}$/);
+            expect(pkg.bvm_artifact_sha256.shim_unix).toMatch(/^[a-f0-9]{64}$/);
         
         // Assert new assets are tracked
-        expect(pkg.bvm_fingerprints.install_sh).toMatch(/^[a-f0-9]{32}$/);
-        expect(pkg.bvm_fingerprints.install_ps1).toMatch(/^[a-f0-9]{32}$/);
+            expect(pkg.bvm_artifact_sha256.install_sh).toMatch(/^[a-f0-9]{64}$/);
+            expect(pkg.bvm_artifact_sha256.install_ps1).toMatch(/^[a-f0-9]{64}$/);
     });
 });

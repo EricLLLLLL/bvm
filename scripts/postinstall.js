@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { createHash, timingSafeEqual } = require('crypto');
 const os = require('os');
 
 const IS_WINDOWS = process.platform === 'win32';
@@ -34,6 +35,18 @@ function run(cmd, args, opts = {}) {
     }
     // Unix: avoid shell: true for raw commands to prevent DEP0190
     return spawnSync(cmd, args, options);
+}
+
+function verifyIntegrity(filePath, integrity) {
+    if (typeof integrity !== 'string' || !integrity.startsWith('sha512-')) {
+        throw new Error('Registry metadata is missing a valid SHA-512 integrity value.');
+    }
+    const expected = Buffer.from(integrity.slice(7), 'base64');
+    if (expected.length !== 64) throw new Error('Registry SHA-512 integrity value has an invalid length.');
+    const actual = createHash('sha512').update(fs.readFileSync(filePath)).digest();
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+        throw new Error(`SHA-512 integrity verification failed for ${filePath}.`);
+    }
 }
 
 function findBinary(dir, name) {
@@ -156,13 +169,20 @@ function downloadAndInstall() {
             try {
                 const info = JSON.parse(infoRes.stdout);
                 const data = Array.isArray(info) ? info[0] : info;
-                if (!data.dist || !data.dist.tarball) continue;
+                if (!data.dist || !data.dist.tarball || !data.dist.integrity) continue;
                 const url = data.dist.tarball.trim();
                 const version = data.version;
                 log(`Downloading Bun v${version} from ${reg.name}...`);
                 // Use -C - to support resume, and increase timeout to 10 minutes (600s)
                 const dl = run('curl', ['-L', '--fail', '-C', '-', '--connect-timeout', '20', '--max-time', '600', '--retry', '3', '-o', tempTgz, url], { stdio: 'inherit' });
                 if (dl.status === 0) {
+                    try {
+                        verifyIntegrity(tempTgz, data.dist.integrity);
+                    } catch (integrityError) {
+                        error(integrityError.message);
+                        try { fs.unlinkSync(tempTgz); } catch(e) {}
+                        continue;
+                    }
                     log('Extracting runtime... ');
                     const extractDir = path.join(os.tmpdir(), `bvm-ext-${Date.now()}`);
                     fs.mkdirSync(extractDir, { recursive: true });

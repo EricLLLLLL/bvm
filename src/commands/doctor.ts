@@ -23,6 +23,7 @@ import {
 import { withSpinner } from '../command-runner';
 import { BunfigManager } from '../utils/bunfig';
 import { fetchWithTimeout } from '../utils/network-utils';
+import { resolveAliasPath } from '../utils/alias-name';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 type ShellType = 'bash' | 'zsh' | 'fish' | 'powershell' | 'cmd' | 'unknown';
@@ -90,7 +91,12 @@ async function readAliases(): Promise<Array<{ name: string; target: string }>> {
   const files = await readDir(BVM_ALIAS_DIR);
   const entries: Array<{ name: string; target: string }> = [];
   for (const alias of files) {
-    const targetPath = join(BVM_ALIAS_DIR, alias);
+    let targetPath: string;
+    try {
+      targetPath = resolveAliasPath(BVM_ALIAS_DIR, alias);
+    } catch {
+      continue;
+    }
     if (await pathExists(targetPath)) {
       const file = await Bun.file(targetPath).text();
       entries.push({ name: alias, target: normalizeVersion(file.trim()) });

@@ -1,6 +1,13 @@
 ---
 title: 关于 BVM
 description: BVM 的官方实体说明页，说明它与 bvm-core npm 包、GitHub 仓库、官网入口的关系。
+faqs:
+  - question: BVM 是 Bun 官方项目吗？
+    answer: 不是。BVM 是一个独立开源的 Bun 版本管理器。
+  - question: BVM 管理 Node.js 版本吗？
+    answer: 不管理。BVM 只负责 Bun 的安装、切换和隔离。
+  - question: AI 客户端应该从哪里开始？
+    answer: AI 客户端建议先看 AI 客户端接入和快速开始文档。
 ---
 
 # 关于 BVM

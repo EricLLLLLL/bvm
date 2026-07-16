@@ -113,7 +113,7 @@ npm install -g bvm-core@latest --foreground-scripts
 
 ## 核心特性
 
-- **🚀 零延迟启动**：采用 Shim 架构设计，Shell 启动耗时约为 0ms。
+- **🚀 不注入 Shell 启动钩子**：BVM 只在 shim 被调用时解析 Bun 版本，不在 Shell 启动阶段运行版本管理逻辑。
 - **🛡️ 地堡架构 (Bunker Architecture)**：BVM 拥有独立的私有运行环境，即使卸载系统 Bun，BVM 依然能稳定工作并自愈。
 - **🛡️ 原子化隔离**：每个 Bun 版本拥有独立的全局包目录，彻底告别依赖冲突。
 - **🌏 零魔法全网通**：不仅安装 Bun 时飞快，更能自动检测并配置最佳镜像源（如 npmmirror），确保后续的 `bun install` 开箱即用，无需手动配置。

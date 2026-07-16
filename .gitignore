@@ -3,6 +3,7 @@ node_modules
 
 # output
 out
+output/
 dist
 *.tgz
 bvm
@@ -31,6 +32,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # caches
 .eslintcache
 .cache
+.playwright-mcp/
 *.tsbuildinfo
 
 # IntelliJ based IDEs
@@ -51,6 +53,7 @@ tmp-*.bin
 # Temporary test artifacts
 .test-env/
 .tmp-bun/
+test/e2e/.tmp*/
 .sandbox-logic/
 verify.log
 
@@ -60,4 +63,3 @@ verify.log
 debug-upgrade.ts
 shim-binary
 dist/
-.gitnexus

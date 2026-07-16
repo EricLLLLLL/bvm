@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { getSandboxDir, setupSandbox, cleanupSandbox, runInstallScript, runBvm, mockRuntime } from "./e2e-utils";
+import { getSandboxDir, setupSandbox, cleanupSandbox, runBvm, mockRuntime } from "./e2e-utils";
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { updatePowerShellProfile } from "../../src/commands/setup";
@@ -28,7 +28,7 @@ describe("BVM E2E: Shell Configuration", () => {
         writeFileSync(bashrcPath, "# Existing bashrc\n");
 
         // Force SHELL to bash
-        const result = await runInstallScript(sandboxDir, { SHELL: "/bin/bash", BVM_INSTALL_BUN_VERSION: "1.3.5" });
+        const result = await runBvm(["setup"], sandboxDir, { SHELL: "/bin/bash" });
         expect(result.exitCode).toBe(0);
 
         const content = readFileSync(bashrcPath, "utf-8");
@@ -43,7 +43,7 @@ describe("BVM E2E: Shell Configuration", () => {
         writeFileSync(zshrcPath, "# Existing zshrc\n");
 
         // Force SHELL to zsh
-        const result = await runInstallScript(sandboxDir, { SHELL: "/bin/zsh", BVM_INSTALL_BUN_VERSION: "1.3.5" });
+        const result = await runBvm(["setup"], sandboxDir, { SHELL: "/bin/zsh" });
         expect(result.exitCode).toBe(0);
 
         const content = readFileSync(zshrcPath, "utf-8");
@@ -59,7 +59,7 @@ describe("BVM E2E: Shell Configuration", () => {
         writeFileSync(fishConfigPath, "# Existing fish config\n");
 
         // Force SHELL to fish
-        const result = await runInstallScript(sandboxDir, { SHELL: "/usr/bin/fish", BVM_INSTALL_BUN_VERSION: "1.3.5" });
+        const result = await runBvm(["setup"], sandboxDir, { SHELL: "/usr/bin/fish" });
         expect(result.exitCode).toBe(0);
 
         const content = readFileSync(fishConfigPath, "utf-8");
@@ -85,7 +85,7 @@ describe("BVM E2E: Shell Configuration", () => {
 
         const content = readFileSync(profilePath, "utf-8");
         expect(content).toContain("$env:BVM_DIR =");
-        expect(content).toContain("$env:PATH =");
+        expect(content).toContain('. "$env:BVM_DIR\\bin\\bvm-init.ps1"');
 
         // Verify syntax using pwsh
         // We wrap the content in a try/catch block in PowerShell to detect parse errors

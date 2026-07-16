@@ -1,61 +1,63 @@
-interface Env {
-  // Add any environment variables here if needed
+interface InstallContext {
+  request: Request;
 }
 
-export const onRequest: PagesFunction<Env> = async (context) => {
-  const { request } = context;
+interface DistTags {
+  latest?: unknown;
+}
+
+const DIST_TAGS_URL = 'https://registry.npmjs.org/-/package/bvm-core/dist-tags';
+const RELEASE_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+function selectScript(request: Request): 'install.sh' | 'install.ps1' {
   const url = new URL(request.url);
-  const userAgent = request.headers.get("user-agent") || "";
-  const country = request.cf?.country || "US";
+  const userAgent = request.headers.get('user-agent')?.toLowerCase() ?? '';
+  const isWindows = url.searchParams.has('win')
+    || userAgent.includes('powershell')
+    || userAgent.includes('windows');
 
-  // Determine platform based on User-Agent or query param
-  const isWindows = 
-    userAgent.toLowerCase().includes("powershell") || 
-    userAgent.toLowerCase().includes("win") || 
-    url.searchParams.has("win");
+  return isWindows ? 'install.ps1' : 'install.sh';
+}
 
-  const isCurlOrWget = 
-    userAgent.toLowerCase().includes("curl") || 
-    userAgent.toLowerCase().includes("wget");
+async function resolveLatestVersion(): Promise<string> {
+  const response = await fetch(DIST_TAGS_URL, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`npm registry returned ${response.status}`);
+  }
 
-  // Determine Registry based on Country
-  const registry = country === "CN" ? "registry.npmmirror.com" : "registry.npmjs.org";
-  
-  // Base URL for raw scripts on GitHub
-  const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/EricLLLLLL/bvm/main";
-  
-  const scriptName = isWindows ? "install.ps1" : "install.sh";
-  const scriptUrl = `${GITHUB_RAW_BASE}/${scriptName}`;
+  const { latest } = await response.json() as DistTags;
+  if (typeof latest !== 'string' || !RELEASE_VERSION_PATTERN.test(latest)) {
+    throw new Error('npm registry returned an invalid latest version');
+  }
 
+  return latest;
+}
+
+export async function onRequest({ request }: InstallContext): Promise<Response> {
   try {
+    const version = await resolveLatestVersion();
+    const scriptName = selectScript(request);
+    const scriptUrl = `https://raw.githubusercontent.com/EricLLLLLL/bvm/v${version}/${scriptName}`;
     const response = await fetch(scriptUrl);
+
     if (!response.ok) {
-        return new Response(`Error fetching script: ${response.statusText}`, { status: 500 });
+      throw new Error(`GitHub returned ${response.status}`);
     }
 
-    let content = await response.text();
-
-    // Smart Injection: Automatically switch registry based on GeoIP
-    if (country === "CN") {
-        // For .sh
-        content = content.replace(/REGISTRY="registry\.npmjs\.org"/g, `REGISTRY="${registry}"`);
-        // For .ps1
-        content = content.replace(/\$REGISTRY = "registry\.npmjs\.org"/g, `$REGISTRY = "${registry}"`);
-        
-        // Also update mirror URLs in comments/logs if necessary
-        content = content.replace(/registry\.npmjs\.org/g, registry);
-    }
-
-    // Return the script content
-    return new Response(content, {
+    return new Response(await response.text(), {
       headers: {
-        "Content-Type": isWindows ? "text/plain; charset=utf-8" : "text/x-shellscript; charset=utf-8",
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "no-cache"
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=300',
+        'Content-Type': scriptName === 'install.ps1'
+          ? 'text/plain; charset=utf-8'
+          : 'text/x-shellscript; charset=utf-8',
+        'X-BVM-Version': version,
       },
     });
-
-  } catch (err) {
-    return new Response(`Internal Server Error: ${err.message}`, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error';
+    return new Response(`Unable to fetch installer: ${message}`, { status: 502 });
   }
-};
+}

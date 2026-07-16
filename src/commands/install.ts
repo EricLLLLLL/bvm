@@ -16,6 +16,7 @@ import { rehash } from './rehash';
 import { BunfigManager } from '../utils/bunfig';
 import { fixWindowsShims } from '../utils/windows-shim-fixer';
 import { getFastestRegistry } from '../utils/network-utils';
+import { verifyFileIntegrity } from '../utils/integrity';
 
 /**
  * Generates a bunfig.toml using the LOGICAL current path as an anchor.
@@ -81,7 +82,13 @@ async function safeRename(src: string, dest: string) {
   }
 }
 
-export async function downloadFileWithProgress(url: string, destPath: string, spinner: any, versionLabel: string) {
+export async function downloadFileWithProgress(
+    url: string,
+    destPath: string,
+    spinner: any,
+    versionLabel: string,
+    integrity: string,
+) {
     const maxRetries = 3;
     let lastError: any;
 
@@ -138,6 +145,7 @@ export async function downloadFileWithProgress(url: string, destPath: string, sp
                     }
                 }
                 await writer.end();
+                await verifyFileIntegrity(destPath, integrity);
                 
                 if (progressBar) {
                     progressBar.stop();
@@ -207,7 +215,7 @@ export async function installBunVersion(targetVersion?: string, options: { globa
         if (!resolvedVersion) throw new Error(`Could not resolve version.`);
         const result = await findBunDownloadUrl(resolvedVersion);
         if (!result) throw new Error(`Incompatible system.`);
-	        const { url, mirrorUrl, foundVersion } = result;
+		        const { url, mirrorUrl, foundVersion, integrity } = result;
 
 	        // On Windows, install to runtime/ first, then create versions/ as junction
 	        // This ensures global packages go to runtime/ and shims work correctly
@@ -230,13 +238,13 @@ export async function installBunVersion(targetVersion?: string, options: { globa
                     // Log download source for debugging
                     console.log(colors.dim(`  Downloading from: ${url.replace(/\/[^\/]*$/, '/...')}`));
                     try { 
-                        await downloadFileWithProgress(url, tmp, spinner, foundVersion); 
+                        await downloadFileWithProgress(url, tmp, spinner, foundVersion, integrity);
                         await safeRename(tmp, cachedArchivePath); 
                     }
                     catch (e) {
                         if (mirrorUrl) { 
                             console.log(colors.yellow(`  Primary source failed, trying mirror...`));
-                            await downloadFileWithProgress(mirrorUrl, tmp, spinner, foundVersion); 
+                            await downloadFileWithProgress(mirrorUrl, tmp, spinner, foundVersion, integrity);
                             await safeRename(tmp, cachedArchivePath); 
                         }
                         else throw e;

@@ -21,11 +21,11 @@ const content = computed(() => {
       starBody: 'Star 是最直接的社交证明，能帮助更多开发者更快发现、判断并尝试 BVM。',
       starPrimary: '去 GitHub 点 Star',
       starSecondary: '看看谁在关注',
-      promoEyebrow: '来自 NexSail 体系',
-      promoTitle: '如果你要的是高端获客、投放增长、SEO 或 GEO，不要先看工具，先看 WinWin Media。',
-      promoBody: 'WinWin Media 是 NexSail 旗下高端获客增长品牌，承接广告投放、搜索增长、GEO 可见性、落地页转化和咨询承接这条完整链路。',
-      promoPrimary: '打开 WinWin Media',
-      promoSecondary: '了解 NexSail',
+      entityEyebrow: '官方实体说明',
+      entityTitle: 'BVM、bvm-core 和 bvm 命令是什么关系？',
+      entityBody: 'BVM 是项目名，bvm-core 是 npm 包名，安装后提供 bvm 命令。',
+      entityPrimary: '了解 bvm-core',
+      entitySecondary: '关于 BVM',
       installTitle: '一键安装',
       unixOs: 'macOS / Linux（推荐）',
       unixBadge: 'Shell',
@@ -58,11 +58,11 @@ const content = computed(() => {
     starBody: 'A Star helps more developers discover BVM, trust the project faster, and try it in real multi-version Bun setups.',
     starPrimary: 'Star BVM on GitHub',
     starSecondary: 'See stargazers',
-    promoEyebrow: 'From the NexSail ecosystem',
-    promoTitle: 'Need premium lead generation, paid acquisition, SEO, or GEO growth?',
-    promoBody: "WinWin Media is NexSail's high-end growth brand. If you are looking for qualified pipeline growth instead of developer tooling, start there first.",
-    promoPrimary: 'Open WinWin Media',
-    promoSecondary: 'About NexSail',
+    entityEyebrow: 'Official entity guide',
+    entityTitle: 'How do BVM, bvm-core, and the bvm command relate?',
+    entityBody: 'BVM is the project, bvm-core is the npm package, and installing it provides the bvm command.',
+    entityPrimary: 'What is bvm-core?',
+    entitySecondary: 'About BVM',
     installTitle: 'One-Line Installation',
     unixOs: 'macOS / Linux (Recommended)',
     unixBadge: 'Universal',
@@ -112,13 +112,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="spotlight-card surface-card">
-      <div class="spotlight-eyebrow">{{ content.promoEyebrow }}</div>
-      <h2>{{ content.promoTitle }}</h2>
-      <p>{{ content.promoBody }}</p>
-      <div class="spotlight-actions">
-        <a class="spotlight-primary" :href="SITE_LINKS.winwin">{{ content.promoPrimary }}</a>
-        <a class="spotlight-secondary" :href="SITE_LINKS.company">{{ content.promoSecondary }}</a>
+    <div class="entity-card surface-card">
+      <div class="entity-eyebrow">{{ content.entityEyebrow }}</div>
+      <h2>{{ content.entityTitle }}</h2>
+      <p>{{ content.entityBody }}</p>
+      <div class="entity-actions">
+        <a class="entity-primary" href="/bvm-core">{{ content.entityPrimary }}</a>
+        <a class="entity-secondary" :href="props.locale === 'zh' ? '/zh/about' : '/about'">{{ content.entitySecondary }}</a>
       </div>
     </div>
   </div>
@@ -255,7 +255,7 @@ onMounted(() => {
 }
 
 .star-card,
-.spotlight-card {
+.entity-card {
   padding: 1.4rem;
   border-radius: 18px;
 }
@@ -271,7 +271,7 @@ onMounted(() => {
 }
 
 .star-eyebrow,
-.spotlight-eyebrow {
+.entity-eyebrow {
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -282,12 +282,12 @@ onMounted(() => {
   color: #2563eb;
 }
 
-.spotlight-eyebrow {
+.entity-eyebrow {
   color: #fbbf24;
 }
 
 .star-card h2,
-.spotlight-card h2 {
+.entity-card h2 {
   margin: 0.45rem 0 0.65rem;
   font-size: 1.7rem;
 }
@@ -297,13 +297,13 @@ onMounted(() => {
   color: #0f172a;
 }
 
-.spotlight-card h2 {
+.entity-card h2 {
   line-height: 1.2;
   color: #fff;
 }
 
 .star-card p,
-.spotlight-card p {
+.entity-card p {
   margin: 0;
   max-width: 52rem;
 }
@@ -312,12 +312,12 @@ onMounted(() => {
   color: #334155;
 }
 
-.spotlight-card p {
+.entity-card p {
   color: rgba(248, 250, 252, 0.9);
 }
 
 .star-actions,
-.spotlight-actions {
+.entity-actions {
   margin-top: 1rem;
   display: flex;
   flex-wrap: wrap;
@@ -325,14 +325,14 @@ onMounted(() => {
 }
 
 .star-actions a,
-.spotlight-actions a {
+.entity-actions a {
   text-decoration: none;
 }
 
 .star-primary,
 .star-secondary,
-.spotlight-primary,
-.spotlight-secondary,
+.entity-primary,
+.entity-secondary,
 .code-block button,
 .callout-link {
   display: inline-flex;
@@ -350,8 +350,8 @@ onMounted(() => {
 
 .star-primary,
 .star-secondary,
-.spotlight-primary,
-.spotlight-secondary {
+.entity-primary,
+.entity-secondary {
   padding: 0.72rem 1rem;
   border-radius: 999px;
   font-weight: 700;
@@ -368,7 +368,7 @@ onMounted(() => {
   color: #0f172a;
 }
 
-.spotlight-card {
+.entity-card {
   background:
     radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 30%),
     linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94));
@@ -377,13 +377,13 @@ onMounted(() => {
   color: #f8fafc;
 }
 
-.spotlight-primary {
+.entity-primary {
   background: #f59e0b;
   color: #111827;
   box-shadow: 0 12px 26px rgba(245, 158, 11, 0.22);
 }
 
-.spotlight-secondary {
+.entity-secondary {
   border: 1px solid rgba(248, 250, 252, 0.24);
   color: #f8fafc;
 }
@@ -564,7 +564,7 @@ onMounted(() => {
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
   }
 
-  .spotlight-card:hover {
+  .entity-card:hover {
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.24);
   }
 
@@ -574,9 +574,9 @@ onMounted(() => {
   }
 
   .star-primary:hover,
-  .spotlight-primary:hover,
+  .entity-primary:hover,
   .star-secondary:hover,
-  .spotlight-secondary:hover,
+  .entity-secondary:hover,
   .code-block button:hover,
   .callout-link:hover {
     transform: translateY(-1px);
@@ -585,8 +585,8 @@ onMounted(() => {
 
 .star-primary:active,
 .star-secondary:active,
-.spotlight-primary:active,
-.spotlight-secondary:active,
+.entity-primary:active,
+.entity-secondary:active,
 .code-block button:active,
 .callout-link:active {
   transform: scale(0.97);
@@ -597,8 +597,8 @@ onMounted(() => {
   .surface-card,
   .star-primary,
   .star-secondary,
-  .spotlight-primary,
-  .spotlight-secondary,
+  .entity-primary,
+  .entity-secondary,
   .code-block button,
   .callout-link {
     transition-duration: 0ms !important;
@@ -615,14 +615,14 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .star-card h2,
-  .spotlight-card h2 {
+  .entity-card h2 {
     font-size: 1.4rem;
   }
 
   .star-primary,
   .star-secondary,
-  .spotlight-primary,
-  .spotlight-secondary {
+  .entity-primary,
+  .entity-secondary {
     width: 100%;
   }
 }

@@ -1,7 +1,7 @@
 import { colors } from '../utils/ui';
-import { join } from 'path';
 import { BVM_ALIAS_DIR } from '../constants';
 import { pathExists } from '../utils';
+import { resolveAliasPath } from '../utils/alias-name';
 import { unlink } from 'fs/promises';
 import { withSpinner } from '../command-runner';
 
@@ -10,11 +10,10 @@ import { withSpinner } from '../command-runner';
  * @param aliasName The name of the alias to remove.
  */
 export async function removeAlias(aliasName: string): Promise<void> {
+  const aliasFilePath = resolveAliasPath(BVM_ALIAS_DIR, aliasName);
   await withSpinner(
     `Removing alias '${aliasName}'...`,
     async (spinner) => {
-      const aliasFilePath = join(BVM_ALIAS_DIR, aliasName);
-
       // 1. Check if the alias file exists
       if (!(await pathExists(aliasFilePath))) {
         throw new Error(`Alias '${aliasName}' does not exist.`);

@@ -4,6 +4,8 @@ Developers searching for a Bun version manager may find several projects, includ
 
 This page explains where BVM fits.
 
+Last reviewed: 2026-07-15. Features and platform support can change, so verify each project's current documentation before choosing a tool.
+
 ## BVM
 
 BVM is an independent Bun Version Manager published on npm as `bvm-core`.
@@ -29,13 +31,13 @@ Windows PowerShell:
 irm https://bvm-core.nexsail.top/install | iex
 ```
 
-## BunVM
+## [BunVM](https://bunvm.com/)
 
 BunVM is another Bun version manager project. It is commonly positioned around fast shell-based version switching, auto-switching, and tab completion.
 
 If your workflow is mainly local interactive shell switching, compare its behavior with BVM's `.bvmrc`, verification, and cross-platform setup flow.
 
-## Bum
+## [Bum](https://owenizedd.github.io/bum/)
 
 Bum is another Bun version manager project, commonly described as a Bun version manager written in Rust.
 
@@ -64,3 +66,5 @@ BVM is especially relevant when:
 - BVM npm package: https://www.npmjs.com/package/bvm-core
 - BVM GitHub repository: https://github.com/EricLLLLLL/bvm
 - BVM AI guide: https://bvm-core.nexsail.top/for-ai-clients
+- BunVM official website: https://bunvm.com/
+- Bum official website: https://owenizedd.github.io/bum/

@@ -1,8 +1,8 @@
 import { colors } from '../utils/ui';
 import { getInstalledVersions, normalizeVersion, readDir, pathExists, readTextFile, getActiveVersion } from '../utils';
 import { BVM_ALIAS_DIR } from '../constants';
-import { join } from 'path';
 import { withSpinner } from '../command-runner';
+import { resolveAliasPath } from '../utils/alias-name';
 
 /**
  * Lists all locally installed Bun versions and configured aliases.
@@ -39,7 +39,7 @@ export async function listLocalVersions(): Promise<void> {
             console.log(colors.green('\nAliases:'));
             for (const aliasName of aliasFiles) {
                 try {
-                    const aliasTargetVersion = (await readTextFile(join(BVM_ALIAS_DIR, aliasName))).trim();
+                    const aliasTargetVersion = (await readTextFile(resolveAliasPath(BVM_ALIAS_DIR, aliasName))).trim();
                     const normalizedAliasTarget = normalizeVersion(aliasTargetVersion);
                     
                     let aliasStatus = `-> ${colors.cyan(normalizedAliasTarget)}`;
@@ -47,7 +47,7 @@ export async function listLocalVersions(): Promise<void> {
                         aliasStatus += ` ${colors.dim('(current)')}`;
                     }
                     console.log(`  ${aliasName} ${colors.gray(aliasStatus)}`);
-                } catch (e) {
+                } catch {
                     // Skip invalid aliases
                 }
             }

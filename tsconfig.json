@@ -4,7 +4,6 @@
     "module": "commonjs",
     "target": "es2022",
     "moduleResolution": "node",
-    "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,11 +11,11 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "noEmit": false,
+    "noEmit": true,
     "paths": {
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

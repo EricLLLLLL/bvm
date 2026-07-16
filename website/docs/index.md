@@ -1,5 +1,6 @@
 ---
 title: BVM Bun Version Manager (bvm-core)
+titleTemplate: false
 description: BVM, published on npm as bvm-core, is a native zero-dependency version manager for Bun on Windows, macOS, and Linux.
 layout: home
 
@@ -28,8 +29,8 @@ hero:
       link: /guide/troubleshooting
 
 features:
-  - title: 🚀 Zero Latency
-    details: Shim-based design ensures ~0ms shell startup overhead. No more slow terminal inits.
+  - title: 🚀 No Shell Startup Hook
+    details: BVM adds no shell startup hook; version resolution happens when its shims are invoked.
   - title: 🛡️ Bunker Architecture
     details: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
   - title: 🌏 Smart Mirroring

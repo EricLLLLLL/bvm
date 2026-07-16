@@ -113,7 +113,7 @@ npm install -g bvm-core@latest --foreground-scripts
 
 ## Key Features
 
-- **🚀 Zero Latency**: Shim-based design ensures ~0ms shell startup overhead.
+- **🚀 No Shell Startup Hook**: BVM resolves Bun versions when its shims are invoked instead of running a version-manager hook during shell startup.
 - **🛡️ Bunker Architecture**: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
 - **🛡️ Atomic Isolation**: Each Bun version has its own global package directory. No more conflicts.
 - **🌏 Smart Mirroring & Auto-Config**: Automatically selects the fastest registry for downloads AND auto-configures `bunfig.toml` for instant, "no-magic" `bun install` speeds.

@@ -48,7 +48,7 @@ describe('BVM Upgrade E2E', () => {
 
   const runBvmAsync = async (args: string[]) => {
     const proc = spawn({
-      cmd: ['bun', 'run', join(process.cwd(), 'src/index.ts'), ...args],
+      cmd: [process.execPath, 'run', join(process.cwd(), 'src/index.ts'), ...args],
       env: {
         ...process.env,
         HOME: sandboxHome,

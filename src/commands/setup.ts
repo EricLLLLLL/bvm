@@ -258,7 +258,7 @@ end
         console.log(colors.gray('  (Moved configuration to the end of file to ensure PATH precedence)'));
       }
     } else if (displayPrompt) {
-
+      console.log(colors.green('✓ Configuration is already up to date.'));
     }
 
     if (displayPrompt) {

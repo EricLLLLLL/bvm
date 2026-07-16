@@ -1,5 +1,5 @@
 // scripts/check-integrity.ts
-import { readFileSync, statSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
 
 console.log("🔍 Running Integrity Checks...");

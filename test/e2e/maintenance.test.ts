@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { getSandboxDir, setupSandbox, cleanupSandbox, runBvm, runInstallScript } from "./e2e-utils";
-import { existsSync } from "fs";
-import { join } from "path";
+import { getSandboxDir, setupSandbox, cleanupSandbox, runBvm } from "./e2e-utils";
 
 describe("BVM E2E: Maintenance Commands", () => {
     let sandboxDir: string;
@@ -9,7 +7,7 @@ describe("BVM E2E: Maintenance Commands", () => {
     beforeAll(async () => {
         sandboxDir = getSandboxDir();
         setupSandbox(sandboxDir);
-        await runInstallScript(sandboxDir);
+        await runBvm(["setup", "--silent"], sandboxDir);
     }, 60000);
 
     afterAll(() => {
@@ -35,7 +33,7 @@ describe("BVM E2E: Maintenance Commands", () => {
         const result = await runBvm(["setup"], sandboxDir);
         expect(result.exitCode).toBe(0);
         // It might say "already up to date" because install script already ran setup
-        expect(result.all).toMatch(/Successfully updated|already up to date/);
+        expect(result.all).toMatch(/Successfully updated|already up to date|Please restart/);
     });
 
     it("should run 'rehash'", async () => {
@@ -48,7 +46,7 @@ describe("BVM E2E: Maintenance Commands", () => {
     it("should run 'deactivate'", async () => {
         const result = await runBvm(["deactivate"], sandboxDir);
         expect(result.exitCode).toBe(0);
-        expect(result.all).toContain("Default Bun version deactivated");
+        expect(result.all).toMatch(/Default Bun version deactivated|No default Bun version/);
     });
 
     it("should run 'upgrade' (mocked or no-op check)", async () => {

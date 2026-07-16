@@ -251,9 +251,27 @@ describe("CLI Integration Suite", () => {
     expect(exitCode).toBe(0);
   });
 
-  test("unknown command prints help but exits cleanly", async () => {
+  test("unknown command prints help and exits with failure", async () => {
     const { exitCode, allOutput } = await runBvm(["definitely-unknown"]);
-    expect(exitCode).toBe(0);
+    expect(exitCode).toBe(1);
     expect(allOutput).toContain("Unknown command 'definitely-unknown'");
+  });
+
+  test("no command prints help and exits successfully", async () => {
+    const { exitCode, allOutput } = await runBvm([]);
+    expect(exitCode).toBe(0);
+    expect(allOutput).toContain("Usage:");
+  });
+
+  test("unknown option exits with failure", async () => {
+    const { exitCode, allOutput } = await runBvm(["ls", "--definitely-unknown"]);
+    expect(exitCode).toBe(1);
+    expect(allOutput).toContain("Unknown option '--definitely-unknown'");
+  });
+
+  test("unknown cache action exits with failure", async () => {
+    const { exitCode, allOutput } = await runBvm(["cache", "definitely-unknown"]);
+    expect(exitCode).toBe(1);
+    expect(allOutput).toContain("Unknown cache command: definitely-unknown");
   });
 }, 120000);

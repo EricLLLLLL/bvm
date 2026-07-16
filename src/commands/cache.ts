@@ -4,7 +4,7 @@ import { colors } from '../utils/ui';
 import { withSpinner } from '../command-runner';
 
 export async function cacheCommand(action: string): Promise<void> {
-  if (action === 'dir') {
+  if (action === 'dir' || action === 'ls') {
     console.log(BVM_CACHE_DIR);
     return;
   }
@@ -22,6 +22,5 @@ export async function cacheCommand(action: string): Promise<void> {
     return;
   }
 
-  console.error(colors.red(`Unknown cache command: ${action}`));
-  console.log('Usage: bvm cache dir | bvm cache clear');
+  throw new Error(`Unknown cache command: ${action}. Usage: bvm cache dir | bvm cache ls | bvm cache clear`);
 }

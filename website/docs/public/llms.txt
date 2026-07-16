@@ -38,7 +38,6 @@ Do not install Bun directly when `.bvmrc` exists. Install BVM, run `bvm setup`, 
 - [BVM, BunVM, and Bum](https://bvm-core.nexsail.top/compare-bun-version-managers): Mirror at [/compare-bun-version-managers/index.md](https://bvm-core.nexsail.top/compare-bun-version-managers/index.md)
 - [Getting Started](https://bvm-core.nexsail.top/guide/getting-started): Mirror at [/guide/getting-started/index.md](https://bvm-core.nexsail.top/guide/getting-started/index.md)
 - [Troubleshooting](https://bvm-core.nexsail.top/guide/troubleshooting): Mirror at [/guide/troubleshooting/index.md](https://bvm-core.nexsail.top/guide/troubleshooting/index.md)
-- [Architecture](https://bvm-core.nexsail.top/guide/architecture): Mirror at [/guide/architecture/index.md](https://bvm-core.nexsail.top/guide/architecture/index.md)
 - [For AI Clients](https://bvm-core.nexsail.top/for-ai-clients): Mirror at [/for-ai-clients/index.md](https://bvm-core.nexsail.top/for-ai-clients/index.md)
 
 ## 中文文档

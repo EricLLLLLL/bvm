@@ -37,6 +37,26 @@ function Detect-NetworkZone {
     } catch {}
     return "global"
 }
+
+function Assert-Sha512Integrity {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Integrity
+    )
+    if (-not $Integrity.StartsWith("sha512-")) {
+        throw "Registry metadata is missing a valid SHA-512 integrity value."
+    }
+    $ExpectedBytes = [Convert]::FromBase64String($Integrity.Substring(7))
+    if ($ExpectedBytes.Length -ne 64) {
+        throw "Registry SHA-512 integrity value has an invalid length."
+    }
+    $ExpectedHex = -join ($ExpectedBytes | ForEach-Object { $_.ToString("x2") })
+    $ActualHex = (Get-FileHash -Path $Path -Algorithm SHA512).Hash.ToLowerInvariant()
+    if ($ActualHex -ne $ExpectedHex) {
+        Remove-Item $Path -Force -ErrorAction SilentlyContinue
+        throw "SHA-512 integrity verification failed for $Path."
+    }
+}
 $BVM_REGION = Detect-NetworkZone
 $REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
 
@@ -71,11 +91,15 @@ if ($Local) {
     }
 } else {
     $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
-    $TARBALL_URL = "https://$REGISTRY/bvm-core/-/bvm-core-$BVM_PLAIN_VER.tgz"
+    $BvmMetadata = Invoke-RestMethod -Uri "https://$REGISTRY/bvm-core/$BVM_PLAIN_VER" -TimeoutSec 10
+    $TARBALL_URL = $BvmMetadata.dist.tarball
+    $BVM_INTEGRITY = $BvmMetadata.dist.integrity
+    if (-not $TARBALL_URL -or -not $BVM_INTEGRITY) { throw "BVM package metadata is incomplete." }
     $CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
 
     $TMP_TGZ = Join-Path $BVM_DIR "bvm-core.tgz"
     & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$TMP_TGZ" "$TARBALL_URL"
+    Assert-Sha512Integrity -Path $TMP_TGZ -Integrity $BVM_INTEGRITY
     $EXT_DIR = Join-Path $BVM_DIR "temp_bvm_extract"
     if (Test-Path $EXT_DIR) { Remove-Item $EXT_DIR -Recurse -Force }
     New-Item -ItemType Directory -Path $EXT_DIR | Out-Null
@@ -145,8 +169,12 @@ if ($USE_SYSTEM_AS_RUNTIME) {
             $TMP = $env:BVM_LOCAL_RUNTIME_PATH
         } else {
             Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
-            $URL = "https://$REGISTRY/@oven/bun-windows-x64/-/bun-windows-x64-$($BUN_VER.TrimStart('v')).tgz"
+            $BunMetadata = Invoke-RestMethod -Uri "https://$REGISTRY/@oven/bun-windows-x64/$($BUN_VER.TrimStart('v'))" -TimeoutSec 10
+            $URL = $BunMetadata.dist.tarball
+            $BUN_INTEGRITY = $BunMetadata.dist.integrity
+            if (-not $URL -or -not $BUN_INTEGRITY) { throw "Bun runtime package metadata is incomplete." }
             & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$TMP" "$URL"
+            Assert-Sha512Integrity -Path $TMP -Integrity $BUN_INTEGRITY
         }
 
         $EXT = Join-Path $BVM_DIR "temp_extract"

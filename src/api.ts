@@ -194,7 +194,14 @@ export async function fetchBunDistTags(): Promise<Record<string, string>> {
  * @param version The target Bun version (e.g., "1.0.0", "latest").
  * @returns The download URL and the exact version found.
  */
-export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: string; mirrorUrl?: string; foundVersion: string } | null> {
+export interface BunDownloadInfo {
+  url: string;
+  mirrorUrl?: string;
+  foundVersion: string;
+  integrity: string;
+}
+
+export async function findBunDownloadUrl(targetVersion: string): Promise<BunDownloadInfo | null> {
     const fullVersion = normalizeVersion(targetVersion); // Ensure 'v' prefix
 
     if (!valid(fullVersion)) {
@@ -205,6 +212,7 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
         return {
           url: `https://example.com/${getBunAssetName(fullVersion)}`,
           foundVersion: fullVersion,
+          integrity: `sha512-${Buffer.alloc(64).toString('base64')}`,
         };
     }
 
@@ -230,13 +238,28 @@ export async function findBunDownloadUrl(targetVersion: string): Promise<{ url: 
 
     // Strip 'v' from version for NPM (1.1.0 not v1.1.0)
     const plainVersion = fullVersion.replace(/^v/, '');
-    const url = getBunDownloadUrl(npmPackage, plainVersion, registry);
+    const cleanRegistry = registry.replace(/\/$/, '');
+    const metadataResponse = await fetchWithTimeout(`${cleanRegistry}/${npmPackage}/${plainVersion}`, {
+      headers: { 'User-Agent': USER_AGENT },
+      timeout: 10000,
+    });
+    if (!metadataResponse.ok) {
+      throw new Error(`Failed to fetch Bun package metadata: status ${metadataResponse.status}`);
+    }
+    const metadata = await metadataResponse.json() as {
+      dist?: { tarball?: string; integrity?: string };
+    };
+    const url = metadata.dist?.tarball;
+    const integrity = metadata.dist?.integrity;
+    if (!url || !integrity?.startsWith('sha512-')) {
+      throw new Error(`Bun package metadata for ${npmPackage}@${plainVersion} is missing SHA-512 integrity.`);
+    }
     
     // Always provide mirror URL for fallback (use npmmirror as reliable mirror)
     const mirrorRegistry = REGISTRIES.TAOBAO; // npmmirror
     const mirrorUrl = getBunDownloadUrl(npmPackage, plainVersion, mirrorRegistry);
 
-    return { url, mirrorUrl, foundVersion: fullVersion };
+    return { url, mirrorUrl, foundVersion: fullVersion, integrity };
 }
 
 /**
