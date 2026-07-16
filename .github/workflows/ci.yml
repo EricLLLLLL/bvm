@@ -23,20 +23,37 @@ jobs:
           bun-version: '1.3.11'
 
       - run: bun install --frozen-lockfile
-      - run: npm ci --prefix website/remotion-bvm
+      - name: Install Remotion dependencies
+        working-directory: website/remotion-bvm
+        run: npm ci
       - run: bun run typecheck
-      - run: npm exec --prefix website/remotion-bvm tsc -- --noEmit -p website/remotion-bvm/tsconfig.json
-      - run: bun run test:unit
+      - name: Typecheck Remotion
+        working-directory: website/remotion-bvm
+        run: npm exec tsc -- --noEmit -p tsconfig.json
+      - run: bun run build
+
+      - name: Unit tests
+        if: runner.os != 'Windows'
+        run: bun run test:unit
+
+      - name: Native Windows unit tests
+        if: runner.os == 'Windows'
+        run: >-
+          bun test
+          test/windows_shim_fixer.test.ts
+          test/bun_cmd_intercept.test.ts
+          test/install_integrity_contract.test.ts
+          test/release_contract.test.ts
+          website/test/install-function.test.ts
+          website/test/site-metadata.test.ts
+          website/test/sync-docs.test.ts
+
       - run: bun run test:isolated
       - run: bun run test:e2e
 
       - name: Coverage
         if: runner.os == 'Linux'
         run: bun run test:coverage
-
-      - name: Build
-        if: runner.os == 'Linux'
-        run: bun run build
 
       - name: Validate package contents
         if: runner.os == 'Linux'

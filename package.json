@@ -27,7 +27,7 @@
     "test:isolated": "bun test test/isolated/*.test.ts",
     "test:e2e": "bun test test/e2e/*.test.ts",
     "test:coverage": "bun test --coverage --coverage-reporter=text --coverage-skip-test-files test/*.test.ts test/isolated/*.test.ts",
-    "verify": "bun run typecheck && bun run test:unit && bun run test:isolated && bun run check-integrity && bun run build",
+    "verify": "bun run typecheck && bun run build && bun run test:unit && bun run test:isolated && bun run check-integrity",
     "bvm": "bun run src/index.ts",
     "bvm:sandbox": "mkdir -p \"$PWD/.sandbox-home\" && HOME=\"$PWD/.sandbox-home\" bun run src/index.ts",
     "release": "bun run scripts/release.ts",

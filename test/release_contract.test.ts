@@ -32,6 +32,22 @@ describe('release safety contract', () => {
     expect(pkg.scripts['test:e2e']).toBeDefined();
     expect(pkg.scripts['test:coverage']).toBeDefined();
     expect(pkg.scripts.verify).toBeDefined();
+    const buildStep = pkg.scripts.verify.indexOf('bun run build');
+    const unitTestStep = pkg.scripts.verify.indexOf('bun run test:unit');
+
+    expect(buildStep).toBeGreaterThanOrEqual(0);
+    expect(unitTestStep).toBeGreaterThanOrEqual(0);
+    expect(buildStep).toBeLessThan(unitTestStep);
+  });
+
+  test('CI builds generated artifacts before artifact-dependent unit tests', () => {
+    const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
+    const buildStep = workflow.indexOf('- run: bun run build');
+    const unitTestStep = workflow.indexOf('run: bun run test:unit');
+
+    expect(buildStep).toBeGreaterThanOrEqual(0);
+    expect(unitTestStep).toBeGreaterThanOrEqual(0);
+    expect(buildStep).toBeLessThan(unitTestStep);
   });
 
   test('CI typechecks the isolated Remotion project with its own dependencies', () => {
@@ -40,8 +56,18 @@ describe('release safety contract', () => {
     const remotionPkg = JSON.parse(readFileSync(join(root, 'website/remotion-bvm/package.json'), 'utf8'));
 
     expect(websiteTsconfig).toContain('"exclude": ["remotion-bvm"]');
-    expect(workflow).toContain('npm ci --prefix website/remotion-bvm');
-    expect(workflow).toContain('npm exec --prefix website/remotion-bvm tsc');
+    expect(workflow).toContain('working-directory: website/remotion-bvm');
+    expect(workflow).toContain('run: npm ci');
+    expect(workflow).toContain('run: npm exec tsc -- --noEmit -p tsconfig.json');
+    expect(workflow).not.toContain('npm ci --prefix website/remotion-bvm');
     expect(remotionPkg.devDependencies['@types/node']).toBeDefined();
+  });
+
+  test('CI separates POSIX shell unit tests from native Windows checks', () => {
+    const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
+
+    expect(workflow).toContain("if: runner.os != 'Windows'");
+    expect(workflow).toContain("if: runner.os == 'Windows'");
+    expect(workflow).toContain('test/windows_shim_fixer.test.ts');
   });
 });
