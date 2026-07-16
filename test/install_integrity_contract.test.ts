@@ -18,9 +18,12 @@ describe('installer integrity contract', () => {
   test('PowerShell installer verifies npm SHA-512 SRI before extraction', () => {
     const script = read('install.ps1');
     expect(script).toContain('Assert-Sha512Integrity');
-    expect(script).toContain('Get-FileHash');
+    expect(script).toContain('[Security.Cryptography.SHA512]::Create()');
+    expect(script).not.toContain('Get-FileHash');
     expect(script).toContain('.dist.integrity');
     expect(script.indexOf('Assert-Sha512Integrity')).toBeLessThan(script.indexOf('& tar -xf "$TMP_TGZ"'));
+    expect(script).not.toContain('$TARGET_DIR');
+    expect(script).toContain('Join-Path $TARGET_PHYSICAL_DIR "bin\\bun.exe"');
   });
 
   test('npm postinstall verifies integrity before extracting runtime', () => {

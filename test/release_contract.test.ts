@@ -69,5 +69,7 @@ describe('release safety contract', () => {
     expect(workflow).toContain("if: runner.os != 'Windows'");
     expect(workflow).toContain("if: runner.os == 'Windows'");
     expect(workflow).toContain('test/windows_shim_fixer.test.ts');
+    expect(workflow).toContain('Native Windows E2E tests');
+    expect(workflow).toContain('test/e2e/install-ps1.test.ts');
   });
 });

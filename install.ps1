@@ -51,7 +51,18 @@ function Assert-Sha512Integrity {
         throw "Registry SHA-512 integrity value has an invalid length."
     }
     $ExpectedHex = -join ($ExpectedBytes | ForEach-Object { $_.ToString("x2") })
-    $ActualHex = (Get-FileHash -Path $Path -Algorithm SHA512).Hash.ToLowerInvariant()
+    $Stream = [IO.File]::OpenRead($Path)
+    try {
+        $Hasher = [Security.Cryptography.SHA512]::Create()
+        try {
+            $ActualBytes = $Hasher.ComputeHash($Stream)
+        } finally {
+            $Hasher.Dispose()
+        }
+    } finally {
+        $Stream.Dispose()
+    }
+    $ActualHex = -join ($ActualBytes | ForEach-Object { $_.ToString("x2") })
     if ($ActualHex -ne $ExpectedHex) {
         Remove-Item $Path -Force -ErrorAction SilentlyContinue
         throw "SHA-512 integrity verification failed for $Path."
@@ -251,7 +262,7 @@ $FinalPath = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;" + ($cleanPathList -join ';') + ";$BV
 $env:Path = "$BVM_SHIMS_DIR;$BVM_BIN_DIR;$env:Path;$BVM_DIR\current\bin"
 
 # --- 8. Initialize BVM (Self-Repair) ---
-& (Join-Path $TARGET_DIR "bin\bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent
+& (Join-Path $TARGET_PHYSICAL_DIR "bin\bun.exe") (Join-Path $BVM_SRC_DIR "index.js") setup --silent
 
 Write-Host "`n[OK] BVM installed successfully!" -ForegroundColor Green
 Write-Host "IMPORTANT: Please close this terminal and open a NEW one to apply changes." -ForegroundColor Cyan

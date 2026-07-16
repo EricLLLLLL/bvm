@@ -49,7 +49,20 @@ jobs:
           website/test/sync-docs.test.ts
 
       - run: bun run test:isolated
-      - run: bun run test:e2e
+
+      - name: E2E tests
+        if: runner.os != 'Windows'
+        run: bun run test:e2e
+
+      - name: Native Windows E2E tests
+        if: runner.os == 'Windows'
+        run: >-
+          bun test
+          test/e2e/commands.test.ts
+          test/e2e/install-ps1.test.ts
+          test/e2e/install.test.ts
+          test/e2e/maintenance.test.ts
+          test/e2e/npm_verify_safety.test.ts
 
       - name: Coverage
         if: runner.os == 'Linux'
