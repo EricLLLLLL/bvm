@@ -1,6 +1,6 @@
 {
   "name": "bvm-core",
-  "version": "1.1.42",
+  "version": "1.1.43",
   "description": "Bun version manager with reliable public-mirror downloads for mainland China, cross-platform switching, and runtime isolation.",
   "main": "dist/index.js",
   "bin": {
@@ -91,10 +91,10 @@
     "typescript": "^5"
   },
   "bvm_artifact_sha256": {
-    "cli": "e43bf595db5554d0b5ba4602b3a44c6ae49a3cd13aea16a2ab6c94a7a21d8aad",
+    "cli": "c6b1f20724124f9387e269caada94d43fe2b054e9e11ed73f0f7fa4b22bf9443",
     "shim_win": "356a7cf7090d6ccd4d5edaa37c16eeb20deb2cc6278a800708b2636108572c5b",
     "shim_unix": "64a5a5c7cc55c70922f668ca4c94ddbf84d25febb14a93b4dda13ba7a4b8226d",
-    "install_sh": "d7360dd6097a8c1b786bb91383b31508e2cea55437db59e4a58d9b10d864bdc8",
-    "install_ps1": "61960ae99c2255dca94039476cabed2b7164429242b60da9fda6f9160764963f"
+    "install_sh": "31ff96ea849c9107ac91b9074b6da6846cf6eb6cc0c899e74a82c2c0bca6c6f8",
+    "install_ps1": "c395e267641843771c94ca07eab9ea8a3f4d9201ea8809320df0d2fcf7e0bf4c"
   }
 }

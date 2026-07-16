@@ -128,7 +128,7 @@ function Test-Avx2Support {
 $BVM_REGION = Detect-NetworkZone
 $REGISTRIES = @(Get-RegistryCandidates)
 
-$DEFAULT_BVM_VER = "v1.1.42"
+$DEFAULT_BVM_VER = "v1.1.43"
 $FALLBACK_BUN_VERSION = "1.3.11"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
