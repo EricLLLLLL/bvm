@@ -33,4 +33,15 @@ describe('release safety contract', () => {
     expect(pkg.scripts['test:coverage']).toBeDefined();
     expect(pkg.scripts.verify).toBeDefined();
   });
+
+  test('CI typechecks the isolated Remotion project with its own dependencies', () => {
+    const websiteTsconfig = readFileSync(join(root, 'website/tsconfig.json'), 'utf8');
+    const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
+    const remotionPkg = JSON.parse(readFileSync(join(root, 'website/remotion-bvm/package.json'), 'utf8'));
+
+    expect(websiteTsconfig).toContain('"exclude": ["remotion-bvm"]');
+    expect(workflow).toContain('npm ci --prefix website/remotion-bvm');
+    expect(workflow).toContain('npm exec --prefix website/remotion-bvm tsc');
+    expect(remotionPkg.devDependencies['@types/node']).toBeDefined();
+  });
 });
