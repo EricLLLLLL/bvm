@@ -1,6 +1,6 @@
 {
   "name": "bvm-core",
-  "version": "1.1.40",
+  "version": "1.1.41",
   "description": "Need a Bun version manager? BVM installs, switches, and isolates Bun versions across Windows, macOS, and Linux.",
   "main": "dist/index.js",
   "bin": {
@@ -91,10 +91,10 @@
     "typescript": "^5"
   },
   "bvm_artifact_sha256": {
-    "cli": "e140b525dfb38cfcc5ece58bffabcc2286bbffe1ef2e34b85748aaa08bd764dd",
+    "cli": "5131d7d6e221b4c6d87eea1fe3f459c06b51b3eec5542b42d872e51fa2eb096a",
     "shim_win": "356a7cf7090d6ccd4d5edaa37c16eeb20deb2cc6278a800708b2636108572c5b",
     "shim_unix": "4b4577b44251b6fbc63d789540361a05829c3949b3f5bf60433bd78ce71ed89b",
-    "install_sh": "d20152ed659fa8ed57b11cdcad7b3a76347dcf40700b0f89f849919f6ae020f1",
-    "install_ps1": "700d964189c1d2b3f5a9c1187fe8b8ae4b34daf05e23e32c743ad0ce1c846c63"
+    "install_sh": "b0b98f664045a2f36115871200da3c5bf463b1dbb31ba7b28563ddcfad510c09",
+    "install_ps1": "887128b04cdbbfc3d9101e0b6c8ed8583d7863d30a9cfda00b228c480b9cce2a"
   }
 }
