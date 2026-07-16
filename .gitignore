@@ -44,6 +44,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # local temp artifacts
 tmp-*.txt
 tmp-*.bin
+.worktrees/
 
 # bvm sandbox
 .sandbox-home/
