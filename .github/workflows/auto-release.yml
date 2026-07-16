@@ -97,5 +97,5 @@ jobs:
       - name: Purge jsDelivr cache
         if: steps.npm.outputs.publish == 'true'
         run: |
-          curl --fail-with-body "https://purge.jsdelivr.net/gh/${{ github.repository }}@${{ steps.release.outputs.tag }}/dist/index.js"
-          curl --fail-with-body "https://purge.jsdelivr.net/gh/${{ github.repository }}@latest/dist/index.js"
+          curl --fail-with-body "https://purge.jsdelivr.net/npm/${{ steps.release.outputs.package }}@${{ steps.release.outputs.version }}/dist/index.js"
+          curl --fail-with-body "https://purge.jsdelivr.net/npm/${{ steps.release.outputs.package }}@latest/dist/index.js"

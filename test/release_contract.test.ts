@@ -21,6 +21,8 @@ describe('release safety contract', () => {
     expect(workflow).not.toContain('git push -f');
     expect(workflow).toContain('oven-sh/setup-bun@v2');
     expect(workflow).toContain("bun-version: '1.3.11'");
+    expect(workflow).toContain('purge.jsdelivr.net/npm/${{ steps.release.outputs.package }}@${{ steps.release.outputs.version }}/dist/index.js');
+    expect(workflow).not.toContain('purge.jsdelivr.net/gh/');
   });
 
   test('package exposes one reproducible verification entrypoint', () => {
