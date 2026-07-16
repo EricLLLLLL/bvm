@@ -1,7 +1,7 @@
 {
   "name": "bvm-core",
   "version": "1.1.41",
-  "description": "Need a Bun version manager? BVM installs, switches, and isolates Bun versions across Windows, macOS, and Linux.",
+  "description": "Bun version manager with reliable public-mirror downloads for mainland China, cross-platform switching, and runtime isolation.",
   "main": "dist/index.js",
   "bin": {
     "bvm": "bin/bvm-npm.js"

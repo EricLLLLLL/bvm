@@ -5,7 +5,7 @@
     <img src="https://bvm-core.nexsail.top/logo.svg" alt="BVM Logo" width="180" height="180" />
   </a>
 
-  <h3 align="center">The Native, Zero-Dependency Version Manager for Bun</h3>
+  <h3 align="center">Reliable Bun Downloads for Mainland China</h3>
 
   <p align="center">
     <strong>If BVM saves you time, please give it a GitHub Star.</strong>
@@ -54,15 +54,16 @@
 
 ---
 
-Need to switch Bun versions across Windows, macOS, and Linux without PATH drift or global package conflicts?
+Need reliable Bun installation in mainland China, plus version switching across Windows, macOS, and Linux without PATH drift or global package conflicts?
 
-BVM, published on npm as `bvm-core`, is an independent Bun Version Manager. It helps developers and AI coding agents install Bun, switch Bun versions, isolate global Bun tools, and verify repeatable Bun setup for projects that use Bun, Vite, React, Vue, TypeScript, or full-stack JavaScript.
+BVM, published on npm as `bvm-core`, is a Bun Version Manager built around reliable public-mirror downloads. It selects reachable npm-compatible mirrors, falls back when a source fails, verifies every runtime archive with SHA-512, and keeps Bun versions isolated.
 
 ## What BVM Is
 
 BVM is an independent Bun Version Manager for Windows, macOS, and Linux.
 
 - It installs and switches Bun versions with one CLI workflow.
+- It makes Bun installation usable in mainland China without requiring a BVM-owned service.
 - It isolates global tools per Bun version.
 - It gives developers and AI clients a repeatable Bun setup path.
 
@@ -90,7 +91,7 @@ bun --version
 
 ## ⚡ Quick Install
 
-BVM uses a smart installation script that automatically detects your OS and network environment (selecting the fastest registry for China/Global users).
+BVM tries npmmirror, Tencent Cloud's npm mirror, and npmjs as ordered public sources. Metadata or archive failures advance to the next source; downloaded runtimes are accepted only after SHA-512 verification.
 
 For AI assistants (auto install + setup + verification): [install.md](./install.md)
 
@@ -116,8 +117,33 @@ npm install -g bvm-core@latest --foreground-scripts
 - **🚀 No Shell Startup Hook**: BVM resolves Bun versions when its shims are invoked instead of running a version-manager hook during shell startup.
 - **🛡️ Bunker Architecture**: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
 - **🛡️ Atomic Isolation**: Each Bun version has its own global package directory. No more conflicts.
-- **🌏 Smart Mirroring & Auto-Config**: Automatically selects the fastest registry for downloads AND auto-configures `bunfig.toml` for instant, "no-magic" `bun install` speeds.
+- **🌏 Mainland China First**: Ranks npmmirror, Tencent Cloud, and npmjs by cached health, then falls back across them for metadata and runtime downloads.
 - **📦 Zero Dependency**: BVM bootstraps itself. No pre-requisites required (it can reuse your system Bun or download its own).
+
+---
+
+## Public Mirror Engine
+
+Automatic mode uses these public registries:
+
+1. `https://registry.npmmirror.com`
+2. `https://mirrors.cloud.tencent.com/npm`
+3. `https://registry.npmjs.org`
+
+Health results are cached for 24 hours. Inspect the current order or force a fresh connectivity test:
+
+```bash
+bvm network
+bvm network test
+```
+
+To pin a source, set `BVM_REGISTRY` (or the compatibility alias `BVM_DOWNLOAD_MIRROR`). An explicit source is authoritative, so BVM does not silently fall back to public registries:
+
+```bash
+BVM_REGISTRY=https://registry.npmmirror.com bvm install 1.3.11
+```
+
+These variables control BVM metadata and runtime downloads. The registry in `~/.bunfig.toml` controls later package installation performed by Bun.
 
 ---
 
@@ -131,6 +157,8 @@ npm install -g bvm-core@latest --foreground-scripts
 *   `bvm default 1.1.0`: Set a global default version for new shell sessions.
 *   `bvm ls`: List all locally installed versions.
 *   `bvm ls-remote`: List all available versions from the registry.
+*   `bvm network`: Show the cached public-mirror order and health.
+*   `bvm network test`: Test every active mirror and refresh the health cache.
 *   `bvm uninstall 1.1.0`: Remove a specific version.
 *   `bvm upgrade`: Upgrade BVM itself to the latest version.
 
@@ -194,7 +222,7 @@ No. BVM manages Bun runtimes and version switching. Skill installation is handle
 <details>
 <summary><strong>How to diagnose BVM environment issues quickly?</strong></summary>
 
-Run `bvm doctor`. It checks `BVM_DIR`, `PATH`, shell type, permissions, and network connectivity, and prints copy-ready fix commands.
+Run `bvm doctor`. It checks `BVM_DIR`, `PATH`, shell type, permissions, and mirror connectivity, and prints copy-ready fix commands. Run `bvm network test` for per-registry latency and failure details.
 </details>
 
 ---
@@ -207,6 +235,8 @@ Run `bvm doctor`. It checks `BVM_DIR`, `PATH`, shell type, permissions, and netw
   ```
   `bvm doctor` now checks `BVM_DIR`, `PATH`, shell type, directory permission, and network connectivity.
   Each item is shown as `PASS / WARN / FAIL` with a copy-ready fix command.
+
+- **Mirror download failures**: run `bvm network test`. If your organization requires one registry, retry with `BVM_REGISTRY=https://your-registry.example bvm install <version>`; explicit mode will not use public fallbacks.
 
 - **Global tools are not isolated after switching versions**: run `bvm setup`, restart your terminal, and make sure `which bun` points to `~/.bvm/shims/bun` (macOS/Linux). On Windows, use `where.exe bun` and ensure `...\\.bvm\\shims\\bun.cmd` is first.
 - **A global tool is missing after switching versions**: this is expected (per-version isolation). Reinstall it under the active Bun version.

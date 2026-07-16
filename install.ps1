@@ -27,6 +27,7 @@ $BVM_SRC_DIR = Join-Path $BVM_DIR "src"
 $BVM_RUNTIME_DIR = Join-Path $BVM_DIR "runtime"
 $BVM_ALIAS_DIR = Join-Path $BVM_DIR "aliases"
 $BVM_VERSIONS_DIR = Join-Path $BVM_DIR "versions"
+$CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
 
 # --- 1. Resolve Network & BVM Version ---
 function Detect-NetworkZone {
@@ -69,6 +70,53 @@ function Assert-Sha512Integrity {
     }
 }
 
+function Get-RegistryCandidates {
+    $Explicit = if ($env:BVM_REGISTRY) { $env:BVM_REGISTRY } else { $env:BVM_DOWNLOAD_MIRROR }
+    if ($Explicit) {
+        return @($Explicit.TrimEnd('/'))
+    }
+    return @(
+        "https://registry.npmmirror.com",
+        "https://mirrors.cloud.tencent.com/npm",
+        "https://registry.npmjs.org"
+    )
+}
+
+function Get-LatestPackageVersion {
+    param([Parameter(Mandatory = $true)][string]$Package)
+    foreach ($Registry in $REGISTRIES) {
+        try {
+            $Tags = Invoke-RestMethod -Uri "$Registry/-/package/$Package/dist-tags" -TimeoutSec 5
+            if ($Tags.latest) { return $Tags.latest }
+        } catch {}
+    }
+    return $null
+}
+
+function Save-RegistryPackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$Package,
+        [Parameter(Mandatory = $true)][string]$Version,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    foreach ($Registry in $REGISTRIES) {
+        try {
+            $Metadata = Invoke-RestMethod -Uri "$Registry/$Package/$Version" -TimeoutSec 10
+            $TarballUrl = $Metadata.dist.tarball
+            $Integrity = $Metadata.dist.integrity
+            if (-not $TarballUrl -or -not $Integrity -or -not $Integrity.StartsWith("sha512-")) { continue }
+            Remove-Item $Destination -Force -ErrorAction SilentlyContinue
+            & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$Destination" "$TarballUrl"
+            if ($LASTEXITCODE -ne 0) { continue }
+            Assert-Sha512Integrity -Path $Destination -Integrity $Integrity
+            return $Registry
+        } catch {
+            Remove-Item $Destination -Force -ErrorAction SilentlyContinue
+        }
+    }
+    throw "Unable to download a verified package from the configured registries: $Package@$Version"
+}
+
 function Test-Avx2Support {
     try {
         $Probe = Add-Type -MemberDefinition '[DllImport("kernel32.dll")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);' -Name 'Kernel32' -Namespace 'Win32' -PassThru
@@ -78,16 +126,14 @@ function Test-Avx2Support {
     }
 }
 $BVM_REGION = Detect-NetworkZone
-$REGISTRY = if ($BVM_REGION -eq "cn") { "registry.npmmirror.com" } else { "registry.npmjs.org" }
+$REGISTRIES = @(Get-RegistryCandidates)
 
 $DEFAULT_BVM_VER = "v1.1.41"
 $FALLBACK_BUN_VERSION = "1.3.11"
 $BVM_VER = if ($env:BVM_INSTALL_VERSION) { $env:BVM_INSTALL_VERSION } else { "" }
 if (-not $BVM_VER) {
-    try {
-        $Resp = Invoke-RestMethod -Uri "https://$REGISTRY/bvm-core" -TimeoutSec 5
-        $BVM_VER = "v" + $Resp."dist-tags".latest
-    } catch { $BVM_VER = $DEFAULT_BVM_VER }
+    $LatestBvm = Get-LatestPackageVersion -Package "bvm-core"
+    $BVM_VER = if ($LatestBvm) { "v$LatestBvm" } else { $DEFAULT_BVM_VER }
 }
 Write-Host "BVM Installer ($BVM_REGION) - Resolving $BVM_VER..." -ForegroundColor Cyan
 
@@ -112,15 +158,8 @@ if ($Local) {
     }
 } else {
     $BVM_PLAIN_VER = $BVM_VER.TrimStart('v')
-    $BvmMetadata = Invoke-RestMethod -Uri "https://$REGISTRY/bvm-core/$BVM_PLAIN_VER" -TimeoutSec 10
-    $TARBALL_URL = $BvmMetadata.dist.tarball
-    $BVM_INTEGRITY = $BvmMetadata.dist.integrity
-    if (-not $TARBALL_URL -or -not $BVM_INTEGRITY) { throw "BVM package metadata is incomplete." }
-    $CURL_CMD = if (Get-Command "curl.exe" -ErrorAction SilentlyContinue) { "curl.exe" } else { "curl" }
-
     $TMP_TGZ = Join-Path $BVM_DIR "bvm-core.tgz"
-    & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$TMP_TGZ" "$TARBALL_URL"
-    Assert-Sha512Integrity -Path $TMP_TGZ -Integrity $BVM_INTEGRITY
+    Save-RegistryPackage -Package "bvm-core" -Version $BVM_PLAIN_VER -Destination $TMP_TGZ | Out-Null
     $EXT_DIR = Join-Path $BVM_DIR "temp_bvm_extract"
     if (Test-Path $EXT_DIR) { Remove-Item $EXT_DIR -Recurse -Force }
     New-Item -ItemType Directory -Path $EXT_DIR | Out-Null
@@ -176,10 +215,8 @@ if ($SYSTEM_BUN_BIN) {
 if ($USE_SYSTEM_AS_RUNTIME) {
     # Already set up
 } else {
-    try {
-        $BunLatest = (Invoke-RestMethod -Uri "https://$REGISTRY/-/package/bun/dist-tags" -TimeoutSec 5).latest
-        $BUN_VER = "v$BunLatest"
-    } catch { $BUN_VER = "v$FALLBACK_BUN_VERSION" }
+    $BunLatest = Get-LatestPackageVersion -Package "bun"
+    $BUN_VER = if ($BunLatest) { "v$BunLatest" } else { "v$FALLBACK_BUN_VERSION" }
     $TARGET_PHYSICAL_DIR = Join-Path $BVM_RUNTIME_DIR $BUN_VER
     
     if (-not (Test-Path (Join-Path $TARGET_PHYSICAL_DIR "bin\bun.exe"))) {
@@ -192,12 +229,8 @@ if ($USE_SYSTEM_AS_RUNTIME) {
             Write-Host "Downloading Runtime (bun@$($BUN_VER.TrimStart('v')))..."
             $BUN_PACKAGE_SUFFIX = if (Test-Avx2Support) { "" } else { "-baseline" }
             $BUN_PACKAGE = "@oven/bun-windows-x64$BUN_PACKAGE_SUFFIX"
-            $BunMetadata = Invoke-RestMethod -Uri "https://$REGISTRY/$BUN_PACKAGE/$($BUN_VER.TrimStart('v'))" -TimeoutSec 10
-            $URL = $BunMetadata.dist.tarball
-            $BUN_INTEGRITY = $BunMetadata.dist.integrity
-            if (-not $URL -or -not $BUN_INTEGRITY) { throw "Bun runtime package metadata is incomplete." }
-            & $CURL_CMD "-#SfL" "-C" "-" "--connect-timeout" "20" "--max-time" "600" "--retry" "3" "-o" "$TMP" "$URL"
-            Assert-Sha512Integrity -Path $TMP -Integrity $BUN_INTEGRITY
+            $BUN_PLAIN_VER = $BUN_VER.TrimStart('v')
+            Save-RegistryPackage -Package $BUN_PACKAGE -Version $BUN_PLAIN_VER -Destination $TMP | Out-Null
         }
 
         $EXT = Join-Path $BVM_DIR "temp_extract"

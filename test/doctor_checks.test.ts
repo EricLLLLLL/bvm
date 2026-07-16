@@ -17,7 +17,7 @@ describe('doctor checks', () => {
       shellType: 'zsh',
       shellRaw: '/bin/zsh',
       directoryWritable: true,
-      networkReachable: true,
+      network: { status: 'pass', detail: 'npmmirror reachable in 42 ms' },
       osPlatform: 'linux',
     });
 
@@ -33,7 +33,7 @@ describe('doctor checks', () => {
       shellType: 'bash',
       shellRaw: '/bin/bash',
       directoryWritable: true,
-      networkReachable: true,
+      network: { status: 'pass', detail: 'npmmirror reachable in 42 ms' },
       osPlatform: 'linux',
     });
 
@@ -51,12 +51,34 @@ describe('doctor checks', () => {
       shellType: 'fish',
       shellRaw: '/usr/bin/fish',
       directoryWritable: false,
-      networkReachable: true,
+      network: { status: 'pass', detail: 'npmmirror reachable in 42 ms' },
       osPlatform: 'linux',
     });
 
     const permissionCheck = getCheck('permission', checks);
     expect(permissionCheck.status).toBe('fail');
     expect(permissionCheck.fixCommand).toContain('chmod');
+  });
+
+  test('network uses the shared mirror health status and remediation', () => {
+    const checks = buildDoctorChecks({
+      bvmDir: '/tmp/.bvm',
+      bvmDirExists: true,
+      pathHasShims: true,
+      pathHasBin: true,
+      shellType: 'zsh',
+      shellRaw: '/bin/zsh',
+      directoryWritable: true,
+      network: {
+        status: 'warn',
+        detail: 'Fresh probes failed; cached npmmirror health is available',
+      },
+      osPlatform: 'linux',
+    });
+
+    const networkCheck = getCheck('network', checks);
+    expect(networkCheck.status).toBe('warn');
+    expect(networkCheck.detail).toContain('cached npmmirror');
+    expect(networkCheck.fixCommand).toBe('bvm network test');
   });
 });

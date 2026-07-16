@@ -4,10 +4,21 @@ import { normalizeVersion } from './utils';
 import { valid, rcompare, parse, compareParsed } from './utils/semver-lite';
 import { colors } from './utils/ui';
 import { getBunNpmPackage, getBunDownloadUrl } from './utils/npm-lookup';
-import { getFastestRegistry, fetchWithTimeout, REGISTRIES } from './utils/network-utils';
+import { getFastestRegistry, fetchWithTimeout } from './utils/network-utils';
+import { REGISTRY_CANDIDATES } from './utils/registry-selector';
 
 const VERSIONS_CACHE_FILE = 'bun-versions.json';
 const VERSIONS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+async function getOrderedRegistries(): Promise<string[]> {
+  const explicitRegistry = process.env.BVM_REGISTRY || process.env.BVM_DOWNLOAD_MIRROR;
+  const firstRegistry = explicitRegistry || await getFastestRegistry();
+  return [
+    firstRegistry,
+    ...(explicitRegistry ? [] : REGISTRY_CANDIDATES.map((candidate) => candidate.url)),
+  ].map((registry) => registry.replace(/\/+$/, ''))
+    .filter((registry, index, all) => all.indexOf(registry) === index);
+}
 
 /**
  * Fetches available Bun versions from the NPM registry.
@@ -29,12 +40,7 @@ export async function fetchBunVersionsFromNpm(): Promise<string[]> {
       }
   } catch (e) {}
 
-  const fastestRegistry = await getFastestRegistry();
-  // Fallback: If fastest fails, try official
-  const registries = [fastestRegistry];
-  if (fastestRegistry !== 'https://registry.npmjs.org') {
-      registries.push('https://registry.npmjs.org');
-  }
+  const registries = await getOrderedRegistries();
 
   let lastError: Error | null = null;
 
@@ -150,20 +156,21 @@ export async function checkBunVersionExists(version: string): Promise<boolean> {
     return TEST_REMOTE_VERSIONS.includes(version) || version === 'latest';
   }
 
-  const registry = await getFastestRegistry();
   const plainVersion = version.replace(/^v/, '');
-  const url = `${registry}/bun/${plainVersion}`;
-
-  try {
-    const response = await fetchWithTimeout(url, {
-      method: 'HEAD',
-      headers: { 'User-Agent': USER_AGENT },
-      timeout: 5000,
-    });
-    return response.ok;
-  } catch {
-    return false;
+  const registries = await getOrderedRegistries();
+  for (const registry of registries) {
+    try {
+      const response = await fetchWithTimeout(`${registry}/bun/${plainVersion}`, {
+        method: 'HEAD',
+        headers: { 'User-Agent': USER_AGENT },
+        timeout: 5000,
+      });
+      if (response.ok) return true;
+    } catch {
+      // Try the next configured public mirror.
+    }
   }
+  return false;
 }
 
 /**
@@ -173,19 +180,22 @@ export async function checkBunVersionExists(version: string): Promise<boolean> {
 export async function fetchBunDistTags(): Promise<Record<string, string>> {
   if (isTestMode()) return { latest: '1.1.20' };
 
-  const registry = await getFastestRegistry();
-  const url = `${registry}/-/package/bun/dist-tags`;
-
-  try {
-    const response = await fetchWithTimeout(url, {
+  const registries = await getOrderedRegistries();
+  for (const registry of registries) {
+    try {
+      const response = await fetchWithTimeout(`${registry}/-/package/bun/dist-tags`, {
         headers: { 'User-Agent': USER_AGENT },
-        timeout: 5000
-    });
-    
-    if (response.ok) {
-        return await response.json();
+        timeout: 5000,
+      });
+      if (!response.ok) continue;
+      const tags = await response.json() as Record<string, string>;
+      if (tags && typeof tags === 'object') {
+        return tags;
+      }
+    } catch {
+      // Try the next configured public mirror.
     }
-  } catch (e) {}
+  }
   return {};
 }
 
@@ -196,7 +206,7 @@ export async function fetchBunDistTags(): Promise<Record<string, string>> {
  */
 export interface BunDownloadInfo {
   url: string;
-  mirrorUrl?: string;
+  urls: string[];
   foundVersion: string;
   integrity: string;
 }
@@ -214,6 +224,7 @@ export async function findBunDownloadUrl(
     if (isTestMode()) {
         return {
           url: `https://example.com/${getBunAssetName(fullVersion)}`,
+          urls: [`https://example.com/${getBunAssetName(fullVersion)}`],
           foundVersion: fullVersion,
           integrity: `sha512-${Buffer.alloc(64).toString('base64')}`,
         };
@@ -231,41 +242,46 @@ export async function findBunDownloadUrl(
         throw new Error(`Unsupported platform/arch for NPM download: ${OS_PLATFORM}-${detectedArch}`);
     }
 
-    // Determine Registry
-    // Priority: BVM_REGISTRY > Race Strategy
-    let registry = '';
-    if (process.env.BVM_REGISTRY) {
-        registry = process.env.BVM_REGISTRY;
-    } else if (process.env.BVM_DOWNLOAD_MIRROR) {
-        registry = process.env.BVM_DOWNLOAD_MIRROR;
-    } else {
-        registry = await getFastestRegistry();
-    }
+    const registries = await getOrderedRegistries();
 
-    // Strip 'v' from version for NPM (1.1.0 not v1.1.0)
     const plainVersion = fullVersion.replace(/^v/, '');
-    const cleanRegistry = registry.replace(/\/$/, '');
-    const metadataResponse = await fetchWithTimeout(`${cleanRegistry}/${npmPackage}/${plainVersion}`, {
-      headers: { 'User-Agent': USER_AGENT },
-      timeout: 10000,
-    });
-    if (!metadataResponse.ok) {
-      throw new Error(`Failed to fetch Bun package metadata: status ${metadataResponse.status}`);
+    let url = '';
+    let integrity = '';
+    const metadataFailures: string[] = [];
+    for (const registry of registries) {
+      try {
+        const metadataResponse = await fetchWithTimeout(`${registry}/${npmPackage}/${plainVersion}`, {
+          headers: { 'User-Agent': USER_AGENT },
+          timeout: 10000,
+        });
+        if (!metadataResponse.ok) throw new Error(`status ${metadataResponse.status}`);
+        const metadata = await metadataResponse.json() as {
+          dist?: { tarball?: string; integrity?: string };
+        };
+        if (!metadata.dist?.tarball || !metadata.dist.integrity?.startsWith('sha512-')) {
+          throw new Error('missing SHA-512 integrity');
+        }
+        url = metadata.dist.tarball;
+        integrity = metadata.dist.integrity;
+        break;
+      } catch (error: any) {
+        metadataFailures.push(`${registry}: ${error.message}`);
+      }
     }
-    const metadata = await metadataResponse.json() as {
-      dist?: { tarball?: string; integrity?: string };
-    };
-    const url = metadata.dist?.tarball;
-    const integrity = metadata.dist?.integrity;
-    if (!url || !integrity?.startsWith('sha512-')) {
-      throw new Error(`Bun package metadata for ${npmPackage}@${plainVersion} is missing SHA-512 integrity.`);
+    if (!url || !integrity) {
+      throw new Error(
+        `Bun package metadata for ${npmPackage}@${plainVersion} is missing SHA-512 integrity or unavailable. Attempted: ${metadataFailures.join('; ')}`,
+      );
     }
-    
-    // Always provide mirror URL for fallback (use npmmirror as reliable mirror)
-    const mirrorRegistry = REGISTRIES.TAOBAO; // npmmirror
-    const mirrorUrl = getBunDownloadUrl(npmPackage, plainVersion, mirrorRegistry);
 
-    return { url, mirrorUrl, foundVersion: fullVersion, integrity };
+    const urls = [
+      url,
+      ...registries
+        .filter((registry) => !url.startsWith(`${registry}/`))
+        .map((registry) => getBunDownloadUrl(npmPackage, plainVersion, registry)),
+    ].filter((candidate, index, all) => all.indexOf(candidate) === index);
+
+    return { url, urls, foundVersion: fullVersion, integrity };
 }
 
 /**
@@ -273,40 +289,37 @@ export async function findBunDownloadUrl(
  * @returns Object with version, tarball url, and integrity check.
  */
 export async function fetchLatestBvmReleaseInfo(): Promise<{ version: string; tarball: string; integrity: string; shasum: string } | null> {
-  try {
-    const registry = await getFastestRegistry();
-    const cleanRegistry = registry.replace(/\/$/, '');
-    
-    // 1. Get latest version tag
-    const distTagsRes = await fetchWithTimeout(`${cleanRegistry}/-/package/bvm-core/dist-tags`, {
+  const registries = await getOrderedRegistries();
+  for (const registry of registries) {
+    try {
+      const distTagsRes = await fetchWithTimeout(`${registry}/-/package/bvm-core/dist-tags`, {
         headers: { 'User-Agent': USER_AGENT },
-        timeout: 5000
-    });
+        timeout: 5000,
+      });
 
-    if (!distTagsRes.ok) return null;
-    const tags = await distTagsRes.json();
-    const latestVersion = tags.latest;
-    if (!latestVersion) return null;
+      if (!distTagsRes.ok) continue;
+      const tags = await distTagsRes.json();
+      const latestVersion = tags.latest;
+      if (!latestVersion) continue;
 
-    // 2. Get full metadata for this version
-    const versionRes = await fetchWithTimeout(`${cleanRegistry}/bvm-core/${latestVersion}`, {
+      const versionRes = await fetchWithTimeout(`${registry}/bvm-core/${latestVersion}`, {
         headers: { 'User-Agent': USER_AGENT },
-        timeout: 5000
-    });
+        timeout: 5000,
+      });
 
-    if (versionRes.ok) {
-        const data = await versionRes.json();
-        return {
-            version: latestVersion,
-            tarball: data.dist.tarball,
-            integrity: data.dist.integrity,
-            shasum: data.dist.shasum
-        };
+      if (!versionRes.ok) continue;
+      const data = await versionRes.json();
+      if (!data.dist?.tarball || !data.dist.integrity) continue;
+      return {
+        version: latestVersion,
+        tarball: data.dist.tarball,
+        integrity: data.dist.integrity,
+        shasum: data.dist.shasum,
+      };
+    } catch {
+      // Try the next configured public mirror.
     }
-  } catch (e) {
-      // Silently fail
   }
-  
   return null;
 }
 

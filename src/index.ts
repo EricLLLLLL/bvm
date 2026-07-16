@@ -23,6 +23,7 @@ import { doctor } from './commands/doctor';
 import { handleConfigCommand } from './commands/config';
 import { rehash } from './commands/rehash';
 import { printCompletion } from './commands/completion';
+import { networkCommand } from './commands/network';
 
 // --- Main Execution ---
 
@@ -118,6 +119,9 @@ async function main() {
 
   app.command('doctor', 'Show diagnostics for Bun/BVM setup')
     .action(async () => { await doctor(); });
+
+  app.command('network [test]', 'Show or refresh public mirror health')
+    .action(async (args) => { await networkCommand(args[0]); });
 
   app.command('completion <shell>', 'Generate shell completion script (bash|zsh|fish)')
     .action(async (args) => { if (!args[0]) throw new Error('Shell name is required'); printCompletion(args[0]); });

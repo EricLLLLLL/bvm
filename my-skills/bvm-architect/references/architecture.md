@@ -81,13 +81,14 @@ The block is kept at the end of the relevant shell configuration file to preserv
 
 ## 5. Registry and artifact flow
 
-BVM uses npm-compatible registry metadata for BVM packages and Bun runtime packages. Registry selection may use region detection and response racing; inspect `src/utils/network-utils.ts` and installer-specific logic for the current candidates.
+BVM uses npm-compatible registry metadata for BVM packages and Bun runtime packages. `src/utils/registry-selector.ts` owns the shared candidate model, versioned health cache, ranking, and explicit-source precedence. Automatic mode ranks npmmirror, Tencent Cloud's npm mirror, and npmjs. Metadata and archive failures advance through that ordered list.
+
+`BVM_REGISTRY` and `BVM_DOWNLOAD_MIRROR` select one authoritative custom source. Explicit mode does not silently fall back to the public catalog. `bvm network` reads the cached ranking; `bvm network test` refreshes connectivity and latency data.
 
 Published BVM artifacts are available through:
 
 - The `bvm-core` npm package, which includes `dist/index.js`, platform shims, installers, and postinstall logic.
 - GitHub Release attachments for the immutable release tag.
-- The npm jsDelivr path for npm package assets.
 - The website install function, which resolves the published version and serves the tagged installer.
 
 Git tags do not currently contain generated `dist/` files. Do not construct GitHub jsDelivr `dist/` URLs from a tag.

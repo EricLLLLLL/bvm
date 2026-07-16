@@ -31,6 +31,7 @@ describe("Miscellaneous Commands Suite", () => {
     expect(output).toContain("_bvm_completions");
     expect(output).toContain("complete -F");
     expect(output).toContain("deactivate"); // Ensure our fix is present
+    expect(output).toContain("network");
   });
 
   test("completion zsh outputs script", async () => {

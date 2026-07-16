@@ -66,3 +66,20 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
 Then retry the installer.
+
+## 5) Bun metadata or runtime downloads fail
+
+Show the cached registry order, then run a fresh test:
+
+```bash
+bvm network
+bvm network test
+```
+
+BVM automatic mode can use npmmirror, Tencent Cloud's npm mirror, and npmjs. If your organization requires one source, make it explicit:
+
+```bash
+BVM_REGISTRY=https://your-registry.example bvm install <version>
+```
+
+Explicit mode is authoritative and does not silently use public fallbacks. BVM still requires SHA-512 integrity metadata before installing a downloaded runtime.

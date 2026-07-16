@@ -163,15 +163,20 @@ function hasAvx2() {
     return detectAvx2Support(process.platform, getNativeArch());
 }
 
-function getFastestRegistry() {
+function getRegistryCandidates() {
+    const explicit = process.env.BVM_REGISTRY || process.env.BVM_DOWNLOAD_MIRROR;
+    if (explicit) {
+        return [{ name: 'custom', url: explicit.replace(/\/+$/, ''), time: 0 }];
+    }
     const registries = [
         { name: 'npmmirror', url: 'https://registry.npmmirror.com' },
+        { name: 'tencent', url: 'https://mirrors.cloud.tencent.com/npm' },
         { name: 'npmjs', url: 'https://registry.npmjs.org' }
     ];
     log('Racing registries for speed...');
     const results = registries.map(reg => {
         const start = Date.now();
-        const res = run('curl', ['-I', '-s', '--connect-timeout', '2', reg.url]);
+        const res = run('curl', ['-s', '--fail', '--connect-timeout', '2', `${reg.url}/-/ping`]);
         return { ...reg, time: res.status === 0 ? (Date.now() - start) : 9999 };
     });
     results.sort((a, b) => a.time - b.time);
@@ -184,14 +189,13 @@ function downloadAndInstall() {
     const arch = getNativeArch() === 'arm64' ? 'aarch64' : 'x64';
     const pkgName = `@oven/bun-${platform}-${arch}${ (arch === 'x64' && !hasAvx2()) ? '-baseline' : ''}`;
     
-    const sortedRegs = getFastestRegistry();
+    const sortedRegs = getRegistryCandidates();
     const versionsToTry = ['latest', FALLBACK_BUN_VERSION];
     const tempTgz = path.join(os.tmpdir(), `bvm-bun-${Date.now()}.tgz`);
 
     for (const verReq of versionsToTry) {
         log(`\n--- Attempting Bun ${verReq} ---`);
         for (const reg of sortedRegs) {
-            if (reg.time >= 9999) continue;
             const target = verReq === 'latest' ? pkgName : `${pkgName}@${verReq}`;
             log(`Checking ${target} from ${reg.name}...`);
             const infoRes = run('npm', ['info', target, '--json', '--registry', reg.url]);

@@ -43,6 +43,7 @@ describe('installer integrity contract', () => {
 
   test('CLI re-verifies cached archives and extracts into a staging runtime', () => {
     const source = read('src/commands/install.ts');
+    expect(source).toContain('await downloadFileFromCandidates(urls, tmp, spinner, foundVersion, integrity)');
     expect(source).toContain('await verifyFileIntegrity(cachedArchivePath, integrity)');
     expect(source).toContain('const stagingRuntimeDir = `${runtimeDir}.installing-${process.pid}-');
     expect(source).toContain('await replaceRuntimeDirectory(stagingRuntimeDir, runtimeDir)');

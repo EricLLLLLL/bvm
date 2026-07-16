@@ -14,6 +14,7 @@ const commandList = [
   'setup',
   'upgrade',
   'doctor',
+  'network',
   'completion',
   'deactivate',
   'help',

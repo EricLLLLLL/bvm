@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeAll, afterAll } from "bun:test";
-import { downloadFileWithProgress } from "../src/commands/install";
+import { downloadFileFromCandidates, downloadFileWithProgress } from "../src/commands/install";
 import { rm, exists } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
@@ -10,6 +10,31 @@ describe("Download Robustness", () => {
 
     afterAll(async () => {
         try { await rm(testDest, { force: true }); } catch(e) {}
+    });
+
+    it("should retry one source once before advancing to the next source", async () => {
+        const attempts: string[] = [];
+
+        await downloadFileFromCandidates(
+            ["https://a.example/file.tgz", "https://b.example/file.tgz"],
+            testDest,
+            null,
+            "v1.0.0",
+            helloIntegrity,
+            {
+                download: async (url) => {
+                    attempts.push(url);
+                    if (url.includes("a.example")) throw new Error("connection reset");
+                },
+                sleep: async () => {},
+            },
+        );
+
+        expect(attempts).toEqual([
+            "https://a.example/file.tgz",
+            "https://a.example/file.tgz",
+            "https://b.example/file.tgz",
+        ]);
     });
 
     it("should retry on failure and eventually succeed", async () => {

@@ -62,3 +62,20 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
 再重试安装。
+
+## 5）Bun 元数据或运行时下载失败
+
+先查看缓存的 registry 顺序，再执行一次实时检测：
+
+```bash
+bvm network
+bvm network test
+```
+
+BVM 自动模式可使用 npmmirror、腾讯云 npm 镜像和 npmjs。企业环境需要固定源时，显式指定：
+
+```bash
+BVM_REGISTRY=https://your-registry.example bvm install <version>
+```
+
+显式模式具有最高优先级，不会静默使用公共回退。BVM 仍会要求 SHA-512 完整性元数据，校验通过后才安装运行时。

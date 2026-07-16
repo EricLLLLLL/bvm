@@ -10,7 +10,8 @@ import {
   BVM_SHIMS_DIR,
   OS_PLATFORM,
   getCpuArch,
-  hasAvx2Support
+  hasAvx2Support,
+  isTestMode,
 } from '../constants';
 import {
   getInstalledVersions,
@@ -22,7 +23,7 @@ import {
 } from '../utils';
 import { withSpinner } from '../command-runner';
 import { BunfigManager } from '../utils/bunfig';
-import { fetchWithTimeout } from '../utils/network-utils';
+import { selectRegistries } from '../utils/registry-selector';
 import { resolveAliasPath } from '../utils/alias-name';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
@@ -44,7 +45,7 @@ export interface DoctorCheckInput {
   shellType: ShellType;
   shellRaw: string;
   directoryWritable: boolean;
-  networkReachable: boolean;
+  network: { status: CheckStatus; detail: string };
   osPlatform: string;
 }
 
@@ -167,12 +168,10 @@ export function buildDoctorChecks(input: DoctorCheckInput): DoctorCheckResult[] 
     },
     {
       key: 'network',
-      title: 'Network Connectivity',
-      status: input.networkReachable ? 'pass' : 'warn',
-      detail: input.networkReachable
-        ? 'Able to reach registry.npmjs.org'
-        : 'Cannot reach registry.npmjs.org',
-      fixCommand: 'bvm config registry auto',
+      title: 'Registry Connectivity',
+      status: input.network.status,
+      detail: input.network.detail,
+      fixCommand: 'bvm network test',
     },
   ];
 }
@@ -184,7 +183,7 @@ async function gatherDoctorChecks(): Promise<DoctorCheckResult[]> {
   const pathHasShims = hasPathEntry(pathRaw, BVM_SHIMS_DIR);
   const pathHasBin = hasPathEntry(pathRaw, BVM_BIN_DIR);
   const directoryWritable = await canWriteBvmDir();
-  const networkReachable = await canReachRegistry();
+  const network = await getNetworkCheck();
 
   return buildDoctorChecks({
     bvmDir: BVM_DIR,
@@ -194,7 +193,7 @@ async function gatherDoctorChecks(): Promise<DoctorCheckResult[]> {
     shellType: detectShellType(shellRaw),
     shellRaw,
     directoryWritable,
-    networkReachable,
+    network,
     osPlatform: OS_PLATFORM,
   });
 }
@@ -211,16 +210,32 @@ async function canWriteBvmDir(): Promise<boolean> {
   }
 }
 
-async function canReachRegistry(): Promise<boolean> {
-  try {
-    const response = await fetchWithTimeout('https://registry.npmjs.org/-/ping', {
-      timeout: 2000,
-      method: 'GET',
-    });
-    return response.ok;
-  } catch {
-    return false;
+async function getNetworkCheck(): Promise<{ status: CheckStatus; detail: string }> {
+  if (isTestMode()) {
+    return { status: 'pass', detail: 'Registry probing is skipped in test mode' };
   }
+
+  const selection = await selectRegistries({ forceRefresh: true });
+  const reachable = selection.health.find((item) => item.reachable);
+  if (reachable) {
+    const latency = reachable.latencyMs === null ? '' : ` in ${reachable.latencyMs} ms`;
+    return { status: 'pass', detail: `${reachable.id} reachable${latency}` };
+  }
+
+  const stale = selection.staleHealth?.find((item) => item.reachable);
+  if (stale) {
+    return {
+      status: 'warn',
+      detail: `Fresh probes failed; cached ${stale.id} health is available`,
+    };
+  }
+
+  return {
+    status: 'fail',
+    detail: selection.mode === 'explicit'
+      ? 'Configured registry is unreachable'
+      : 'No public registry is reachable',
+  };
 }
 
 function hasPathEntry(pathValue: string, target: string): boolean {

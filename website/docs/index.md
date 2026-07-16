@@ -1,13 +1,13 @@
 ---
 title: BVM Bun Version Manager (bvm-core)
 titleTemplate: false
-description: BVM, published on npm as bvm-core, is a native zero-dependency version manager for Bun on Windows, macOS, and Linux.
+description: BVM provides reliable public-mirror Bun downloads for mainland China, version switching, and runtime isolation on Windows, macOS, and Linux.
 layout: home
 
 hero:
   name: "BVM"
   text: "Bun Version Manager"
-  tagline: "Published as bvm-core on npm. Install, switch, and isolate Bun versions on Windows, macOS, and Linux."
+  tagline: "Reliable public mirrors for mainland China. Install, switch, verify, and isolate Bun versions across Windows, macOS, and Linux."
   image:
     src: /logo.svg
     alt: BVM Logo
@@ -33,8 +33,8 @@ features:
     details: BVM adds no shell startup hook; version resolution happens when its shims are invoked.
   - title: 🛡️ Bunker Architecture
     details: BVM manages its own isolated Bun runtime, ensuring stability even if your system Bun is broken or missing.
-  - title: 🌏 Smart Mirroring
-    details: Automatically detects your region and picks the fastest registry (npmmirror/npmjs).
+  - title: 🌏 Mainland China Public Mirrors
+    details: Health-ranked npmmirror, Tencent Cloud, and npmjs sources with metadata and archive fallback plus SHA-512 verification.
 ---
 
 <script setup>

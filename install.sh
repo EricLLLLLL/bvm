@@ -47,8 +47,12 @@ download_file() {
         printf "\b"
     done
     printf "\033[?25h"
-    wait "$pid"
-    [ $? -eq 0 ] && echo -e "${GREEN}Done${RESET}" || (echo -e "${RED}Failed${RESET}"; return 1)
+    if wait "$pid"; then
+        echo -e "${GREEN}Done${RESET}"
+    else
+        echo -e "${RED}Failed${RESET}"
+        return 1
+    fi
 }
 
 json_string_field() {
@@ -71,6 +75,50 @@ verify_sha512() {
         rm -f "$file"
         error "SHA-512 integrity verification failed for $file."
     fi
+}
+
+registry_candidates() {
+    local explicit="${BVM_REGISTRY:-${BVM_DOWNLOAD_MIRROR:-}}"
+    if [ -n "$explicit" ]; then
+        printf '%s\n' "${explicit%/}"
+        return
+    fi
+    printf '%s\n' \
+      "https://registry.npmmirror.com" \
+      "https://mirrors.cloud.tencent.com/npm" \
+      "https://registry.npmjs.org"
+}
+
+latest_registry_version() {
+    local package="$1" registry metadata latest
+    for registry in $REGISTRIES; do
+        metadata=$(curl -fsSL --connect-timeout 5 --max-time 20 "${registry}/-/package/${package}/dist-tags" 2>/dev/null || true)
+        latest=$(printf '%s' "$metadata" | json_string_field latest)
+        if [ -n "$latest" ]; then
+            printf '%s\n' "$latest"
+            return 0
+        fi
+    done
+    return 1
+}
+
+download_registry_package() {
+    local package="$1" version="$2" dest="$3" desc="$4"
+    local registry metadata url integrity
+    for registry in $REGISTRIES; do
+        metadata=$(curl -fsSL --connect-timeout 5 --max-time 30 "${registry}/${package}/${version}" 2>/dev/null || true)
+        url=$(printf '%s' "$metadata" | json_string_field tarball)
+        integrity=$(printf '%s' "$metadata" | json_string_field integrity)
+        case "$integrity" in sha512-*) ;; *) continue ;; esac
+        [ -n "$url" ] || continue
+        rm -f "$dest"
+        if download_file "$url" "$dest" "$desc via ${registry}"; then
+            verify_sha512 "$dest" "$integrity"
+            SELECTED_REGISTRY="$registry"
+            return 0
+        fi
+    done
+    return 1
 }
 
 detect_network_zone() {
@@ -111,11 +159,7 @@ for arg in "$@"; do
 done
 
 BVM_REGION=$(detect_network_zone)
-if [ "$BVM_REGION" == "cn" ]; then
-    REGISTRY="registry.npmmirror.com"
-else
-    REGISTRY="registry.npmjs.org"
-fi
+REGISTRIES=$(registry_candidates)
 
 echo -e "${CYAN}__________              \n\______   \__  _______  \n |    |  _|  \/ /     \ \n |    |   \\   /  Y Y  \ \n |______  / \_/|__|_|  / \n        \/           \/ ${RESET}"
 echo -e "${CYAN}${BOLD}BVM Installer${RESET} ${DIM}(${BVM_REGION})${RESET}
@@ -147,19 +191,15 @@ if [ "$USE_LOCAL_ASSETS" = true ]; then
 else
     echo -n -e "${BLUE}ℹ${RESET} Resolving versions... "
     if [ -z "$BVM_SRC_VERSION" ]; then
-        BVM_LATEST=$(curl -s https://${REGISTRY}/bvm-core | grep -oE '"dist-tags":\{"latest":"[^" ]+"\}' | cut -d'"' -f6 || echo "")
+        BVM_LATEST=$(latest_registry_version "bvm-core" || true)
         BVM_SRC_VERSION="v${BVM_LATEST:-$DEFAULT_BVM_VERSION}"
     fi
     echo -e "${GREEN}${BVM_SRC_VERSION}${RESET}"
 
-    BVM_METADATA=$(curl -fsSL "https://${REGISTRY}/bvm-core/${BVM_SRC_VERSION#v}")
-    TARBALL_URL=$(printf '%s' "$BVM_METADATA" | json_string_field tarball)
-    BVM_INTEGRITY=$(printf '%s' "$BVM_METADATA" | json_string_field integrity)
-    [ -n "$TARBALL_URL" ] || error "Registry metadata is missing the BVM tarball URL."
-
     TEMP_TGZ=$(mktemp)
-    download_file "$TARBALL_URL" "$TEMP_TGZ" "Downloading BVM Source (${BVM_SRC_VERSION})..."
-    verify_sha512 "$TEMP_TGZ" "$BVM_INTEGRITY"
+    download_registry_package "bvm-core" "${BVM_SRC_VERSION#v}" "$TEMP_TGZ" \
+      "Downloading BVM Source (${BVM_SRC_VERSION})..." \
+      || error "Unable to download verified BVM source from the configured registries."
     tar -xzf "$TEMP_TGZ" -C "$BVM_SRC_DIR" --strip-components=2 "package/dist/index.js"
     tar -xzf "$TEMP_TGZ" -C "$BVM_BIN_DIR" --strip-components=2 "package/dist/bvm-shim.sh"
     rm -f "$TEMP_TGZ"
@@ -218,7 +258,8 @@ else
 
     # Resolve and download compatible runtime
 
-    BUN_LATEST=$(curl -s https://${REGISTRY}/-/package/bun/dist-tags | grep -oE '"latest":"[^"]+"' | cut -d'"' -f4 || echo "$FALLBACK_BUN_VERSION")
+    BUN_LATEST=$(latest_registry_version "bun" || true)
+    BUN_LATEST="${BUN_LATEST:-$FALLBACK_BUN_VERSION}"
 
     BUN_VER="v${BUN_LATEST}"
 
@@ -279,13 +320,9 @@ else
 
 
             PKG="@oven/bun-$P-$A${SUFFIX}"
-            BUN_METADATA=$(curl -fsSL "https://${REGISTRY}/${PKG}/${BUN_VER#v}")
-            URL=$(printf '%s' "$BUN_METADATA" | json_string_field tarball)
-            BUN_INTEGRITY=$(printf '%s' "$BUN_METADATA" | json_string_field integrity)
-            [ -n "$URL" ] || error "Registry metadata is missing the Bun runtime tarball URL."
-
-            download_file "$URL" "$TEMP_TGZ_BUN" "Downloading Compatible Runtime (bun@${BUN_VER#v})..."
-            verify_sha512 "$TEMP_TGZ_BUN" "$BUN_INTEGRITY"
+            download_registry_package "$PKG" "${BUN_VER#v}" "$TEMP_TGZ_BUN" \
+              "Downloading Compatible Runtime (bun@${BUN_VER#v})..." \
+              || error "Unable to download a verified Bun runtime from the configured registries."
 
         fi
 

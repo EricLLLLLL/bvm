@@ -100,8 +100,8 @@ export async function downloadFileWithProgress(
     spinner: any,
     versionLabel: string,
     integrity: string,
+    maxRetries = 3,
 ) {
-    const maxRetries = 3;
     let lastError: any;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -192,6 +192,40 @@ export async function downloadFileWithProgress(
     throw lastError || new Error("Download failed after multiple attempts");
 }
 
+interface CandidateDownloadOptions {
+  download?: (url: string) => Promise<void>;
+  sleep?: (milliseconds: number) => Promise<void>;
+}
+
+export async function downloadFileFromCandidates(
+  urls: string[],
+  destPath: string,
+  spinner: any,
+  versionLabel: string,
+  integrity: string,
+  options: CandidateDownloadOptions = {},
+): Promise<void> {
+  if (urls.length === 0) throw new Error(`No download source is available for Bun ${versionLabel}.`);
+  const sleep = options.sleep || Bun.sleep;
+  const failures: string[] = [];
+
+  for (const url of urls) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        if (options.download) await options.download(url);
+        else await downloadFileWithProgress(url, destPath, spinner, versionLabel, integrity, 1);
+        return;
+      } catch (error: any) {
+        failures.push(`${url}: ${error.message}`);
+        await rm(destPath, { force: true }).catch(() => {});
+        if (attempt === 1) await sleep(250);
+      }
+    }
+  }
+
+  throw new Error(`Failed to download Bun ${versionLabel}. Attempted: ${failures.join('; ')}`);
+}
+
 export async function installBunVersion(targetVersion?: string, _options: { global?: boolean } = {}): Promise<void> {
   let versionToInstall = targetVersion || await getRcVersion() || undefined;
   if (!versionToInstall) {
@@ -227,7 +261,7 @@ export async function installBunVersion(targetVersion?: string, _options: { glob
         if (!resolvedVersion) throw new Error(`Could not resolve version.`);
         const result = await findBunDownloadUrl(resolvedVersion);
         if (!result) throw new Error(`Incompatible system.`);
-		        const { url, mirrorUrl, foundVersion, integrity } = result;
+		        const { url, urls, foundVersion, integrity } = result;
 
 	        // On Windows, install to runtime/ first, then create versions/ as junction
 	        // This ensures global packages go to runtime/ and shims work correctly
@@ -249,20 +283,8 @@ export async function installBunVersion(targetVersion?: string, _options: { glob
                 const cachedArchivePath = join(BVM_CACHE_DIR, `${foundVersion}-${basename(url)}`);
                 if (!(await pathExists(cachedArchivePath))) {
                     const tmp = `${cachedArchivePath}.tmp`;
-                    // Log download source for debugging
-                    console.log(colors.dim(`  Downloading from: ${url.replace(/\/[^\/]*$/, '/...')}`));
-                    try { 
-                        await downloadFileWithProgress(url, tmp, spinner, foundVersion, integrity);
-                        await safeRename(tmp, cachedArchivePath); 
-                    }
-                    catch (e) {
-                        if (mirrorUrl) { 
-                            console.log(colors.yellow(`  Primary source failed, trying mirror...`));
-                            await downloadFileWithProgress(mirrorUrl, tmp, spinner, foundVersion, integrity);
-                            await safeRename(tmp, cachedArchivePath); 
-                        }
-                        else throw e;
-                    }
+                    await downloadFileFromCandidates(urls, tmp, spinner, foundVersion, integrity);
+                    await safeRename(tmp, cachedArchivePath);
                 }
                 await verifyFileIntegrity(cachedArchivePath, integrity);
                 spinner.update(`Extracting...`);
